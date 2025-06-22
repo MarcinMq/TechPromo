@@ -4,7 +4,8 @@
 
 ## Konfiguracja
 
-1. Ustaw zmienną środowiskową `TECHPROMO_CONNECTION_STRING` z odpowiednim connection stringiem do bazy PostgreSQL.
+1. Ustaw zmienną środowiskową `TECHPROMO_CONNECTION_STRING` z odpowiednim connection stringiem do bazy PostgreSQL, np.:
+   `postgres://avnadmin:AVNS_he75kjueoPNUXsSRlsk@pg-f1e61d-dbtechpromo.g.aivencloud.com:14958/defaultdb?sslmode=require`
 2. Przy pierwszym uruchomieniu aplikacja utworzy role *Administrator*, *Moderator* i *Uzytkownik* oraz konto administracyjne `admin@test.pl` z hasłem `Qwerty123!`.
 
 ## Backend
