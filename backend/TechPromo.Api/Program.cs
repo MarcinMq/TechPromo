@@ -83,6 +83,7 @@ using (var scope = app.Services.CreateScope())
             DataRejestracji = DateTime.UtcNow,
             Rola = "Admin"
         };
+        admin.Haslo = userManager.PasswordHasher.HashPassword(admin, "Qwerty123!");
 
         await userManager.CreateAsync(admin, "Qwerty123!");
         await userManager.AddToRoleAsync(admin, "Admin");

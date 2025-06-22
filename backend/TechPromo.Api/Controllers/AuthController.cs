@@ -32,6 +32,7 @@ public class AuthController : ControllerBase
             DataRejestracji = DateTime.UtcNow,
             Rola = "Uzytkownik"
         };
+        user.Haslo = _userManager.PasswordHasher.HashPassword(user, dto.Password);
 
         var result = await _userManager.CreateAsync(user, dto.Password);
         if (!result.Succeeded) return BadRequest(result.Errors);

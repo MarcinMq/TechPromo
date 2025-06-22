@@ -24,8 +24,18 @@ export default function LoginForm({ onSuccess }: Props) {
     <form className="form" onSubmit={submit}>
       <h2>Logowanie</h2>
       {error && <p className="error">{error}</p>}
-      <input placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} />
-      <input placeholder="Hasło" type="password" value={password} onChange={e => setPassword(e.target.value)} />
+      <input
+        placeholder="Email"
+        value={email}
+        onChange={e => setEmail(e.target.value)}
+        autoFocus
+      />
+      <input
+        placeholder="Hasło"
+        type="password"
+        value={password}
+        onChange={e => setPassword(e.target.value)}
+      />
       <button>Zaloguj</button>
     </form>
   )
