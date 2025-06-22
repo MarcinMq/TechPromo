@@ -1,6 +1,6 @@
 # TechPromo
 
-Prosty projekt składający się z backendu ASP.NET Core i frontendu w React. Backend korzysta z Entity Framework Core oraz Identity.
+
 
 ## Konfiguracja
 
