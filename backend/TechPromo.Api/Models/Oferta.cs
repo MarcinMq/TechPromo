@@ -1,11 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace TechPromo.Api.Models
 {
     public class Oferta
     {
+        [Key]
         public int Id { get; set; }
         public string Nazwa { get; set; } = string.Empty;
         public decimal Cena { get; set; }

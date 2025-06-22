@@ -1,9 +1,11 @@
 using System;
+using System.ComponentModel.DataAnnotations;
 
 namespace TechPromo.Api.Models
 {
     public class Zgloszenie
     {
+        [Key]
         public int Id { get; set; }
         public string UzytkownikId { get; set; } = string.Empty;
         public string TypElementu { get; set; } = string.Empty;
