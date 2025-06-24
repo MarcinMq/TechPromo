@@ -1,35 +1,71 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import Profil from './pages/konto/Profil';
+import './App.css'; 
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [isLogged, setIsLogged] = useState(false);
+  const [nick, setNick] = useState('');
+  const navigate = useNavigate();
+
+  // Sprawdzamy, czy użytkownik jest zalogowany za każdym razem gdy zmieni się trasa
+  useEffect(() => {
+    const check = async () => {
+      const res = await fetch('http://localhost:5023/konto/profil', { credentials: 'include' });
+      if (res.ok) {
+        const data = await res.json();
+        setIsLogged(true);
+        setNick(data.nick);
+      } else {
+        setIsLogged(false);
+        setNick('');
+      }
+    };
+    check();
+  }, [window.location.pathname]);
+
+  const handleLogout = async () => {
+    await fetch('http://localhost:5023/konto/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    setIsLogged(false);
+    setNick('');
+    navigate('/');
+  };
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+    <div>
+      <nav className="navbar">
+        <div className="navbar-title">TechPromo</div>
+        <div className="navbar-actions">
+          {!isLogged && (
+            <>
+              <Link to="/login" className="nav-link">Zaloguj</Link>
+              <Link to="/register" className="nav-link">Zarejestruj</Link>
+            </>
+          )}
+          {isLogged && (
+            <>
+              <Link to="/konto/profil" className="nav-link">Profil ({nick})</Link>
+              <button className="nav-link"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      onClick={handleLogout}>Wyloguj</button>
+            </>
+          )}
+        </div>
+      </nav>
+
+      <Routes>
+        <Route path="/" element={<div className="main-page">Tu będzie strona główna TechPromo</div>} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/konto/profil" element={<Profil />} />
+      </Routes>
+    </div>
+  );
 }
 
-export default App
+export default App;
