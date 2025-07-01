@@ -17,7 +17,7 @@ public class Glos
 
         [Required]
         [MaxLength(10)]
-        public string TypGlosu { get; set; } // 'hot' lub 'cold'
+        public string TypGlosu { get; set; }
 
         public DateTime DataGlosu { get; set; } = DateTime.UtcNow;
     }

@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+
 namespace TechPromo.Api.DTO
 {
     public class ProfilResponseDto
@@ -7,5 +9,6 @@ namespace TechPromo.Api.DTO
         public string rola { get; set; } = string.Empty;
         public int punkty { get; set; }
         public string dataRejestracji { get; set; } = string.Empty;
+        public List<OdznakaDto> odznaki { get; set; } = new List<OdznakaDto>();
     }
 }

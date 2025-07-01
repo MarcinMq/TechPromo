@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading.Tasks;
 using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
+using TechPromo.Api.Data;
 
 namespace TechPromo.Api.Controllers
 {
@@ -13,11 +15,13 @@ namespace TechPromo.Api.Controllers
     {
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly SignInManager<Uzytkownik> _signInManager;
+        private readonly TechPromoDbContext _context;
 
-        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager)
+        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context)
         {
             _userManager = userManager;
             _signInManager = signInManager;
+            _context = context;
         }
 
         [HttpPost("register")]
@@ -81,13 +85,29 @@ namespace TechPromo.Api.Controllers
 
             var roles = await _userManager.GetRolesAsync(user);
 
+            // Pobierz odznaki użytkownika
+            var uzytkownikOdznaki = await _context.UzytkownikOdznaki
+                .Include(uo => uo.Odznaka)
+                .Where(uo => uo.IdUzytkownik == user.Id)
+                .ToListAsync();
+
+            var odznakaList = uzytkownikOdznaki.Select(uo => new OdznakaDto
+            {
+                idOdznaka = uo.Odznaka.IdOdznaka,
+                nazwa = uo.Odznaka.Nazwa,
+                opis = uo.Odznaka.Opis ?? string.Empty,
+                ikona = uo.Odznaka.Ikona ?? string.Empty,
+                dataPrzyznania = uo.DataPrzyznania.ToString("yyyy-MM-dd")
+            }).ToList();
+
             var profilResponse = new ProfilResponseDto
             {
                 nick = user.UserName ?? string.Empty,
                 email = user.Email ?? string.Empty,
                 rola = roles.FirstOrDefault() ?? "Brak",
                 punkty = user.Punkty,
-                dataRejestracji = user.DataRejestracji.ToString("yyyy-MM-dd")
+                dataRejestracji = user.DataRejestracji.ToString("yyyy-MM-dd"),
+                odznaki = odznakaList
             };
 
             return Ok(profilResponse);
