@@ -1,7 +1,9 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Linq;
 using System.Threading.Tasks;
 using TechPromo.Api.Model;
+using TechPromo.Api.DTO;
 
 namespace TechPromo.Api.Controllers
 {
@@ -19,20 +21,20 @@ namespace TechPromo.Api.Controllers
         }
 
         [HttpPost("register")]
-        public async Task<IActionResult> Register(
-            [FromForm] string nick,
-            [FromForm] string email,
-            [FromForm] string password)
+        public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
             var user = new Uzytkownik
             {
-                UserName = nick,
-                Email = email,
+                UserName = registerDto.Nick,
+                Email = registerDto.Email,
                 EmailConfirmed = true,
                 DataRejestracji = System.DateTime.UtcNow,
                 Punkty = 0
             };
-            var result = await _userManager.CreateAsync(user, password);
+            var result = await _userManager.CreateAsync(user, registerDto.Password);
             if (result.Succeeded)
             {
                 await _userManager.AddToRoleAsync(user, "Uzytkownik");
@@ -43,15 +45,16 @@ namespace TechPromo.Api.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(
-            [FromForm] string email,
-            [FromForm] string password)
+        public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
-            var user = await _userManager.FindByEmailAsync(email);
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(loginDto.Email);
             if (user == null)
                 return Unauthorized("Niepoprawne dane logowania.");
 
-            var result = await _signInManager.PasswordSignInAsync(user.UserName, password, false, false);
+            var result = await _signInManager.PasswordSignInAsync(user.UserName ?? string.Empty, loginDto.Password, false, false);
             if (result.Succeeded)
             {
                 return Ok("Zalogowano poprawnie.");
@@ -69,24 +72,25 @@ namespace TechPromo.Api.Controllers
         [HttpGet("profil")]
         public async Task<IActionResult> Profil()
         {
-            if (!User.Identity.IsAuthenticated)
-                return Unauthorized();
+            if (User.Identity?.IsAuthenticated != true)
+                return Unauthorized("Użytkownik nie jest uwierzytelniony");
 
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
-                return Unauthorized();
+                return Unauthorized("Nie znaleziono użytkownika");
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            return Ok(new
+            var profilResponse = new ProfilResponseDto
             {
-                nick = user.UserName,
-                email = user.Email,
+                nick = user.UserName ?? string.Empty,
+                email = user.Email ?? string.Empty,
                 rola = roles.FirstOrDefault() ?? "Brak",
                 punkty = user.Punkty,
                 dataRejestracji = user.DataRejestracji.ToString("yyyy-MM-dd")
-                
-            });
+            };
+
+            return Ok(profilResponse);
         }
     }
 }

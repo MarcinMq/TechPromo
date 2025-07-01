@@ -33,6 +33,17 @@ builder.Services.AddDbContext<TechPromoDbContext>(options =>
 builder.Services.AddIdentity<Uzytkownik, IdentityRole<int>>()
     .AddEntityFrameworkStores<TechPromoDbContext>();
 
+// Konfiguracja ciasteczek dla Identity
+builder.Services.ConfigureApplicationCookie(options =>
+{
+    options.Cookie.Name = "TechPromoAuth";
+    options.Cookie.HttpOnly = true;
+    options.ExpireTimeSpan = TimeSpan.FromDays(7);
+    options.SlidingExpiration = true;
+    options.Cookie.SameSite = SameSiteMode.Lax;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+});
+
 var app = builder.Build();
 
 app.UseCors("FrontendDevCors");
@@ -53,6 +64,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

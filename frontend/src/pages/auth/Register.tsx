@@ -15,8 +15,14 @@ const Register = () => {
     try {
       const response = await fetch('http://localhost:5023/konto/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `nick=${encodeURIComponent(nick)}&email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          nick: nick,
+          email: email,
+          password: password
+        }),
         credentials: 'include',
       });
       const text = await response.text();

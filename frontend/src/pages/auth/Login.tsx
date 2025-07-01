@@ -16,8 +16,13 @@ const Login = () => {
     try {
       const response = await fetch('http://localhost:5023/konto/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `email=${encodeURIComponent(email)}&password=${encodeURIComponent(password)}`,
+        headers: { 
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email,
+          password: password
+        }),
         credentials: 'include',
       });
       const text = await response.text();
