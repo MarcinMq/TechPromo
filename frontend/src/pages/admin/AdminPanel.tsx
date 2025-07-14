@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { authorizedFetch, apiPost, apiPut, apiDelete } from '../../utils/api'; // Prostsze API funkcje
 import './AdminPanel.css';
 
 type Uzytkownik = {
@@ -34,14 +35,13 @@ const AdminPanel = () => {
 
   const fetchUsers = async () => {
     try {
-      const res = await fetch(`${API_BASE}/admin/uzytkownicy`, {
-        credentials: 'include'
-      });
+      // Teraz nie muszę dodawać JWT - authorizedFetch robi to automatycznie!
+      const res = await authorizedFetch(`${API_BASE}/admin/uzytkownicy`);
       if (res.ok) {
         const data = await res.json();
         setUsers(data);
       } else {
-        setMessage('Błąd pobierania użytkowników');
+        setMessage('Błąd pobierania użytkowników - sprawdź czy masz uprawnienia Admin');
       }
     } catch {
       setMessage('Błąd połączenia z serwerem');
@@ -50,9 +50,8 @@ const AdminPanel = () => {
 
   const fetchBadges = async () => {
     try {
-      const res = await fetch(`${API_BASE}/admin/odznaki`, {
-        credentials: 'include'
-      });
+      // Też bez dodawania JWT - wszystko automatyczne!
+      const res = await authorizedFetch(`${API_BASE}/admin/odznaki`);
       if (res.ok) {
         const data = await res.json();
         setBadges(data);
@@ -68,12 +67,8 @@ const AdminPanel = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/utworz-odznake`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(newBadge)
-      });
+      // apiPost automatycznie dodaje JWT i Content-Type!
+      const res = await apiPost('/admin/utworz-odznake', newBadge);
       const text = await res.text();
       setMessage(text);
       if (res.ok) {
@@ -91,14 +86,10 @@ const AdminPanel = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/przyznaj-odznake`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          idUzytkownik: parseInt(assignForm.idUzytkownik),
-          idOdznaka: parseInt(assignForm.idOdznaka)
-        })
+      // apiPost obsługuje wszystko za nas
+      const res = await apiPost('/admin/przyznaj-odznake', {
+        idUzytkownik: parseInt(assignForm.idUzytkownik),
+        idOdznaka: parseInt(assignForm.idOdznaka)
       });
       const text = await res.text();
       setMessage(text);
@@ -117,10 +108,8 @@ const AdminPanel = () => {
     
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/odznaka/${id}`, {
-        method: 'DELETE',
-        credentials: 'include'
-      });
+      // apiDelete też ma wbudowany JWT
+      const res = await apiDelete(`/admin/odznaka/${id}`);
       const text = await res.text();
       setMessage(text);
       if (res.ok) {
@@ -136,11 +125,9 @@ const AdminPanel = () => {
   const updateUserPoints = async (userId: number, newPoints: number) => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/admin/uzytkownik/${userId}/punkty`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ nowePunkty: newPoints })
+      // apiPut też automatycznie obsługuje JWT
+      const res = await apiPut(`/admin/uzytkownik/${userId}/punkty`, {
+        nowePunkty: newPoints
       });
       const text = await res.text();
       setMessage(text);

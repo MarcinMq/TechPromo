@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { getAuthHeaders, isAuthenticated, logout } from '../../utils/auth';
+import { useNavigate } from 'react-router-dom';
 
 type OdznakaData = {
   idOdznaka: number;
@@ -21,29 +23,42 @@ const Profil = () => {
   const [data, setData] = useState<ProfilData | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchProfil = async () => {
+      // Sprawdź czy użytkownik jest zalogowany
+      if (!isAuthenticated()) {
+        setErr('Musisz być zalogowany, aby zobaczyć profil!');
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await fetch('http://localhost:5023/konto/profil', {
-          credentials: 'include',
+          headers: getAuthHeaders()
         });
+        
         if (res.status === 401) {
-          setErr('Musisz być zalogowany, aby zobaczyć profil!');
+          // Token wygasł lub jest nieprawidłowy
+          logout();
+          setErr('Sesja wygasła. Zaloguj się ponownie.');
+          setTimeout(() => navigate('/auth/login'), 2000);
         } else if (!res.ok) {
           setErr('Błąd pobierania danych profilu.');
         } else {
           const json = await res.json();
           setData(json);
         }
-      } catch {
+      } catch (error) {
+        console.error('Profile fetch error:', error);
         setErr('Nie udało się połączyć z serwerem.');
       } finally {
         setLoading(false);
       }
     };
     fetchProfil();
-  }, []);
+  }, [navigate]);
 
   if (loading) return <div className="auth-form">Ładowanie profilu...</div>;
   if (err) return <div className="auth-form" style={{ color: "crimson" }}>{err}</div>;

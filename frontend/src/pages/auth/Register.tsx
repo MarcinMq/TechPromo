@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { saveUserSession } from '../../utils/auth';
 
 const Register = () => {
   const [nick, setNick] = useState('');
@@ -6,6 +8,7 @@ const Register = () => {
   const [password, setPassword] = useState('');
   const [info, setInfo] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,14 +28,28 @@ const Register = () => {
         }),
         credentials: 'include',
       });
-      const text = await response.text();
-      setInfo(text);
+
       if (response.ok) {
-        setNick('');
-        setEmail('');
-        setPassword('');
+        const data = await response.json();
+        
+        // Zapisz sesję używając funkcji helper
+        saveUserSession(data);
+        
+        setInfo(`Zarejestrowano i zalogowano pomyślnie! Witaj ${data.nick}!`);
+        
+        setTimeout(() => {
+          setNick('');
+          setEmail('');
+          setPassword('');
+          setInfo(null);
+          navigate('/');
+        }, 1000);
+      } else {
+        const errorText = await response.text();
+        setInfo(errorText || 'Błąd rejestracji');
       }
-    } catch {
+    } catch (error) {
+      console.error('Register error:', error);
       setInfo('Błąd połączenia z serwerem.');
     } finally {
       setLoading(false);

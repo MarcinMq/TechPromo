@@ -1,11 +1,13 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using System.Linq;
 using System.Threading.Tasks;
 using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
 using TechPromo.Api.Data;
+using TechPromo.Api.Services;
 
 namespace TechPromo.Api.Controllers
 {
@@ -16,12 +18,14 @@ namespace TechPromo.Api.Controllers
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly SignInManager<Uzytkownik> _signInManager;
         private readonly TechPromoDbContext _context;
+        private readonly IJwtService _jwtService;
 
-        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context)
+        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context, IJwtService jwtService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _context = context;
+            _jwtService = jwtService;
         }
 
         [HttpPost("register")]
@@ -41,9 +45,25 @@ namespace TechPromo.Api.Controllers
             var result = await _userManager.CreateAsync(user, registerDto.Password);
             if (result.Succeeded)
             {
+                // Nadaję nową rolę użytkownika (Admin dodaję ręcznie w bazie)
                 await _userManager.AddToRoleAsync(user, "Uzytkownik");
-                await _signInManager.SignInAsync(user, isPersistent: false);
-                return Ok("Zarejestrowano i zalogowano użytkownika.");
+                
+                // Tworzę token JWT dla nowego użytkownika - od razu go loguję
+                var token = await _jwtService.GenerateTokenAsync(user);
+                var roles = await _userManager.GetRolesAsync(user);
+                
+                // Zwracam wszystkie dane potrzebne frontend-owi
+                var loginResponse = new LoginResponseDto
+                {
+                    Token = token,                              // Główny token do autoryzacji
+                    Nick = user.UserName ?? string.Empty,      // Nick do wyświetlenia
+                    Email = user.Email ?? string.Empty,        // Email użytkownika
+                    Rola = roles.FirstOrDefault() ?? "Uzytkownik", // Rola (Admin/Uzytkownik)
+                    Punkty = user.Punkty,                      // Punkty w grze
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(60) // Kiedy token wygaśnie
+                };
+                
+                return Ok(loginResponse);
             }
             return BadRequest(result.Errors);
         }
@@ -54,43 +74,64 @@ namespace TechPromo.Api.Controllers
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Szukam użytkownika po emailu
             var user = await _userManager.FindByEmailAsync(loginDto.Email);
             if (user == null)
                 return Unauthorized("Niepoprawne dane logowania.");
 
-            var result = await _signInManager.PasswordSignInAsync(user.UserName ?? string.Empty, loginDto.Password, false, false);
-            if (result.Succeeded)
+            // Sprawdzam hasło - używam CheckPasswordAsync zamiast SignInManager (bo JWT nie potrzebuje sesji)
+            var result = await _userManager.CheckPasswordAsync(user, loginDto.Password);
+            if (result)
             {
-                return Ok("Zalogowano poprawnie.");
+                // Hasło się zgadza - tworzę token JWT
+                var token = await _jwtService.GenerateTokenAsync(user);
+                var roles = await _userManager.GetRolesAsync(user);
+                
+                // Pakuję wszystkie dane dla frontend-u
+                var loginResponse = new LoginResponseDto
+                {
+                    Token = token,                              // Token do zapisania w localStorage
+                    Nick = user.UserName ?? string.Empty,      // Nick do wyświetlenia w UI
+                    Email = user.Email ?? string.Empty,        // Email użytkownika
+                    Rola = roles.FirstOrDefault() ?? "Uzytkownik", // Rola decyduje o dostępie do panelu admin
+                    Punkty = user.Punkty,                      // Punkty do wyświetlenia
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(60) // Frontend wie kiedy token wygaśnie
+                };
+                
+                return Ok(loginResponse);
             }
             return Unauthorized("Niepoprawne dane logowania.");
         }
 
         [HttpPost("logout")]
-        public async Task<IActionResult> Logout()
+        public IActionResult Logout()
         {
-            await _signInManager.SignOutAsync();
-            return Ok("Wylogowano.");
+            // W JWT logout robi frontend - po prostu usuwa token z localStorage
+            // Backend nie musi nic robić bo token i tak wygaśnie za 60 minut
+            return Ok(new { message = "Wylogowano. Frontend powinien usunąć token z przeglądarki." });
         }
 
         [HttpGet("profil")]
+        [Authorize] // Ten atrybut sprawdza token JWT automatycznie
         public async Task<IActionResult> Profil()
         {
             if (User.Identity?.IsAuthenticated != true)
                 return Unauthorized("Użytkownik nie jest uwierzytelniony");
 
+            // Pobieram dane zalogowanego użytkownika z tokenu JWT
             var user = await _userManager.GetUserAsync(User);
             if (user == null)
                 return Unauthorized("Nie znaleziono użytkownika");
 
             var roles = await _userManager.GetRolesAsync(user);
 
-            // Pobierz odznaki użytkownika
+            // Pobieram wszystkie odznaki tego użytkownika z bazy
             var uzytkownikOdznaki = await _context.UzytkownikOdznaki
                 .Include(uo => uo.Odznaka)
                 .Where(uo => uo.IdUzytkownik == user.Id)
                 .ToListAsync();
 
+            // Mapuję na DTO żeby frontend dostał czyste dane
             var odznakaList = uzytkownikOdznaki.Select(uo => new OdznakaDto
             {
                 idOdznaka = uo.Odznaka.IdOdznaka,
@@ -100,6 +141,7 @@ namespace TechPromo.Api.Controllers
                 dataPrzyznania = uo.DataPrzyznania.ToString("yyyy-MM-dd")
             }).ToList();
 
+            // Zwracam kompletny profil użytkownika
             var profilResponse = new ProfilResponseDto
             {
                 nick = user.UserName ?? string.Empty,

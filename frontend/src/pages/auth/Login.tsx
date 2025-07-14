@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { saveUserSession } from '../../utils/auth';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -25,17 +26,27 @@ const Login = () => {
         }),
         credentials: 'include',
       });
-      const text = await response.text();
-      setInfo(text);
+
       if (response.ok) {
+        const data = await response.json();
+        
+        // Zapisz sesję używając funkcji helper
+        saveUserSession(data);
+        
+        setInfo(`Zalogowano pomyślnie! Witaj ${data.nick}!`);
+        
         setTimeout(() => {
           setEmail('');
           setPassword('');
           setInfo(null);
           navigate('/');
-        }, 1200);
+        }, 800);
+      } else {
+        const errorText = await response.text();
+        setInfo(errorText || 'Błąd logowania');
       }
-    } catch {
+    } catch (error) {
+      console.error('Login error:', error);
       setInfo('Błąd połączenia z serwerem.');
     } finally {
       setLoading(false);

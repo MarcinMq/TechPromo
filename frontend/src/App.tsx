@@ -4,6 +4,8 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Profil from './pages/konto/Profil';
 import AdminPanel from './pages/admin/AdminPanel';
+import ProtectedRoute from './components/ProtectedRoute';
+import { isAuthenticated, getUserData, logout } from './utils/auth';
 import './App.css'; 
 
 function App() {
@@ -12,29 +14,62 @@ function App() {
   const [userRole, setUserRole] = useState('');
   const navigate = useNavigate();
 
-  // Sprawdzamy, czy użytkownik jest zalogowany za każdym razem gdy zmieni się trasa
+  // Sprawdzam autoryzację za pomocą JWT tokenów zamiast pytać backend co chwilę
   useEffect(() => {
-    const check = async () => {
-      const res = await fetch('http://localhost:5023/konto/profil', { credentials: 'include' });
-      if (res.ok) {
-        const data = await res.json();
-        setIsLogged(true);
-        setNick(data.nick);
-        setUserRole(data.rola);
+    const checkAuth = () => {
+      if (isAuthenticated()) {
+        const userData = getUserData();
+        if (userData) {
+          // Token ważny - użytkownik zalogowany
+          setIsLogged(true);
+          setNick(userData.nick);
+          setUserRole(userData.role);
+        } else {
+          // Błąd pobierania danych - wyloguj
+          setIsLogged(false);
+          setNick('');
+          setUserRole('');
+        }
       } else {
+        // Token nieważny/wygasł - użytkownik niezalogowany
         setIsLogged(false);
         setNick('');
         setUserRole('');
       }
     };
-    check();
-  }, [window.location.pathname]);
 
-  const handleLogout = async () => {
-    await fetch('http://localhost:5023/konto/logout', {
-      method: 'POST',
-      credentials: 'include',
-    });
+    // Sprawdzam od razu przy starcie aplikacji
+    checkAuth();
+    
+    // Sprawdzam co 30 sekund czy token nie wygasł
+    const interval = setInterval(checkAuth, 30000);
+    
+    // Nasłuchuję zmian w localStorage - kiedy ktoś się loguje/wylogowuje
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'authToken' || e.key === 'userNick' || e.key === 'userRole') {
+        checkAuth();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+    
+    // Nasłuchuję mojego custom eventu - gdy logowanie/wylogowanie w tej samej karcie
+    const handleAuthChange = () => {
+      checkAuth();
+    };
+    
+    window.addEventListener('authChanged', handleAuthChange);
+    
+    // Sprzątam po sobie
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', handleStorageChange);
+      window.removeEventListener('authChanged', handleAuthChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    logout();
     setIsLogged(false);
     setNick('');
     setUserRole('');
@@ -48,8 +83,8 @@ function App() {
         <div className="navbar-actions">
           {!isLogged && (
             <>
-              <Link to="/login" className="nav-link">Zaloguj</Link>
-              <Link to="/register" className="nav-link">Zarejestruj</Link>
+              <Link to="/auth/login" className="nav-link">Zaloguj</Link>
+              <Link to="/auth/register" className="nav-link">Zarejestruj</Link>
             </>
           )}
           {isLogged && (
@@ -68,11 +103,17 @@ function App() {
 
       <Routes>
         <Route path="/" element={<div className="main-page">Tu będzie strona główna TechPromo</div>} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/konto/profil" element={<Profil />} />
+        <Route path="/auth/login" element={<Login />} />
+        <Route path="/auth/register" element={<Register />} />
+        <Route path="/konto/profil" element={
+          <ProtectedRoute>
+            <Profil />
+          </ProtectedRoute>
+        } />
         <Route path="/admin" element={
-          userRole === 'Admin' ? <AdminPanel /> : <div>Brak uprawnień administratora</div>
+          <ProtectedRoute requiredRole="Admin">
+            <AdminPanel />
+          </ProtectedRoute>
         } />
       </Routes>
     </div>
