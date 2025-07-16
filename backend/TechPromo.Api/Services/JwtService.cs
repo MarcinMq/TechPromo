@@ -13,7 +13,7 @@ namespace TechPromo.Api.Services
         Task<string> GenerateTokenAsync(Uzytkownik user);
     }
 
-    // Serwis do tworzenia tokenów JWT - jak fabryka tokenów
+    // Serwis do tworzenia tokenów JWT 
     public class JwtService : IJwtService
     {
         private readonly IConfiguration _configuration;

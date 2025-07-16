@@ -15,6 +15,7 @@ public class Powiadomienie
         public string Typ { get; set; }
         public string Tresc { get; set; }
         public DateTime DataUtworzenia { get; set; } = DateTime.UtcNow;
+        public bool Przeczytane { get; set; } = false;
 
         [ForeignKey("Oferta")]
         public int? IdOferta { get; set; }

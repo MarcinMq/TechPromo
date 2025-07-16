@@ -239,6 +239,8 @@ namespace TechPromo.Api.Migrations
                     LiczbaHot = table.Column<int>(type: "integer", nullable: false),
                     LiczbaCold = table.Column<int>(type: "integer", nullable: false),
                     Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    Aktywna = table.Column<bool>(type: "boolean", nullable: false),
+                    Zatwierdzona = table.Column<bool>(type: "boolean", nullable: false),
                     IdUzytkownik = table.Column<int>(type: "integer", nullable: false),
                     IdKategoria = table.Column<int>(type: "integer", nullable: true),
                     Embedding = table.Column<string>(type: "text", nullable: false)
@@ -396,6 +398,7 @@ namespace TechPromo.Api.Migrations
                     Typ = table.Column<string>(type: "character varying(30)", maxLength: 30, nullable: false),
                     Tresc = table.Column<string>(type: "text", nullable: false),
                     DataUtworzenia = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    Przeczytane = table.Column<bool>(type: "boolean", nullable: false),
                     IdOferta = table.Column<int>(type: "integer", nullable: true),
                     IdKomentarz = table.Column<int>(type: "integer", nullable: true)
                 },

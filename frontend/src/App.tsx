@@ -4,6 +4,7 @@ import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Profil from './pages/konto/Profil';
 import AdminPanel from './pages/admin/AdminPanel';
+import ModeratorPanel from './pages/moderator/ModeratorPanel';
 import ProtectedRoute from './components/ProtectedRoute';
 import { isAuthenticated, getUserData, logout } from './utils/auth';
 import './App.css'; 
@@ -93,6 +94,9 @@ function App() {
               {userRole === 'Admin' && (
                 <Link to="/admin" className="nav-link">🛠️ Panel Admin</Link>
               )}
+              {(userRole === 'Moderator' || userRole === 'Admin') && (
+                <Link to="/moderator" className="nav-link">🛡️ Panel Moderatora</Link>
+              )}
               <button className="nav-link"
                       style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                       onClick={handleLogout}>Wyloguj</button>
@@ -113,6 +117,11 @@ function App() {
         <Route path="/admin" element={
           <ProtectedRoute requiredRole="Admin">
             <AdminPanel />
+          </ProtectedRoute>
+        } />
+        <Route path="/moderator" element={
+          <ProtectedRoute requiredRole="Moderator,Admin">
+            <ModeratorPanel />
           </ProtectedRoute>
         } />
       </Routes>

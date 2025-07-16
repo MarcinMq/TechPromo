@@ -12,7 +12,7 @@ using TechPromo.Api.Data;
 namespace TechPromo.Api.Migrations
 {
     [DbContext(typeof(TechPromoDbContext))]
-    [Migration("20250624170059_InitialCreate")]
+    [Migration("20250716161839_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -286,6 +286,9 @@ namespace TechPromo.Api.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdOferta"));
 
+                    b.Property<bool>("Aktywna")
+                        .HasColumnType("boolean");
+
                     b.Property<decimal?>("Cena")
                         .HasColumnType("numeric");
 
@@ -325,6 +328,9 @@ namespace TechPromo.Api.Migrations
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
+
+                    b.Property<bool>("Zatwierdzona")
+                        .HasColumnType("boolean");
 
                     b.HasKey("IdOferta");
 
@@ -394,6 +400,9 @@ namespace TechPromo.Api.Migrations
 
                     b.Property<int>("IdUzytkownik")
                         .HasColumnType("integer");
+
+                    b.Property<bool>("Przeczytane")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Tresc")
                         .IsRequired()

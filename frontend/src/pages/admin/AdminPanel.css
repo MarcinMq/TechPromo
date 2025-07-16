@@ -117,6 +117,53 @@
   box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
 }
 
+/* Style dla roli */
+.role-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.role-badge.admin {
+  background-color: #dc3545;
+  color: white;
+}
+
+.role-badge.moderator {
+  background-color: #fd7e14;
+  color: white;
+}
+
+.role-badge.uzytkownik {
+  background-color: #28a745;
+  color: white;
+}
+
+/* Select dla zmiany roli */
+.role-select {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #ced4da;
+  border-radius: 6px;
+  margin-top: 8px;
+  font-size: 14px;
+  background-color: white;
+  cursor: pointer;
+}
+
+.role-select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 2px rgba(0,123,255,0.25);
+}
+
+.role-select option {
+  padding: 8px;
+}
+
 /* Badges Grid */
 .badges-grid {
   display: grid;
@@ -233,6 +280,148 @@
   cursor: not-allowed;
 }
 
+/* === NOWE STYLE DLA FUNKCJI ADMINA === */
+
+/* Zgłoszenia */
+.reports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.report-card {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.report-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.report-card h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 18px;
+}
+
+.report-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.approve-btn {
+  background-color: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.approve-btn:hover {
+  background-color: #218838;
+}
+
+.reject-btn {
+  background-color: #dc3545;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s ease;
+}
+
+.reject-btn:hover {
+  background-color: #c82333;
+}
+
+/* Komentarze */
+.comments-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.comment-card {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.comment-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.comment-card h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 18px;
+}
+
+.comment-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* Oferty */
+.offers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.offer-card {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease;
+}
+
+.offer-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.offer-card h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 18px;
+}
+
+.offer-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+/* Wspólne style dla przycisków */
+.approve-btn:disabled,
+.reject-btn:disabled,
+.delete-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .admin-panel {
@@ -258,5 +447,21 @@
   .users-grid,
   .badges-grid {
     grid-template-columns: 1fr;
+  }
+  
+  .reports-grid,
+  .comments-grid,
+  .offers-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .tabs {
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .tabs button {
+    text-align: left;
+    padding: 10px 16px;
   }
 }

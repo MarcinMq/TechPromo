@@ -46,6 +46,21 @@ export const apiPut = (url: string, data: any) =>
     body: JSON.stringify(data)
   });
 
+// Uniwersalna funkcja API - automatycznie wybiera metodę i parsuje JSON
+export const api = async (url: string, options: RequestInit = {}): Promise<any> => {
+  // Automatycznie dodaję API_BASE jeśli URL zaczyna się od /
+  const fullUrl = url.startsWith('/') ? `${API_BASE}/${url}` : `${API_BASE}/${url}`;
+
+  const response = await authorizedFetch(fullUrl, options);
+  
+  // Parsuj JSON jeśli response ma zawartość
+  if (response.status === 204) {
+    return null; // No content
+  }
+
+  return await response.json();
+};
+
 export const apiDelete = (url: string) => 
   authorizedFetch(url, {
     method: 'DELETE'

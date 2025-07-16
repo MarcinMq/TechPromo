@@ -81,10 +81,15 @@ export const getAuthHeaders = (): HeadersInit => {
   };
 };
 
-// Sprawdzam czy użytkownik ma konkretną rolę (Admin, Uzytkownik)
+// Sprawdzam czy użytkownik ma konkretną rolę (Admin, Uzytkownik) 
+// Obsługuje też wiele ról oddzielonych przecinkami (np. "Moderator,Admin")
 export const hasRole = (role: string): boolean => {
   const userData = getUserData();
-  return userData?.role === role;
+  if (!userData) return false;
+  
+  // Jeśli role zawiera przecinek, to sprawdzam każdą rolę oddzielnie
+  const allowedRoles = role.split(',').map(r => r.trim());
+  return allowedRoles.includes(userData.role);
 };
 
 // Skrót do sprawdzenia czy ktoś jest adminem

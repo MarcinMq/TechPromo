@@ -130,18 +130,24 @@ namespace TechPromo.Api.Controllers
         [HttpGet("uzytkownicy")]
         public async Task<IActionResult> PobierzWszystkichUzytkownikow()
         {
-            var uzytkownicy = await _context.Users
-                .Select(u => new {
-                    id = u.Id,
-                    nick = u.UserName,
-                    email = u.Email,
-                    punkty = u.Punkty,
-                    dataRejestracji = u.DataRejestracji.ToString("yyyy-MM-dd"),
-                    emailConfirmed = u.EmailConfirmed
-                })
-                .ToListAsync();
+            var uzytkownicy = await _context.Users.ToListAsync();
+            var uzytkownicyZRolami = new List<object>();
 
-            return Ok(uzytkownicy);
+            foreach (var uzytkownik in uzytkownicy)
+            {
+                var role = await _userManager.GetRolesAsync(uzytkownik);
+                uzytkownicyZRolami.Add(new {
+                    id = uzytkownik.Id,
+                    nick = uzytkownik.UserName,
+                    email = uzytkownik.Email,
+                    punkty = uzytkownik.Punkty,
+                    dataRejestracji = uzytkownik.DataRejestracji.ToString("yyyy-MM-dd"),
+                    emailConfirmed = uzytkownik.EmailConfirmed,
+                    rola = role.FirstOrDefault() ?? "Brak"
+                });
+            }
+
+            return Ok(uzytkownicyZRolami);
         }
 
         [HttpPost("utworz-odznake")]
@@ -196,6 +202,230 @@ namespace TechPromo.Api.Controllers
             await _userManager.UpdateAsync(user);
 
             return Ok($"Punkty użytkownika '{user.UserName}' zostały zaktualizowane na {dto.NowePunkty}");
+        }
+
+        // === PRZEGLĄDANIE ZGŁOSZEŃ ===
+        [HttpGet("zgloszenia")]
+        public async Task<IActionResult> PobierzWszystkieZgloszenia()
+        {
+            // Pobierz wszystkie zgłoszenia użytkowników (oferty, komentarze, etc.)
+            var zgloszenia = await _context.Powiadomienia
+                .Where(p => p.Typ == "Zgloszenie") // Tylko zgłoszenia
+                .Include(p => p.Uzytkownik)
+                .Include(p => p.Oferta)
+                .OrderByDescending(p => p.DataUtworzenia)
+                .Select(p => new {
+                    id = p.IdPowiadomienie,
+                    tresc = p.Tresc,
+                    dataZgloszenia = p.DataUtworzenia.ToString("yyyy-MM-dd HH:mm"),
+                    zgloszonePrzez = p.Uzytkownik.UserName,
+                    oferta = p.Oferta != null ? p.Oferta.Nazwa : "Brak",
+                    typ = p.Typ
+                })
+                .ToListAsync();
+
+            return Ok(zgloszenia);
+        }
+
+        // === ZATWIERDZANIE/ODRZUCANIE ZGŁOSZEŃ ===
+        [HttpPut("zgloszenie/{id}/zatwierdz")]
+        public async Task<IActionResult> ZatwierdzZgloszenie(int id)
+        {
+            var zgloszenie = await _context.Powiadomienia.FindAsync(id);
+            if (zgloszenie == null)
+                return NotFound("Nie znaleziono zgłoszenia");
+
+            // Usuń zgłoszenie jako zatwierdzone
+            _context.Powiadomienia.Remove(zgloszenie);
+            await _context.SaveChangesAsync();
+
+            return Ok($"Zgłoszenie zostało zatwierdzone i usunięte");
+        }
+
+        [HttpDelete("zgloszenie/{id}/odrzuc")]
+        public async Task<IActionResult> OdrzucZgloszenie(int id)
+        {
+            var zgloszenie = await _context.Powiadomienia.FindAsync(id);
+            if (zgloszenie == null)
+                return NotFound("Nie znaleziono zgłoszenia");
+
+            // Usuń zgłoszenie jako odrzucone
+            _context.Powiadomienia.Remove(zgloszenie);
+            await _context.SaveChangesAsync();
+
+            return Ok($"Zgłoszenie zostało odrzucone i usunięte");
+        }
+
+        // === MODERACJA KOMENTARZY ===
+        [HttpGet("komentarze")]
+        public async Task<IActionResult> PobierzWszystkieKomentarze()
+        {
+            var komentarze = await _context.Komentarze
+                .Include(k => k.Uzytkownik)
+                .Include(k => k.Oferta)
+                .OrderByDescending(k => k.DataDodania) // Prawidłowa nazwa właściwości
+                .Select(k => new {
+                    id = k.IdKomentarz,
+                    tresc = k.Tresc,
+                    autor = k.Uzytkownik.UserName,
+                    oferta = k.Oferta.Nazwa, // Prawidłowa nazwa
+                    dataUtworzenia = k.DataDodania.ToString("yyyy-MM-dd HH:mm"),
+                    idOferty = k.IdOferta,
+                    status = k.Status
+                })
+                .ToListAsync();
+
+            return Ok(komentarze);
+        }
+
+        [HttpDelete("komentarz/{id}")]
+        public async Task<IActionResult> UsunKomentarz(int id)
+        {
+            var komentarz = await _context.Komentarze
+                .Include(k => k.Uzytkownik)
+                .FirstOrDefaultAsync(k => k.IdKomentarz == id);
+
+            if (komentarz == null)
+                return NotFound("Nie znaleziono komentarza");
+
+            _context.Komentarze.Remove(komentarz);
+            await _context.SaveChangesAsync();
+
+            return Ok($"Komentarz użytkownika '{komentarz.Uzytkownik.UserName}' został usunięty");
+        }
+
+        // === MODERACJA OFERT ===
+        [HttpGet("oferty")]
+        public async Task<IActionResult> PobierzWszystkieOferty()
+        {
+            var oferty = await _context.Oferty
+                .Include(o => o.Uzytkownik)
+                .OrderByDescending(o => o.DataDodania) // Prawidłowa nazwa
+                .Select(o => new {
+                    id = o.IdOferta,
+                    tytul = o.Nazwa, // Prawidłowa nazwa właściwości
+                    opis = o.Opis,
+                    autor = o.Uzytkownik.UserName,
+                    dataUtworzenia = o.DataDodania.ToString("yyyy-MM-dd HH:mm"),
+                    status = o.Status, // Używamy Status zamiast Aktywna
+                    cena = o.Cena,
+                    link = o.Link
+                })
+                .ToListAsync();
+
+            return Ok(oferty);
+        }
+
+        [HttpPut("oferta/{id}/zatwierdz")]
+        public async Task<IActionResult> ZatwierdzOferte(int id)
+        {
+            var oferta = await _context.Oferty.FindAsync(id);
+            if (oferta == null)
+                return NotFound("Nie znaleziono oferty");
+
+            // Aktywuj ofertę
+            oferta.Status = "aktywny";
+            await _context.SaveChangesAsync();
+
+            return Ok($"Oferta '{oferta.Nazwa}' została zatwierdzona i aktywowana");
+        }
+
+        [HttpDelete("oferta/{id}")]
+        public async Task<IActionResult> UsunOferte(int id)
+        {
+            var oferta = await _context.Oferty
+                .Include(o => o.Uzytkownik)
+                .FirstOrDefaultAsync(o => o.IdOferta == id);
+
+            if (oferta == null)
+                return NotFound("Nie znaleziono oferty");
+
+            // Usuń powiązane komentarze
+            var komentarze = await _context.Komentarze
+                .Where(k => k.IdOferta == id)
+                .ToListAsync();
+            _context.Komentarze.RemoveRange(komentarze);
+
+            // Usuń ofertę
+            _context.Oferty.Remove(oferta);
+            await _context.SaveChangesAsync();
+
+            return Ok($"Oferta '{oferta.Nazwa}' użytkownika '{oferta.Uzytkownik.UserName}' została usunięta");
+        }
+
+        [HttpPut("oferta/{id}/moderuj")]
+        public async Task<IActionResult> ModerujOferte(int id, [FromBody] ModerujOfertaDto dto)
+        {
+            var oferta = await _context.Oferty.FindAsync(id);
+            if (oferta == null)
+                return NotFound("Nie znaleziono oferty");
+
+            // Zaktualizuj status oferty
+            oferta.Status = dto.Aktywna ? "aktywny" : "nieaktywny";
+            
+            // Jeśli admin edytuje treść
+            if (!string.IsNullOrEmpty(dto.NowyTytul))
+                oferta.Nazwa = dto.NowyTytul;
+            
+            if (!string.IsNullOrEmpty(dto.NowyOpis))
+                oferta.Opis = dto.NowyOpis;
+
+            await _context.SaveChangesAsync();
+
+            return Ok($"Oferta '{oferta.Nazwa}' została zmoderowana");
+        }
+
+        [HttpPut("uzytkownik/{id}/rola")]
+        public async Task<IActionResult> ZmienRoleUzytkownika(int id, [FromBody] ZmienRoleDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var uzytkownik = await _userManager.FindByIdAsync(id.ToString());
+                if (uzytkownik == null)
+                    return NotFound("Nie znaleziono użytkownika");
+
+                // Sprawdź czy nowa rola jest poprawna
+                var dostepneRole = new[] { "Admin", "Moderator", "Uzytkownik" };
+                if (!dostepneRole.Contains(dto.NowaRola))
+                    return BadRequest("Nieprawidłowa rola. Dostępne role: Admin, Moderator, Uzytkownik");
+
+                // Pobierz obecną rolę
+                var obecneRole = await _userManager.GetRolesAsync(uzytkownik);
+                var obecnaRola = obecneRole.FirstOrDefault();
+                
+                // Sprawdź czy użytkownik już ma wymaganą rolę
+                if (obecnaRola == dto.NowaRola)
+                    return Ok($"Użytkownik '{uzytkownik.UserName}' już ma rolę '{dto.NowaRola}'");
+
+                // Usuń starą rolę tylko jeśli istnieje
+                if (!string.IsNullOrEmpty(obecnaRola))
+                {
+                    var usunResult = await _userManager.RemoveFromRoleAsync(uzytkownik, obecnaRola);
+                    if (!usunResult.Succeeded)
+                        return BadRequest($"Błąd podczas usuwania starej roli '{obecnaRola}'");
+                }
+
+                // Dodaj nową rolę
+                var dodajResult = await _userManager.AddToRoleAsync(uzytkownik, dto.NowaRola);
+                if (!dodajResult.Succeeded)
+                    return BadRequest("Błąd podczas dodawania nowej roli");
+
+                return Ok($"Rola użytkownika '{uzytkownik.UserName}' została zmieniona z '{obecnaRola ?? "Brak"}' na '{dto.NowaRola}'");
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+            }
+        }
+
+        [HttpGet("role")]
+        public IActionResult PobierzDostepneRole()
+        {
+            var role = new[] { "Admin", "Moderator", "Uzytkownik" };
+            return Ok(role);
         }
     }
 }

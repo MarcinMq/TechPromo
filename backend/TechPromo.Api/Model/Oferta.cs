@@ -23,6 +23,10 @@ public class Oferta
     [MaxLength(20)]
     public string Status { get; set; } = "aktywny";
 
+    // Właściwości dla moderacji
+    public bool Aktywna { get; set; } = true;
+    public bool Zatwierdzona { get; set; } = false;
+
     [ForeignKey("Uzytkownik")]
     public int IdUzytkownik { get; set; }
     public Uzytkownik Uzytkownik { get; set; }
