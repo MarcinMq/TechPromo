@@ -231,24 +231,24 @@ const ModeratorPanel: React.FC = () => {
         if (!statystyki) return <div>Brak danych statystycznych</div>;
 
         return (
-            <div className="moderator-stats">
-                <h3>Statystyki moderatora</h3>
+            <div className="tab-content">
+                <h2>Statystyki Moderatora</h2>
                 <div className="stats-grid">
                     <div className="stat-card">
-                        <h4>Oczekujące oferty</h4>
-                        <div className="stat-number">{statystyki.oczekujaceOferty}</div>
+                        <h3>{statystyki.oczekujaceOferty}</h3>
+                        <p>Oczekujące oferty</p>
                     </div>
                     <div className="stat-card">
-                        <h4>Zgłoszenia do rozpatrzenia</h4>
-                        <div className="stat-number">{statystyki.zgloszeniaOczekujace}</div>
+                        <h3>{statystyki.zgloszeniaOczekujace}</h3>
+                        <p>Zgłoszenia do rozpatrzenia</p>
                     </div>
                     <div className="stat-card">
-                        <h4>Komentarze (24h)</h4>
-                        <div className="stat-number">{statystyki.komentarzeOstatnich24h}</div>
+                        <h3>{statystyki.komentarzeOstatnich24h}</h3>
+                        <p>Komentarze (24h)</p>
                     </div>
                     <div className="stat-card">
-                        <h4>Oferty (24h)</h4>
-                        <div className="stat-number">{statystyki.oferty24h}</div>
+                        <h3>{statystyki.oferty24h}</h3>
+                        <p>Oferty (24h)</p>
                     </div>
                 </div>
             </div>
@@ -256,28 +256,22 @@ const ModeratorPanel: React.FC = () => {
     };
 
     const renderKomentarze = () => (
-        <div className="moderator-comments">
-            <h3>Moderacja komentarzy</h3>
+        <div className="tab-content">
+            <h2>Moderacja komentarzy</h2>
             {komentarze.length === 0 ? (
                 <p>Brak komentarzy do moderacji</p>
             ) : (
-                <div className="comments-grid">
+                <div className="komentarze-grid">
                     {komentarze.map((komentarz) => (
-                        <div key={komentarz.idKomentarz} className="comment-card">
-                            <div className="comment-header">
-                                <strong>{komentarz.autor}</strong>
-                                <span className="comment-date">{komentarz.dataDodania}</span>
-                            </div>
-                            <div className="comment-content">
-                                <p>{komentarz.tresc}</p>
-                                <small>Oferta: {komentarz.ofertaTytul}</small>
-                                {komentarz.zgloszen > 0 && (
-                                    <div className="report-badge">
-                                        Zgłoszeń: {komentarz.zgloszen}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="comment-actions">
+                        <div key={komentarz.idKomentarz} className="komentarz-card">
+                            <h4>{komentarz.autor}</h4>
+                            <p><strong>Treść:</strong> {komentarz.tresc}</p>
+                            <p><strong>Oferta:</strong> {komentarz.ofertaTytul}</p>
+                            <p><strong>Data:</strong> {komentarz.dataDodania}</p>
+                            {komentarz.zgloszen > 0 && (
+                                <p><strong>Zgłoszeń:</strong> <span className="status-badge pending">{komentarz.zgloszen}</span></p>
+                            )}
+                            <div className="item-actions">
                                 <button 
                                     className="warn-btn"
                                     onClick={() => handleOstrzezUzytkownika(komentarz.idKomentarz)}
@@ -299,30 +293,26 @@ const ModeratorPanel: React.FC = () => {
     );
 
     const renderOferty = () => (
-        <div className="moderator-offers">
-            <h3>Moderacja ofert</h3>
+        <div className="tab-content">
+            <h2>Moderacja ofert</h2>
             {oferty.length === 0 ? (
                 <p>Brak ofert do moderacji</p>
             ) : (
-                <div className="offers-grid">
+                <div className="oferty-grid">
                     {oferty.map((oferta) => (
-                        <div key={oferta.idOferta} className="offer-card">
-                            <div className="offer-header">
-                                <h4>{oferta.tytul}</h4>
-                                <div className="offer-status">
-                                    {oferta.zatwierdzona ? '✅ Zatwierdzona' : '⏳ Oczekuje'}
-                                </div>
-                            </div>
-                            <div className="offer-content">
-                                <p>{oferta.opis}</p>
-                                <div className="offer-meta">
-                                    <span>Cena: {oferta.cena} zł</span>
-                                    <span>Autor: {oferta.autor}</span>
-                                    <span>Kategoria: {oferta.kategoria}</span>
-                                    <span>Data: {oferta.dataDodania}</span>
-                                </div>
-                            </div>
-                            <div className="offer-actions">
+                        <div key={oferta.idOferta} className="oferta-card">
+                            <h4>{oferta.tytul}</h4>
+                            <p><strong>Opis:</strong> {oferta.opis}</p>
+                            <p><strong>Cena:</strong> {oferta.cena} zł</p>
+                            <p><strong>Autor:</strong> {oferta.autor}</p>
+                            <p><strong>Kategoria:</strong> {oferta.kategoria}</p>
+                            <p><strong>Data:</strong> {oferta.dataDodania}</p>
+                            <p><strong>Status:</strong> 
+                                <span className={`status-badge ${oferta.zatwierdzona ? 'approved' : 'pending'}`}>
+                                    {oferta.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}
+                                </span>
+                            </p>
+                            <div className="item-actions">
                                 {!oferta.zatwierdzona && (
                                     <button 
                                         className="approve-btn"
@@ -352,37 +342,33 @@ const ModeratorPanel: React.FC = () => {
     );
 
     const renderZgloszenia = () => (
-        <div className="moderator-reports">
-            <h3>Obsługa zgłoszeń</h3>
+        <div className="tab-content">
+            <h2>Obsługa zgłoszeń</h2>
             {zgloszenia.length === 0 ? (
                 <p>Brak zgłoszeń do rozpatrzenia</p>
             ) : (
-                <div className="reports-grid">
+                <div className="zgloszenia-grid">
                     {zgloszenia.map((zgloszenie) => (
-                        <div key={zgloszenie.idZgloszenie} className="report-card">
-                            <div className="report-header">
-                                <h4>{zgloszenie.tytul}</h4>
-                                <div className={`report-status ${zgloszenie.status.toLowerCase()}`}>
+                        <div key={zgloszenie.idZgloszenie} className="zgloszenie-card">
+                            <h4>{zgloszenie.tytul}</h4>
+                            <p><strong>Treść:</strong> {zgloszenie.tresc}</p>
+                            <p><strong>Zgłoszone przez:</strong> {zgloszenie.zgloszonePrzez}</p>
+                            <p><strong>Data:</strong> {zgloszenie.dataDodania}</p>
+                            <p><strong>Status:</strong> 
+                                <span className={`status-badge ${zgloszenie.status === 'Oczekujące' ? 'waiting' : 'processed'}`}>
                                     {zgloszenie.status}
-                                </div>
-                            </div>
-                            <div className="report-content">
-                                <p>{zgloszenie.tresc}</p>
-                                <div className="report-meta">
-                                    <span>Zgłoszone przez: {zgloszenie.zgloszonePrzez}</span>
-                                    <span>Data: {zgloszenie.dataDodania}</span>
-                                </div>
-                            </div>
+                                </span>
+                            </p>
                             {zgloszenie.status === 'Oczekujące' && (
-                                <div className="report-actions">
+                                <div className="item-actions">
                                     <button 
-                                        className="resolve-btn"
+                                        className="respond-btn"
                                         onClick={() => handleRozpatrzZgloszenie(zgloszenie.idZgloszenie)}
                                     >
                                         Rozpatrz
                                     </button>
                                     <button 
-                                        className="escalate-btn"
+                                        className="edit-btn"
                                         onClick={() => handlePrzekazAdminowi(zgloszenie.idZgloszenie)}
                                     >
                                         Przekaż adminowi
@@ -398,50 +384,45 @@ const ModeratorPanel: React.FC = () => {
 
     return (
         <div className="moderator-panel">
-            <div className="moderator-header">
-                <h2>Panel Moderatora</h2>
-                <p>Zarządzaj treścią i moderuj zgłoszenia</p>
-            </div>
+            <h1>⚖️ Panel Moderatora</h1>
 
-            <nav className="moderator-nav">
+            <div className="tabs">
                 <button 
-                    className={`nav-btn ${activeTab === 'statystyki' ? 'active' : ''}`}
+                    className={activeTab === 'statystyki' ? 'active' : ''}
                     onClick={() => setActiveTab('statystyki')}
                 >
                     📊 Statystyki
                 </button>
                 <button 
-                    className={`nav-btn ${activeTab === 'komentarze' ? 'active' : ''}`}
+                    className={activeTab === 'komentarze' ? 'active' : ''}
                     onClick={() => setActiveTab('komentarze')}
                 >
-                    💬 Komentarze
+                    💬 Komentarze ({komentarze.length})
                 </button>
                 <button 
-                    className={`nav-btn ${activeTab === 'oferty' ? 'active' : ''}`}
+                    className={activeTab === 'oferty' ? 'active' : ''}
                     onClick={() => setActiveTab('oferty')}
                 >
-                    📝 Oferty
+                    📝 Oferty ({oferty.length})
                 </button>
                 <button 
-                    className={`nav-btn ${activeTab === 'zgloszenia' ? 'active' : ''}`}
+                    className={activeTab === 'zgloszenia' ? 'active' : ''}
                     onClick={() => setActiveTab('zgloszenia')}
                 >
-                    🚨 Zgłoszenia
+                    🚨 Zgłoszenia ({zgloszenia.length})
                 </button>
-            </nav>
-
-            <div className="moderator-content">
-                {loading ? (
-                    <div className="loading">Ładowanie...</div>
-                ) : (
-                    <>
-                        {activeTab === 'statystyki' && renderStatystyki()}
-                        {activeTab === 'komentarze' && renderKomentarze()}
-                        {activeTab === 'oferty' && renderOferty()}
-                        {activeTab === 'zgloszenia' && renderZgloszenia()}
-                    </>
-                )}
             </div>
+
+            {loading ? (
+                <div className="loading">Ładowanie...</div>
+            ) : (
+                <>
+                    {activeTab === 'statystyki' && renderStatystyki()}
+                    {activeTab === 'komentarze' && renderKomentarze()}
+                    {activeTab === 'oferty' && renderOferty()}
+                    {activeTab === 'zgloszenia' && renderZgloszenia()}
+                </>
+            )}
         </div>
     );
 };
