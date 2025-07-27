@@ -46,7 +46,6 @@
   font-weight: 500;
   cursor: pointer;
   border-bottom: 3px solid transparent;
-  transition: all 0.3s ease;
 }
 
 .tabs button:hover {
@@ -106,6 +105,7 @@
 }
 
 /* Item grids */
+
 .komentarze-grid,
 .oferty-grid,
 .zgloszenia-grid {

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import { authorizedFetch, apiPost, apiPut, apiDelete } from '../../utils/api'; // Prostsze API funkcje
-import './AdminPanel.css';
 
 type Uzytkownik = {
   id: number;
@@ -319,8 +318,14 @@ const AdminPanel = () => {
   }, [message]);
 
   return (
-    <div className="admin-panel">
-      <h1>🛠️ Panel Administratora</h1>
+    <div className="panel">
+      <div className="panel-header">
+        <h1 className="panel-title">
+          �
+          Panel Administratora
+        </h1>
+        <p className="panel-subtitle">Pełne zarządzanie systemem TechPromo</p>
+      </div>
       
       {message && (
         <div className={`message ${message.includes('Błąd') ? 'error' : 'success'}`}>
@@ -330,37 +335,37 @@ const AdminPanel = () => {
 
       <div className="tabs">
         <button 
-          className={activeTab === 'users' ? 'active' : ''}
+          className={`tab-button ${activeTab === 'users' ? 'active' : ''}`}
           onClick={() => setActiveTab('users')}
         >
           👥 Użytkownicy ({users.length})
         </button>
         <button 
-          className={activeTab === 'badges' ? 'active' : ''}
+          className={`tab-button ${activeTab === 'badges' ? 'active' : ''}`}
           onClick={() => setActiveTab('badges')}
         >
           🏆 Odznaki ({badges.length})
         </button>
         <button 
-          className={activeTab === 'assign' ? 'active' : ''}
+          className={`tab-button ${activeTab === 'assign' ? 'active' : ''}`}
           onClick={() => setActiveTab('assign')}
         >
           ⚡ Przyznaj Odznakę
         </button>
         <button 
-          className={activeTab === 'reports' ? 'active' : ''}
+          className={`tab-button ${activeTab === 'reports' ? 'active' : ''}`}
           onClick={() => setActiveTab('reports')}
         >
           📋 Zgłoszenia ({reports.length})
         </button>
         <button 
-          className={activeTab === 'comments' ? 'active' : ''}
+          className={`tab-button ${activeTab === 'comments' ? 'active' : ''}`}
           onClick={() => setActiveTab('comments')}
         >
           💬 Komentarze ({comments.length})
         </button>
         <button 
-          className={activeTab === 'offers' ? 'active' : ''}
+          className={`tab-button ${activeTab === 'offers' ? 'active' : ''}`}
           onClick={() => setActiveTab('offers')}
         >
           🛍️ Oferty ({offers.length})

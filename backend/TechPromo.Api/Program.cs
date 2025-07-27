@@ -120,6 +120,9 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+// Obsługa plików statycznych (zdjęcia ofert)
+app.UseStaticFiles();
+
 app.UseAuthentication();
 app.UseAuthorization();
 

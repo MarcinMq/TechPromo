@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../utils/api';
-import './ModeratorPanel.css';
 
 interface Komentarz {
     idKomentarz: number;
@@ -383,30 +382,36 @@ const ModeratorPanel: React.FC = () => {
     );
 
     return (
-        <div className="moderator-panel">
-            <h1>⚖️ Panel Moderatora</h1>
+        <div className="panel">
+            <div className="panel-header">
+                <h1 className="panel-title">
+                    ⚖️
+                    Panel Moderatora
+                </h1>
+                <p className="panel-subtitle">Moderacja komentarzy, ofert i zgłoszeń</p>
+            </div>
 
             <div className="tabs">
                 <button 
-                    className={activeTab === 'statystyki' ? 'active' : ''}
+                    className={`tab-button ${activeTab === 'statystyki' ? 'active' : ''}`}
                     onClick={() => setActiveTab('statystyki')}
                 >
                     📊 Statystyki
                 </button>
                 <button 
-                    className={activeTab === 'komentarze' ? 'active' : ''}
+                    className={`tab-button ${activeTab === 'komentarze' ? 'active' : ''}`}
                     onClick={() => setActiveTab('komentarze')}
                 >
                     💬 Komentarze ({komentarze.length})
                 </button>
                 <button 
-                    className={activeTab === 'oferty' ? 'active' : ''}
+                    className={`tab-button ${activeTab === 'oferty' ? 'active' : ''}`}
                     onClick={() => setActiveTab('oferty')}
                 >
                     📝 Oferty ({oferty.length})
                 </button>
                 <button 
-                    className={activeTab === 'zgloszenia' ? 'active' : ''}
+                    className={`tab-button ${activeTab === 'zgloszenia' ? 'active' : ''}`}
                     onClick={() => setActiveTab('zgloszenia')}
                 >
                     🚨 Zgłoszenia ({zgloszenia.length})
@@ -416,12 +421,12 @@ const ModeratorPanel: React.FC = () => {
             {loading ? (
                 <div className="loading">Ładowanie...</div>
             ) : (
-                <>
+                <div className="tab-content">
                     {activeTab === 'statystyki' && renderStatystyki()}
                     {activeTab === 'komentarze' && renderKomentarze()}
                     {activeTab === 'oferty' && renderOferty()}
                     {activeTab === 'zgloszenia' && renderZgloszenia()}
-                </>
+                </div>
             )}
         </div>
     );
