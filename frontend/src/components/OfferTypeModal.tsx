@@ -21,26 +21,21 @@ const OfferTypeModal: React.FC<OfferTypeModalProps> = ({ isVisible, onClose }) =
   if (!isVisible) return null;
 
   return (
-    <div className="offer-type-modal">
-      <div className="offer-type-overlay" onClick={onClose} />
-      <div className="offer-type-content">
-        <div className="offer-type-header">
-          <h2 className="offer-type-title">Co chcesz opublikować?</h2>
-          <p className="offer-type-subtitle">Wybierz typ oferty, którą chcesz dodać</p>
-        </div>
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
+      <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 w-96 max-w-sm">
+        <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">Co chcesz opublikować?</h2>
 
-        <div className="offer-types-grid">
-          {/* Oferta/Okazja */}
+        <div className="flex flex-col space-y-4 mb-6">
           <div 
-            className="offer-type-option deal"
+            className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/30 cursor-pointer transition-all hover:shadow-xl hover:scale-105 flex flex-col justify-between h-full"
             onClick={() => handleOfferTypeSelect('deal')}
           >
-            <span className="offer-type-icon">🏷️</span>
-            <h3 className="offer-type-name">Okazja</h3>
-            <p className="offer-type-description">
+            <span className="text-4xl mb-4">🏷️</span>
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">Okazja</h3>
+            <p className="text-gray-700 mb-4 text-sm">
               Publikuj przeważnie promocyjne produkty, takie jak telefon, para adidas (z kuponem lub bez).
             </p>
-            <ul className="offer-type-features">
+            <ul className="list-disc list-inside text-gray-600 text-sm space-y-1">
               <li>Produkty w promocji</li>
               <li>Zniżki cenowe</li>
               <li>Ograniczone czasowo</li>
@@ -48,17 +43,16 @@ const OfferTypeModal: React.FC<OfferTypeModalProps> = ({ isVisible, onClose }) =
             </ul>
           </div>
 
-          {/* Kupon */}
           <div 
-            className="offer-type-option coupon"
+            className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/30 cursor-pointer transition-all hover:shadow-xl hover:scale-105 flex flex-col justify-between h-full"
             onClick={() => handleOfferTypeSelect('coupon')}
           >
-            <span className="offer-type-icon">✂️</span>
-            <h3 className="offer-type-name">Kupon</h3>
-            <p className="offer-type-description">
+            <span className="text-4xl mb-4">✂️</span>
+            <h3 className="text-lg font-semibold mb-2 text-gray-900">Kupon</h3>
+            <p className="text-gray-700 mb-4 text-sm">
               Zamieszczaj kupony i kody rabatowe dające zniżki na różne produkty czy zakupy w sklepach.
             </p>
-            <ul className="offer-type-features">
+            <ul className="list-disc list-inside text-gray-600 text-sm space-y-1">
               <li>Kody rabatowe</li>
               <li>Kupony zniżkowe</li>
               <li>Darmowa dostawa</li>
@@ -67,9 +61,14 @@ const OfferTypeModal: React.FC<OfferTypeModalProps> = ({ isVisible, onClose }) =
           </div>
         </div>
 
-        <button className="offer-type-close" onClick={onClose}>
-          ✕ Zamknij
-        </button>
+        <div className="flex justify-end space-x-3">
+          <button 
+            onClick={onClose} 
+            className="px-6 py-3 rounded-2xl bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all text-gray-700 font-semibold border border-white/30"
+          >
+            Anuluj
+          </button>
+        </div>
       </div>
     </div>
   );

@@ -13,7 +13,6 @@ import CreateDealForm from './pages/offers/CreateDealForm';
 import CreateCouponForm from './pages/offers/CreateCouponForm';
 import ProtectedRoute from './components/ProtectedRoute';
 import { isAuthenticated, getUserData, logout } from './utils/auth';
-import './styles/GlobalStyles.css'; 
 
 function App() {
   const [isLogged, setIsLogged] = useState(false);
@@ -84,15 +83,15 @@ function App() {
   };
 
   return (
-    <div>
-      <Navbar 
+    <div className="min-h-screen bg-gray-100 font-sans">
+      <Navbar
         isLoggedIn={isLogged}
         userName={nick}
         userRole={userRole}
         onLogout={handleLogout}
       />
 
-      <main>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/search" element={<SearchPage />} />

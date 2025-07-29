@@ -18,53 +18,58 @@ const PanelSelector: React.FC<PanelSelectorProps> = ({ userRole, isVisible, onSe
   if (!isVisible) return null;
 
   return (
-    <div className="panel-selector">
-      <div className="panel-selector-overlay" onClick={onSelect} />
-      <div className="panel-selector-content">
-        <h3>📊 Wybierz Panel</h3>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onSelect} />
+      <div className="relative bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 w-full max-w-md p-6 transform transition-all">
+        <h3 className="text-2xl font-bold mb-6 text-center text-gray-900">📊 Wybierz Panel</h3>
         
-        {/* Panel Użytkownika - zawsze dostępny dla zalogowanych */}
+        <div className="space-y-4">
+          {/* Panel Użytkownika - zawsze dostępny dla zalogowanych */}
+          <button 
+            className="w-full flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl transition-all transform hover:scale-[1.02] border border-blue-200"
+            onClick={() => handlePanelClick('/user/panel')}
+          >
+            <span className="text-3xl mr-4">👤</span>
+            <div className="text-left">
+              <span className="block font-bold text-gray-900">Panel Użytkownika</span>
+              <span className="block text-sm text-gray-600">Zarządzaj swoimi ofertami i profilem</span>
+            </div>
+          </button>
+
+          {/* Panel Moderatora - dla moderatorów i adminów */}
+          {(userRole === 'Moderator' || userRole === 'Admin') && (
+            <button 
+              className="w-full flex items-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 hover:from-yellow-100 hover:to-yellow-200 rounded-xl transition-all transform hover:scale-[1.02] border border-yellow-200"
+              onClick={() => handlePanelClick('/moderator')}
+            >
+              <span className="text-3xl mr-4">⚖️</span>
+              <div className="text-left">
+                <span className="block font-bold text-gray-900">Panel Moderatora</span>
+                <span className="block text-sm text-gray-600">Moderuj komentarze, oferty i zgłoszenia</span>
+              </div>
+            </button>
+          )}
+
+          {/* Panel Administratora - tylko dla adminów */}
+          {userRole === 'Admin' && (
+            <button 
+              className="w-full flex items-center p-4 bg-gradient-to-r from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-xl transition-all transform hover:scale-[1.02] border border-red-200"
+              onClick={() => handlePanelClick('/admin')}
+            >
+              <span className="text-3xl mr-4">👑</span>
+              <div className="text-left">
+                <span className="block font-bold text-gray-900">Panel Administratora</span>
+                <span className="block text-sm text-gray-600">Pełne zarządzanie systemem</span>
+              </div>
+            </button>
+          )}
+        </div>
+
         <button 
-          className="panel-option user-panel-option"
-          onClick={() => handlePanelClick('/user/panel')}
+          className="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-gray-200 text-gray-600 hover:bg-gray-300 transition-colors"
+          onClick={onSelect}
         >
-          <span className="panel-icon">👤</span>
-          <div className="panel-info">
-            <span className="panel-name">Panel Użytkownika</span>
-            <span className="panel-desc">Zarządzaj swoimi ofertami i profilem</span>
-          </div>
-        </button>
-
-        {/* Panel Moderatora - dla moderatorów i adminów */}
-        {(userRole === 'Moderator' || userRole === 'Admin') && (
-          <button 
-            className="panel-option moderator-panel-option"
-            onClick={() => handlePanelClick('/moderator')}
-          >
-            <span className="panel-icon">⚖️</span>
-            <div className="panel-info">
-              <span className="panel-name">Panel Moderatora</span>
-              <span className="panel-desc">Moderuj komentarze, oferty i zgłoszenia</span>
-            </div>
-          </button>
-        )}
-
-        {/* Panel Administratora - tylko dla adminów */}
-        {userRole === 'Admin' && (
-          <button 
-            className="panel-option admin-panel-option"
-            onClick={() => handlePanelClick('/admin')}
-          >
-            <span className="panel-icon">👑</span>
-            <div className="panel-info">
-              <span className="panel-name">Panel Administratora</span>
-              <span className="panel-desc">Pełne zarządzanie systemem</span>
-            </div>
-          </button>
-        )}
-
-        <button className="close-selector" onClick={onSelect}>
-          ✕ Zamknij
+          ✕
         </button>
       </div>
     </div>

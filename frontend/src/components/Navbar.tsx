@@ -34,66 +34,84 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
 
   return (
     <>
-      <nav className="navbar">
-        <div className="navbar-container">
-          {/* Logo */}
-          <Link to="/" className="navbar-logo">
-            <span className="logo-icon">🚀</span>
-            <span className="logo-text">TechPromo</span>
-          </Link>
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm border-b border-white/20">
+        <div className="w-full max-w-none px-6 lg:px-8">
+          <div className="flex items-center justify-between h-20">
+            {/* Logo */}
+            <Link to="/" className="flex items-center space-x-3 text-2xl font-extrabold text-gray-900 flex-shrink-0">
+              <span className="text-3xl">🚀</span>
+              <span className="font-bold">TechPromo</span>
+            </Link>
 
-          {/* Search Bar */}
-          <div className="navbar-search">
-            <SearchBar onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)} />
-          </div>
+            {/* Wyszukiwarka - centrum */}
+            <div className="flex-1 max-w-2xl mx-8">
+              <SearchBar onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)} />
+            </div>
 
-          {/* Actions */}
-          <div className="navbar-actions">
-            {isLoggedIn ? (
-              <>
-                {/* Publish Button */}
-                <button className="publish-btn" onClick={handlePublish}>
-                  <span>📝</span>
-                  <span className="publish-text">Publikuj</span>
-                </button>
-
-                {/* User Menu */}
-                <div className="user-menu">
-                  {/* Panel Button */}
-                  <button className="user-panel btn-outline" onClick={handlePanelClick}>
-                    <span>⚙️</span>
-                    <span className="panel-text">Panel</span>
+            {/* Akcje - prawa strona */}
+            <div className="flex items-center space-x-6 flex-shrink-0">
+              {isLoggedIn ? (
+                <>
+                  {/* Przycisk publikuj */}
+                  <button 
+                    className="flex items-center space-x-2 px-6 py-3 bg-custom-blue text-white rounded-xl hover:bg-custom-blue-dark transition-all duration-300 font-semibold shadow-lg hover:shadow-xl" 
+                    onClick={handlePublish}
+                  >
+                    <span className="text-xl">📝</span>
+                    <span>Publikuj</span>
                   </button>
 
-                  {/* Profile Link */}
-                  <Link to="/konto/profil" className="user-profile-link">
-                    <span>👤</span>
-                    <span className="user-name">{userName || 'Profil'}</span>
+                  {/* Menu użytkownika */}
+                  <div className="flex items-center space-x-4">
+                    {/* Panel */}
+                    <button 
+                      onClick={handlePanelClick} 
+                      className="p-3 rounded-xl hover:bg-gray-200 transition-all duration-300 hover:shadow-lg"
+                    >
+                      <span className="text-xl">⚙️</span>
+                    </button>
+
+                    {/* Profil */}
+                    <Link 
+                      to="/konto/profil" 
+                      className="flex items-center space-x-2 text-gray-700 hover:text-custom-blue transition-all duration-300 font-semibold px-3 py-2 rounded-xl hover:bg-gray-100"
+                    >
+                      <span className="text-xl">👤</span>
+                      <span>{userName || 'Profil'}</span>
+                    </Link>
+
+                    {/* Wyloguj */}
+                    <button 
+                      onClick={onLogout} 
+                      className="p-3 rounded-xl hover:bg-red-100 transition-all duration-300 hover:shadow-lg"
+                    >
+                      <span className="text-xl">🚪</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                /* Przyciski logowania */
+                <div className="flex items-center space-x-4">
+                  <Link 
+                    to="/auth/login" 
+                    className="text-gray-600 hover:text-custom-blue font-semibold transition-all duration-300 px-4 py-2 rounded-xl hover:bg-gray-100"
+                  >
+                    Zaloguj się
                   </Link>
-
-                  {/* Logout Button */}
-                  <button className="btn-danger" onClick={onLogout}>
-                    <span>🚪</span>
-                    <span className="logout-text">Wyloguj</span>
-                  </button>
+                  <Link 
+                    to="/auth/register" 
+                    className="bg-custom-blue text-white px-6 py-3 rounded-xl hover:bg-custom-blue-dark font-semibold transition-all duration-300 shadow-lg hover:shadow-xl"
+                  >
+                    Zarejestruj się
+                  </Link>
                 </div>
-              </>
-            ) : (
-              /* Auth Buttons */
-              <div className="auth-buttons">
-                <Link to="/auth/login" className="login-link">
-                  Zaloguj się
-                </Link>
-                <Link to="/auth/register" className="btn btn-primary">
-                  Zarejestruj się
-                </Link>
-              </div>
-            )}
+              )}
+            </div>
           </div>
         </div>
       </nav>
 
-      {/* Panel Selector Modal */}
+      {/* Modal panelu */}
       {isLoggedIn && (
         <PanelSelector
           userRole={userRole || 'User'}
@@ -102,7 +120,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
         />
       )}
 
-      {/* Offer Type Modal */}
+      {/* Modal typu oferty */}
       {isLoggedIn && (
         <OfferTypeModal
           isVisible={showOfferTypeModal}

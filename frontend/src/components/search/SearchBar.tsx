@@ -79,53 +79,58 @@ const SearchBar: React.FC<SearchBarProps> = ({
   };
 
   return (
-    <div className="search-bar-container">
-      <div className="search-bar">
-        <div className="search-input-container">
-          <div className="search-icon">🔍</div>
+    <div className="space-y-4">
+      {/* Główna wyszukiwarka */}
+      <div className="relative">
+        <div className="flex items-center bg-white/70 backdrop-blur-2xl rounded-2xl shadow-lg border border-white/40 overflow-hidden">
+          {/* Ikona */}
+          <div className="flex items-center justify-center w-12 h-12 text-xl text-gray-600">
+            🔍
+          </div>
+          
+          {/* Pole tekstowe */}
           <input
             type="text"
-            className="search-input"
+            className="flex-1 h-12 bg-transparent text-base font-medium text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-0 border-0"
             placeholder={placeholder}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
           />
           
-          {/* AI Search Badge - przygotowane na przyszłość */}
-          <div className="ai-badge" title="Wkrótce: Wyszukiwanie AI">
-            <span className="ai-icon">🤖</span>
-            <span className="ai-text">AI</span>
-          </div>
-          
+          {/* Przycisk */}
           <button 
-            className="search-button"
+            className="px-6 h-12 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-base hover:from-blue-700 hover:to-purple-700 transition-all duration-300 flex items-center justify-center"
             onClick={handleSearch}
           >
             Szukaj
           </button>
         </div>
 
+        {/* Przełącznik filtrów */}
         {showAdvancedFilters && (
           <button
-            className="filters-toggle"
+            className="mt-2 flex items-center justify-center space-x-2 px-4 py-2 bg-white/50 backdrop-blur-xl rounded-xl border border-white/40 text-gray-700 font-semibold hover:bg-white/70 transition-all duration-300 text-sm"
             onClick={() => setShowFilters(!showFilters)}
           >
-            <span className="filter-icon">⚙️</span>
-            Filtry {showFilters ? '▲' : '▼'}
+            <span className="text-lg">⚙️</span>
+            <span>Filtry zaawansowane</span>
+            <span className="text-sm transition-transform duration-300">{showFilters ? '▲' : '▼'}</span>
           </button>
         )}
       </div>
 
-      {/* Advanced Filters */}
+      {/* Filtry zaawansowane */}
       {showAdvancedFilters && showFilters && (
-        <div className="advanced-filters">
-          <div className="filters-row">
-            <div className="filter-group">
-              <label>Kategoria:</label>
+        <div className="bg-white/60 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/40 p-6 space-y-4">
+          {/* Pierwszy rząd */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Kategoria</label>
               <select
                 value={filters.category || ''}
                 onChange={(e) => handleFilterChange('category', e.target.value || undefined)}
+                className="w-full p-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="">Wszystkie kategorie</option>
                 {categories.map(cat => (
@@ -134,11 +139,12 @@ const SearchBar: React.FC<SearchBarProps> = ({
               </select>
             </div>
 
-            <div className="filter-group">
-              <label>Sortowanie:</label>
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Sortowanie</label>
               <select
                 value={filters.sortBy}
                 onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                className="w-full p-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="hot">🔥 Najgorętsze</option>
                 <option value="newest">🆕 Najnowsze</option>
@@ -147,42 +153,37 @@ const SearchBar: React.FC<SearchBarProps> = ({
             </div>
           </div>
 
-          <div className="filters-row">
-            <div className="filter-group">
-              <label>Cena od:</label>
+          {/* Drugi rząd */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Cena od</label>
               <input
                 type="number"
                 placeholder="0 zł"
                 value={filters.priceMin || ''}
                 onChange={(e) => handleFilterChange('priceMin', e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full p-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 text-gray-900 font-medium placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
 
-            <div className="filter-group">
-              <label>Cena do:</label>
+            <div className="space-y-2">
+              <label className="block text-sm font-bold text-gray-700 uppercase tracking-wide">Cena do</label>
               <input
                 type="number"
                 placeholder="∞ zł"
                 value={filters.priceMax || ''}
                 onChange={(e) => handleFilterChange('priceMax', e.target.value ? Number(e.target.value) : undefined)}
+                className="w-full p-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 text-gray-900 font-medium placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               />
             </div>
 
-            <div className="filter-actions">
-              <button className="clear-filters-btn" onClick={clearFilters}>
+            <div className="flex items-end">
+              <button 
+                className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold rounded-xl hover:from-red-600 hover:to-pink-600 transition-all duration-300 shadow-lg"
+                onClick={clearFilters}
+              >
                 Wyczyść filtry
               </button>
-            </div>
-          </div>
-
-          {/* AI Search Preview - przygotowane na przyszłość */}
-          <div className="ai-search-preview">
-            <div className="ai-feature-badge">
-              <span className="ai-icon">🚀</span>
-              <div className="ai-feature-text">
-                <strong>Wkrótce: Inteligentne wyszukiwanie AI</strong>
-                <p>Szukaj naturalnym językiem: "laptop do pracy za mniej niż 3000 zł"</p>
-              </div>
             </div>
           </div>
         </div>

@@ -105,224 +105,206 @@ const CreateDealForm: React.FC = () => {
   };
 
   return (
-    <div className="page-container">
-      <div className="form-container">
-        <div className="form-header">
-          <button 
-            className="back-button"
-            onClick={() => navigate(-1)}
-          >
-            ← Powrót
-          </button>
-          <h1 className="form-title">
-            🏷️ Dodaj Okazję
-          </h1>
-          <p className="form-subtitle">
-            Podziel się świetną promocją z innymi użytkownikami
-          </p>
-        </div>
+    <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
+          <h1 className="text-3xl font-bold mb-6 text-gray-900 text-center">🛍️ Nowa Okazja</h1>
 
-        {message && (
-          <div className={`message ${message.type}`}>
-            {message.text}
-          </div>
-        )}
+          {message && (
+            <div className={`p-4 rounded-2xl mb-6 text-center font-semibold backdrop-blur-sm ${
+              message.type === 'success' 
+                ? 'bg-green-100/80 text-green-700 border border-green-200/50' 
+                : 'bg-red-100/80 text-red-700 border border-red-200/50'
+            }`}>
+              {message.text}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="offer-form">
-          {/* Tytuł */}
-          <div className="form-group">
-            <label className="form-label">
-              Tytuł okazji *
-              <span className="label-hint">Krótko i konkretnie opisz promocję</span>
-            </label>
-            <input
-              type="text"
-              name="tytul"
-              value={formData.tytul}
-              onChange={handleInputChange}
-              placeholder="np. iPhone 15 Pro 256GB - 40% taniej!"
-              className="form-input"
-              required
-            />
-          </div>
-
-          {/* Opis */}
-          <div className="form-group">
-            <label className="form-label">
-              Opis okazji *
-              <span className="label-hint">Opisz szczegóły promocji, dlaczego warto</span>
-            </label>
-            <textarea
-              name="opis"
-              value={formData.opis}
-              onChange={handleInputChange}
-              placeholder="Opisz szczegóły promocji, warunki, czas trwania..."
-              className="form-textarea"
-              rows={4}
-              required
-            />
-          </div>
-
-          {/* Ceny */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">
-                Cena promocyjna *
-                <span className="label-hint">Aktualna cena po rabacie</span>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Tytuł */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Tytuł okazji *
+                <span className="block text-xs text-gray-500 mt-1">Krótko opisz produkt i promocję</span>
               </label>
-              <div className="price-input">
+              <input
+                type="text"
+                name="tytul"
+                value={formData.tytul}
+                onChange={handleInputChange}
+                placeholder="np. iPhone 15 Pro 128GB - 23% taniej w Media Expert"
+                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
+                required
+              />
+            </div>
+
+            {/* Opis */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Opis *
+                <span className="block text-xs text-gray-500 mt-1">Szczegółowy opis produktu i warunków promocji</span>
+              </label>
+              <textarea
+                name="opis"
+                value={formData.opis}
+                onChange={handleInputChange}
+                placeholder="Opisz produkt, jego specyfikację, warunki promocji, dostępność..."
+                rows={4}
+                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all resize-none"
+                required
+              />
+            </div>
+
+            {/* Ceny */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Cena promocyjna *
+                </label>
                 <input
                   type="number"
                   name="cena"
                   value={formData.cena}
                   onChange={handleInputChange}
-                  placeholder="999.99"
+                  placeholder="4599"
                   step="0.01"
-                  className="form-input"
+                  className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
                   required
                 />
-                <span className="currency">PLN</span>
               </div>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">
-                Cena regularna
-                <span className="label-hint">Cena przed promocją</span>
-              </label>
-              <div className="price-input">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Cena przed promocją
+                </label>
                 <input
                   type="number"
                   name="cenaPoprzednia"
                   value={formData.cenaPoprzednia}
                   onChange={handleInputChange}
-                  placeholder="1499.99"
+                  placeholder="5999"
                   step="0.01"
-                  className="form-input"
+                  className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
                 />
-                <span className="currency">PLN</span>
               </div>
             </div>
-          </div>
 
-          {/* Sklep i kategoria */}
-          <div className="form-row">
-            <div className="form-group">
-              <label className="form-label">
-                Sklep *
-                <span className="label-hint">Gdzie dostępna jest promocja</span>
+            {/* Sklep i kategoria */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Sklep *
+                </label>
+                <input
+                  type="text"
+                  name="sklep"
+                  value={formData.sklep}
+                  onChange={handleInputChange}
+                  placeholder="np. Media Expert, x-kom, RTV Euro AGD"
+                  className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                  Kategoria *
+                </label>
+                <select
+                  name="kategoria"
+                  value={formData.kategoria}
+                  onChange={handleInputChange}
+                  className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
+                  required
+                >
+                  {categories.map(category => (
+                    <option key={category} value={category}>{category}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Link */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Link do oferty
+                <span className="block text-xs text-gray-500 mt-1">Bezpośredni link do produktu</span>
               </label>
               <input
-                type="text"
-                name="sklep"
-                value={formData.sklep}
+                type="url"
+                name="link"
+                value={formData.link}
                 onChange={handleInputChange}
-                placeholder="np. Media Markt, x-kom, Amazon"
-                className="form-input"
-                required
+                placeholder="https://example.com/produkt"
+                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                Kategoria *
+            {/* Tagi */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Tagi
+                <span className="block text-xs text-gray-500 mt-1">Słowa kluczowe oddzielone przecinkami</span>
               </label>
-              <select
-                name="kategoria"
-                value={formData.kategoria}
+              <input
+                type="text"
+                name="tagi"
+                value={formData.tagi}
                 onChange={handleInputChange}
-                className="form-select"
-                required
-              >
-                {categories.map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
+                placeholder="np. apple, smartphone, promocja, black friday"
+                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
+              />
             </div>
-          </div>
 
-          {/* Link */}
-          <div className="form-group">
-            <label className="form-label">
-              Link do oferty
-              <span className="label-hint">Bezpośredni link do produktu</span>
-            </label>
-            <input
-              type="url"
-              name="link"
-              value={formData.link}
-              onChange={handleInputChange}
-              placeholder="https://example.com/produkt"
-              className="form-input"
-            />
-          </div>
+            {/* Zdjęcia */}
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Zdjęcia produktu
+                <span className="block text-xs text-gray-500 mt-1">Maksymalnie 5 zdjęć</span>
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleImageSelect}
+                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all file:p-4 file:border-0 file:bg-custom-blue file:text-white file:rounded-full file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:text-sm file:font-semibold file:bg-custom-blue-dark hover:bg-custom-blue-darker"
+              />
+              
+              {imagePreview.length > 0 && (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
+                  {imagePreview.map((preview, index) => (
+                    <div key={index} className="relative rounded-2xl overflow-hidden border border-gray-200/50">
+                      <img src={preview} alt={`Podgląd ${index + 1}`} className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removeImage(index)}
+                        className="absolute top-2 right-2 bg-red-500/80 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
 
-          {/* Tagi */}
-          <div className="form-group">
-            <label className="form-label">
-              Tagi
-              <span className="label-hint">Słowa kluczowe oddzielone przecinkami</span>
-            </label>
-            <input
-              type="text"
-              name="tagi"
-              value={formData.tagi}
-              onChange={handleInputChange}
-              placeholder="np. apple, smartphone, promocja, black friday"
-              className="form-input"
-            />
-          </div>
-
-          {/* Zdjęcia */}
-          <div className="form-group">
-            <label className="form-label">
-              Zdjęcia produktu
-              <span className="label-hint">Maksymalnie 5 zdjęć</span>
-            </label>
-            <input
-              type="file"
-              accept="image/*"
-              multiple
-              onChange={handleImageSelect}
-              className="file-input"
-            />
-            
-            {imagePreview.length > 0 && (
-              <div className="image-preview-grid">
-                {imagePreview.map((preview, index) => (
-                  <div key={index} className="image-preview-item">
-                    <img src={preview} alt={`Podgląd ${index + 1}`} />
-                    <button
-                      type="button"
-                      onClick={() => removeImage(index)}
-                      className="remove-image-btn"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Przyciski */}
-          <div className="form-actions">
-            <button
-              type="button"
-              onClick={() => navigate(-1)}
-              className="btn btn-secondary"
-            >
-              Anuluj
-            </button>
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn btn-primary"
-            >
-              {loading ? '⏳ Dodawanie...' : '🚀 Opublikuj Okazję'}
-            </button>
-          </div>
-        </form>
+            {/* Przyciski */}
+            <div className="flex justify-end space-x-4">
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="w-full sm:w-auto p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all text-gray-700 hover:bg-gray-100"
+              >
+                Anuluj
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full sm:w-auto p-4 border border-transparent rounded-2xl bg-custom-blue text-white font-semibold focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all hover:bg-custom-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? '⏳ Dodawanie...' : '🚀 Opublikuj Okazję'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

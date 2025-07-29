@@ -218,57 +218,78 @@ const UserPanel = () => {
   }, [message]);
 
   return (
-    <div className="panel">
-      <div className="panel-header">
-        <h1 className="panel-title">
-          �
-          Panel Użytkownika
-        </h1>
-        <p className="panel-subtitle">Zarządzaj swoimi ofertami, komentarzami i profilem</p>
-      </div>
-      
-      {message && (
-        <div className={`message ${message.includes('Błąd') ? 'error' : 'success'}`}>
-          {message}
+    <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 mb-8">
+          <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center">
+            👤 Panel Użytkownika
+          </h1>
+          <p className="text-gray-600 text-center text-lg">Zarządzaj swoimi ofertami, komentarzami i profilem</p>
         </div>
-      )}
-
-      <div className="tabs">
-        <button 
-          className={`tab-button ${activeTab === 'offers' ? 'active' : ''}`}
-          onClick={() => setActiveTab('offers')}
-        >
-          🛍️ Dodane Oferty ({offers.length})
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'activity' ? 'active' : ''}`}
-          onClick={() => setActiveTab('activity')}
-        >
-          📊 Historia Aktywności ({userActivity.length})
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'badges' ? 'active' : ''}`}
-          onClick={() => setActiveTab('badges')}
-        >
-          🏆 Moje Odznaki ({userBadges.length})
-        </button>
-        <button 
-          className={`tab-button ${activeTab === 'comments' ? 'active' : ''}`}
-          onClick={() => setActiveTab('comments')}
-        >
-          💬 Moje Komentarze ({userComments.length})
-        </button>
-      </div>
+        
+        {message && (
+          <div className={`p-4 rounded-2xl mb-6 text-center font-semibold backdrop-blur-sm ${
+            message.includes('Błąd') 
+              ? 'bg-red-100/80 text-red-700 border border-red-200/50' 
+              : 'bg-green-100/80 text-green-700 border border-green-200/50'
+          }`}>
+            {message}
+          </div>
+        )}
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-6 mb-8">
+          <div className="flex flex-wrap gap-3 justify-center">
+            <button 
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
+                activeTab === 'offers' 
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+                  : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
+              }`}
+              onClick={() => setActiveTab('offers')}
+            >
+              🛍️ Dodane Oferty ({offers.length})
+            </button>
+            <button 
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
+                activeTab === 'activity' 
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+                  : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
+              }`}
+              onClick={() => setActiveTab('activity')}
+            >
+              📊 Historia Aktywności ({userActivity.length})
+            </button>
+            <button 
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
+                activeTab === 'badges' 
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+                  : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
+              }`}
+              onClick={() => setActiveTab('badges')}
+            >
+              🏆 Moje Odznaki ({userBadges.length})
+            </button>
+            <button 
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
+                activeTab === 'comments' 
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+                  : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
+              }`}
+              onClick={() => setActiveTab('comments')}
+            >
+              💬 Moje Komentarze ({userComments.length})
+            </button>
+          </div>
+        </div>
 
       {activeTab === 'offers' && (
-        <div className="tab-content">
-          <div className="filters-section">
-            <h3>🔍 Filtruj i Sortuj Oferty</h3>
-            <div className="filters">
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
+          <div className="mb-6">
+            <h3 className="text-2xl font-bold mb-4 text-gray-900">🔍 Filtruj i Sortuj Oferty</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <select 
                 value={categoryFilter} 
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="filter-select"
+                className="p-3 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
               >
                 <option value="">Wszystkie kategorie</option>
                 <option value="Elektronika">📱 Elektronika</option>
@@ -288,13 +309,13 @@ const UserPanel = () => {
                 placeholder="Filtruj po tagach..."
                 value={tagFilter}
                 onChange={(e) => setTagFilter(e.target.value)}
-                className="filter-input"
+                className="p-3 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
               />
               
               <select 
                 value={sortBy} 
                 onChange={(e) => setSortBy(e.target.value as any)}
-                className="filter-select"
+                className="p-3 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
               >
                 <option value="newest">Najnowsze</option>
                 <option value="hot">Najgorętsze</option>
@@ -303,66 +324,76 @@ const UserPanel = () => {
             </div>
           </div>
 
-          <div className="offers-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredOffers.map(offer => (
-              <div key={offer.id} className="offer-card">
-                <div className="offer-header">
-                  <h4>{offer.tytul}</h4>
-                  <span className="category-badge">{offer.kategoria}</span>
+              <div key={offer.id} className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30 hover:shadow-2xl transition-all">
+                <div className="mb-4">
+                  <h4 className="text-lg font-bold mb-2 text-gray-900">{offer.tytul}</h4>
+                  <span className="bg-custom-blue/20 text-custom-blue px-2 py-1 rounded-full text-xs font-semibold">{offer.kategoria}</span>
                 </div>
                 
-                <p className="offer-description">{offer.opis}</p>
+                <p className="text-gray-600 mb-4">{offer.opis}</p>
                 
                 {offer.zdjecia && offer.zdjecia.length > 0 && (
-                  <div className="offer-images">
-                    {offer.zdjecia.slice(0, 3).map((image, index) => (
-                      <img 
-                        key={index} 
-                        src={`${API_BASE}${image}`} 
-                        alt={`${offer.tytul} - zdjęcie ${index + 1}`}
-                        className="offer-image"
-                        onError={(e) => {
-                          e.currentTarget.style.display = 'none';
-                        }}
-                      />
-                    ))}
-                    {offer.zdjecia.length > 3 && (
-                      <div className="more-images">
-                        +{offer.zdjecia.length - 3} więcej
-                      </div>
-                    )}
+                  <div className="mb-4">
+                    <div className="flex space-x-2 mb-2">
+                      {offer.zdjecia.slice(0, 3).map((image, index) => (
+                        <img 
+                          key={index} 
+                          src={`${API_BASE}${image}`} 
+                          alt={`${offer.tytul} - zdjęcie ${index + 1}`}
+                          className="w-16 h-16 object-cover rounded-lg border border-gray-200/50"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      ))}
+                      {offer.zdjecia.length > 3 && (
+                        <div className="w-16 h-16 bg-gray-100/80 backdrop-blur-sm rounded-lg border border-gray-200/50 flex items-center justify-center text-xs text-gray-600 font-semibold">
+                          +{offer.zdjecia.length - 3}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
                 
-                <div className="price-section">
+                <div className="mb-4">
                   {offer.cena && (
-                    <>
-                      <span className="current-price">{offer.cena} PLN</span>
+                    <div className="flex items-baseline space-x-2 mb-2">
+                      <span className="text-xl font-bold text-green-600">{offer.cena} PLN</span>
                       {offer.cenaPoprzednia && (
-                        <span className="old-price">{offer.cenaPoprzednia} PLN</span>
+                        <span className="text-sm line-through text-gray-400">{offer.cenaPoprzednia} PLN</span>
                       )}
-                    </>
+                    </div>
                   )}
-                  <span className="shop">📍 {offer.sklep}</span>
+                  <span className="text-sm text-gray-600">📍 {offer.sklep}</span>
                 </div>
                 
-                <div className="tags">
+                <div className="mb-4 flex flex-wrap gap-2">
                   {offer.tagi.map(tag => (
-                    <span key={tag} className="tag">#{tag}</span>
+                    <span key={tag} className="bg-gray-100/80 backdrop-blur-sm text-gray-700 px-2 py-1 rounded-full text-xs">#{tag}</span>
                   ))}
                 </div>
                 
-                <div className="offer-actions">
-                  <div className="vote-section">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex space-x-2">
                     <button 
-                      className={`vote-btn hot ${offer.userVote === 'hot' ? 'active' : ''}`}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${
+                        offer.userVote === 'hot' 
+                          ? 'bg-red-500/80 backdrop-blur-sm text-white' 
+                          : 'bg-red-100/80 backdrop-blur-sm text-red-600 hover:bg-red-200/80'
+                      }`}
                       onClick={() => voteOffer(offer.id, 'hot')}
                       disabled={loading}
                     >
                       🔥 {offer.votes.hot}
                     </button>
                     <button 
-                      className={`vote-btn cold ${offer.userVote === 'cold' ? 'active' : ''}`}
+                      className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${
+                        offer.userVote === 'cold' 
+                          ? 'bg-blue-500/80 backdrop-blur-sm text-white' 
+                          : 'bg-blue-100/80 backdrop-blur-sm text-blue-600 hover:bg-blue-200/80'
+                      }`}
                       onClick={() => voteOffer(offer.id, 'cold')}
                       disabled={loading}
                     >
@@ -370,10 +401,10 @@ const UserPanel = () => {
                     </button>
                   </div>
                   
-                  <span className="comments-count">💬 {offer.komentarze}</span>
+                  <span className="text-sm text-gray-600">💬 {offer.komentarze}</span>
                   
                   <button 
-                    className="report-btn"
+                    className="text-red-500 hover:text-red-700 transition-colors text-sm"
                     onClick={() => {
                       const reason = prompt('Powód zgłoszenia:');
                       if (reason) reportContent('offer', offer.id, reason);
@@ -383,7 +414,7 @@ const UserPanel = () => {
                   </button>
                 </div>
                 
-                <div className="comment-section">
+                <div className="mb-4">
                   <input
                     type="text"
                     placeholder="Dodaj komentarz..."
@@ -394,12 +425,12 @@ const UserPanel = () => {
                         input.value = '';
                       }
                     }}
-                    className="comment-input"
+                    className="w-full p-3 border border-gray-300/50 rounded-xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
                   />
                 </div>
                 
-                <div className="offer-meta">
-                  <small>Dodane przez: {offer.autor} | {offer.dataUtworzenia}</small>
+                <div className="text-xs text-gray-500">
+                  Dodane przez: {offer.autor} | {offer.dataUtworzenia}
                 </div>
               </div>
             ))}
@@ -408,25 +439,27 @@ const UserPanel = () => {
       )}
 
       {activeTab === 'activity' && (
-        <div className="tab-content">
-          <h2>📊 Historia Twojej Aktywności</h2>
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">📊 Historia Twojej Aktywności</h2>
           
-          <div className="activity-timeline">
+          <div className="space-y-4">
             {userActivity.map(activity => (
-              <div key={activity.id} className="activity-item">
-                <div className="activity-icon">
-                  {activity.typ === 'oferta' && '🛍️'}
-                  {activity.typ === 'komentarz' && '💬'}
-                  {activity.typ === 'glos' && '🗳️'}
-                  {activity.typ === 'odznaka' && '🏆'}
-                </div>
-                <div className="activity-content">
-                  <p>{activity.opis}</p>
-                  <div className="activity-meta">
-                    <span className="activity-date">{activity.data}</span>
-                    {activity.punkty && (
-                      <span className="activity-points">+{activity.punkty} pkt</span>
-                    )}
+              <div key={activity.id} className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/30">
+                <div className="flex items-start space-x-4">
+                  <div className="text-2xl">
+                    {activity.typ === 'oferta' && '🛍️'}
+                    {activity.typ === 'komentarz' && '💬'}
+                    {activity.typ === 'glos' && '🗳️'}
+                    {activity.typ === 'odznaka' && '🏆'}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-gray-900 mb-2">{activity.opis}</p>
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>{activity.data}</span>
+                      {activity.punkty && (
+                        <span className="text-green-600 font-semibold">+{activity.punkty} pkt</span>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -436,23 +469,23 @@ const UserPanel = () => {
       )}
 
       {activeTab === 'badges' && (
-        <div className="tab-content">
-          <h2>🏆 Twoje Zdobyte Odznaki</h2>
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">🏆 Twoje Zdobyte Odznaki</h2>
           
-          <div className="badges-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {userBadges.map(badge => (
-              <div key={badge.id} className="badge-card earned">
-                <div className="badge-icon">{badge.ikona}</div>
-                <h4>{badge.nazwa}</h4>
-                <p>{badge.opis}</p>
-                <small>Zdobyta: {badge.dataOtrzymania}</small>
+              <div key={badge.id} className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30 text-center">
+                <div className="text-4xl mb-4">{badge.ikona}</div>
+                <h4 className="text-lg font-bold mb-2 text-gray-900">{badge.nazwa}</h4>
+                <p className="text-gray-600 mb-4">{badge.opis}</p>
+                <small className="text-gray-500">Zdobyta: {badge.dataOtrzymania}</small>
               </div>
             ))}
             
             {userBadges.length === 0 && (
-              <div className="no-badges">
-                <p>Nie masz jeszcze żadnych odznak! 🎯</p>
-                <p>Bądź aktywny na platformie, aby zdobywać odznaki za swoje osiągnięcia.</p>
+              <div className="col-span-full text-center p-8 bg-white/40 backdrop-blur-sm rounded-2xl border-2 border-dashed border-gray-300/50">
+                <p className="text-gray-600 mb-2">Nie masz jeszcze żadnych odznak! 🎯</p>
+                <p className="text-sm text-gray-500">Bądź aktywny na platformie, aby zdobywać odznaki za swoje osiągnięcia.</p>
               </div>
             )}
           </div>
@@ -460,33 +493,36 @@ const UserPanel = () => {
       )}
 
       {activeTab === 'comments' && (
-        <div className="tab-content">
-          <h2>💬 Twoje Komentarze</h2>
+        <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">💬 Twoje Komentarze</h2>
           
-          <div className="comments-list">
+          <div className="space-y-4">
             {userComments.map(comment => (
-              <div key={comment.id} className="comment-item">
-                <div className="comment-content">
-                  <p>{comment.tresc}</p>
-                  <div className="comment-meta">
-                    <span>W ofercie: <strong>{comment.oferta}</strong></span>
-                    <span>{comment.data}</span>
+              <div key={comment.id} className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/30">
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <p className="text-gray-900 mb-2">{comment.tresc}</p>
+                    <div className="flex items-center justify-between text-sm text-gray-600">
+                      <span>W ofercie: <strong>{comment.oferta}</strong></span>
+                      <span>{comment.data}</span>
+                    </div>
                   </div>
+                  <button 
+                    className="ml-4 text-red-500 hover:text-red-700 transition-colors"
+                    onClick={() => {
+                      const reason = prompt('Powód zgłoszenia komentarza:');
+                      if (reason) reportContent('comment', comment.id, reason);
+                    }}
+                  >
+                    🚩
+                  </button>
                 </div>
-                <button 
-                  className="report-btn small"
-                  onClick={() => {
-                    const reason = prompt('Powód zgłoszenia komentarza:');
-                    if (reason) reportContent('comment', comment.id, reason);
-                  }}
-                >
-                  🚩
-                </button>
               </div>
             ))}
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

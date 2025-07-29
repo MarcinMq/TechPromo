@@ -227,27 +227,27 @@ const ModeratorPanel: React.FC = () => {
     };
 
     const renderStatystyki = () => {
-        if (!statystyki) return <div>Brak danych statystycznych</div>;
+        if (!statystyki) return <div className="text-center text-gray-600">Brak danych statystycznych</div>;
 
         return (
-            <div className="tab-content">
-                <h2>Statystyki Moderatora</h2>
-                <div className="stats-grid">
-                    <div className="stat-card">
-                        <h3>{statystyki.oczekujaceOferty}</h3>
-                        <p>Oczekujące oferty</p>
+            <div>
+                <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">📊 Statystyki Moderatora</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30 text-center">
+                        <h3 className="text-3xl font-bold text-custom-blue mb-2">{statystyki.oczekujaceOferty}</h3>
+                        <p className="text-gray-600">Oczekujące oferty</p>
                     </div>
-                    <div className="stat-card">
-                        <h3>{statystyki.zgloszeniaOczekujace}</h3>
-                        <p>Zgłoszenia do rozpatrzenia</p>
+                    <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30 text-center">
+                        <h3 className="text-3xl font-bold text-orange-600 mb-2">{statystyki.zgloszeniaOczekujace}</h3>
+                        <p className="text-gray-600">Zgłoszenia do rozpatrzenia</p>
                     </div>
-                    <div className="stat-card">
-                        <h3>{statystyki.komentarzeOstatnich24h}</h3>
-                        <p>Komentarze (24h)</p>
+                    <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30 text-center">
+                        <h3 className="text-3xl font-bold text-green-600 mb-2">{statystyki.komentarzeOstatnich24h}</h3>
+                        <p className="text-gray-600">Komentarze (24h)</p>
                     </div>
-                    <div className="stat-card">
-                        <h3>{statystyki.oferty24h}</h3>
-                        <p>Oferty (24h)</p>
+                    <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30 text-center">
+                        <h3 className="text-3xl font-bold text-purple-600 mb-2">{statystyki.oferty24h}</h3>
+                        <p className="text-gray-600">Oferty (24h)</p>
                     </div>
                 </div>
             </div>
@@ -255,30 +255,30 @@ const ModeratorPanel: React.FC = () => {
     };
 
     const renderKomentarze = () => (
-        <div className="tab-content">
-            <h2>Moderacja komentarzy</h2>
+        <div>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">💬 Moderacja komentarzy</h2>
             {komentarze.length === 0 ? (
-                <p>Brak komentarzy do moderacji</p>
+                <div className="text-center text-gray-600">Brak komentarzy do moderacji</div>
             ) : (
-                <div className="komentarze-grid">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {komentarze.map((komentarz) => (
-                        <div key={komentarz.idKomentarz} className="komentarz-card">
-                            <h4>{komentarz.autor}</h4>
-                            <p><strong>Treść:</strong> {komentarz.tresc}</p>
-                            <p><strong>Oferta:</strong> {komentarz.ofertaTytul}</p>
-                            <p><strong>Data:</strong> {komentarz.dataDodania}</p>
+                        <div key={komentarz.idKomentarz} className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30">
+                            <h4 className="text-lg font-bold mb-3 text-gray-900">{komentarz.autor}</h4>
+                            <p className="mb-2"><strong>Treść:</strong> {komentarz.tresc}</p>
+                            <p className="mb-2"><strong>Oferta:</strong> {komentarz.ofertaTytul}</p>
+                            <p className="mb-2"><strong>Data:</strong> {komentarz.dataDodania}</p>
                             {komentarz.zgloszen > 0 && (
-                                <p><strong>Zgłoszeń:</strong> <span className="status-badge pending">{komentarz.zgloszen}</span></p>
+                                <p className="mb-4"><strong>Zgłoszeń:</strong> <span className="bg-red-100/80 text-red-700 px-2 py-1 rounded-full text-sm font-semibold">{komentarz.zgloszen}</span></p>
                             )}
-                            <div className="item-actions">
+                            <div className="flex space-x-3">
                                 <button 
-                                    className="warn-btn"
+                                    className="bg-yellow-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-yellow-600/80 transition-all font-semibold"
                                     onClick={() => handleOstrzezUzytkownika(komentarz.idKomentarz)}
                                 >
                                     Ostrzeż
                                 </button>
                                 <button 
-                                    className="delete-btn"
+                                    className="bg-red-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-red-600/80 transition-all font-semibold"
                                     onClick={() => handleUsunKomentarz(komentarz.idKomentarz)}
                                 >
                                     Usuń
@@ -292,42 +292,46 @@ const ModeratorPanel: React.FC = () => {
     );
 
     const renderOferty = () => (
-        <div className="tab-content">
-            <h2>Moderacja ofert</h2>
+        <div>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">🛍️ Moderacja ofert</h2>
             {oferty.length === 0 ? (
-                <p>Brak ofert do moderacji</p>
+                <div className="text-center text-gray-600">Brak ofert do moderacji</div>
             ) : (
-                <div className="oferty-grid">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {oferty.map((oferta) => (
-                        <div key={oferta.idOferta} className="oferta-card">
-                            <h4>{oferta.tytul}</h4>
-                            <p><strong>Opis:</strong> {oferta.opis}</p>
-                            <p><strong>Cena:</strong> {oferta.cena} zł</p>
-                            <p><strong>Autor:</strong> {oferta.autor}</p>
-                            <p><strong>Kategoria:</strong> {oferta.kategoria}</p>
-                            <p><strong>Data:</strong> {oferta.dataDodania}</p>
-                            <p><strong>Status:</strong> 
-                                <span className={`status-badge ${oferta.zatwierdzona ? 'approved' : 'pending'}`}>
+                        <div key={oferta.idOferta} className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30">
+                            <h4 className="text-lg font-bold mb-3 text-gray-900">{oferta.tytul}</h4>
+                            <p className="mb-2"><strong>Opis:</strong> {oferta.opis}</p>
+                            <p className="mb-2"><strong>Cena:</strong> {oferta.cena} zł</p>
+                            <p className="mb-2"><strong>Autor:</strong> {oferta.autor}</p>
+                            <p className="mb-2"><strong>Kategoria:</strong> {oferta.kategoria}</p>
+                            <p className="mb-2"><strong>Data:</strong> {oferta.dataDodania}</p>
+                            <p className="mb-4"><strong>Status:</strong> 
+                                <span className={`ml-2 px-3 py-1 rounded-full text-sm font-semibold ${
+                                    oferta.zatwierdzona 
+                                        ? 'bg-green-100/80 text-green-700' 
+                                        : 'bg-yellow-100/80 text-yellow-700'
+                                }`}>
                                     {oferta.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}
                                 </span>
                             </p>
-                            <div className="item-actions">
+                            <div className="flex space-x-3">
                                 {!oferta.zatwierdzona && (
                                     <button 
-                                        className="approve-btn"
+                                        className="bg-green-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-green-600/80 transition-all font-semibold"
                                         onClick={() => handleZatwierdzOferte(oferta.idOferta)}
                                     >
                                         Zatwierdź
                                     </button>
                                 )}
                                 <button 
-                                    className="edit-btn"
+                                    className="bg-blue-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-blue-600/80 transition-all font-semibold"
                                     onClick={() => handleEdytujOferte(oferta.idOferta)}
                                 >
                                     Edytuj
                                 </button>
                                 <button 
-                                    className="reject-btn"
+                                    className="bg-red-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-red-600/80 transition-all font-semibold"
                                     onClick={() => handleOdrzucOferte(oferta.idOferta)}
                                 >
                                     Odrzuć
@@ -341,33 +345,37 @@ const ModeratorPanel: React.FC = () => {
     );
 
     const renderZgloszenia = () => (
-        <div className="tab-content">
-            <h2>Obsługa zgłoszeń</h2>
+        <div>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">🚩 Obsługa zgłoszeń</h2>
             {zgloszenia.length === 0 ? (
-                <p>Brak zgłoszeń do rozpatrzenia</p>
+                <div className="text-center text-gray-600">Brak zgłoszeń do rozpatrzenia</div>
             ) : (
-                <div className="zgloszenia-grid">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {zgloszenia.map((zgloszenie) => (
-                        <div key={zgloszenie.idZgloszenie} className="zgloszenie-card">
-                            <h4>{zgloszenie.tytul}</h4>
-                            <p><strong>Treść:</strong> {zgloszenie.tresc}</p>
-                            <p><strong>Zgłoszone przez:</strong> {zgloszenie.zgloszonePrzez}</p>
-                            <p><strong>Data:</strong> {zgloszenie.dataDodania}</p>
-                            <p><strong>Status:</strong> 
-                                <span className={`status-badge ${zgloszenie.status === 'Oczekujące' ? 'waiting' : 'processed'}`}>
+                        <div key={zgloszenie.idZgloszenie} className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30">
+                            <h4 className="text-lg font-bold mb-3 text-gray-900">{zgloszenie.tytul}</h4>
+                            <p className="mb-2"><strong>Treść:</strong> {zgloszenie.tresc}</p>
+                            <p className="mb-2"><strong>Zgłoszone przez:</strong> {zgloszenie.zgloszonePrzez}</p>
+                            <p className="mb-2"><strong>Data:</strong> {zgloszenie.dataDodania}</p>
+                            <p className="mb-4"><strong>Status:</strong> 
+                                <span className={`ml-2 px-3 py-1 rounded-full text-sm font-semibold ${
+                                    zgloszenie.status === 'Oczekujące' 
+                                        ? 'bg-yellow-100/80 text-yellow-700' 
+                                        : 'bg-green-100/80 text-green-700'
+                                }`}>
                                     {zgloszenie.status}
                                 </span>
                             </p>
                             {zgloszenie.status === 'Oczekujące' && (
-                                <div className="item-actions">
+                                <div className="flex space-x-3">
                                     <button 
-                                        className="respond-btn"
+                                        className="bg-blue-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-blue-600/80 transition-all font-semibold"
                                         onClick={() => handleRozpatrzZgloszenie(zgloszenie.idZgloszenie)}
                                     >
                                         Rozpatrz
                                     </button>
                                     <button 
-                                        className="edit-btn"
+                                        className="bg-purple-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-purple-600/80 transition-all font-semibold"
                                         onClick={() => handlePrzekazAdminowi(zgloszenie.idZgloszenie)}
                                     >
                                         Przekaż adminowi
@@ -382,52 +390,73 @@ const ModeratorPanel: React.FC = () => {
     );
 
     return (
-        <div className="panel">
-            <div className="panel-header">
-                <h1 className="panel-title">
-                    ⚖️
-                    Panel Moderatora
-                </h1>
-                <p className="panel-subtitle">Moderacja komentarzy, ofert i zgłoszeń</p>
-            </div>
-
-            <div className="tabs">
-                <button 
-                    className={`tab-button ${activeTab === 'statystyki' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('statystyki')}
-                >
-                    📊 Statystyki
-                </button>
-                <button 
-                    className={`tab-button ${activeTab === 'komentarze' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('komentarze')}
-                >
-                    💬 Komentarze ({komentarze.length})
-                </button>
-                <button 
-                    className={`tab-button ${activeTab === 'oferty' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('oferty')}
-                >
-                    📝 Oferty ({oferty.length})
-                </button>
-                <button 
-                    className={`tab-button ${activeTab === 'zgloszenia' ? 'active' : ''}`}
-                    onClick={() => setActiveTab('zgloszenia')}
-                >
-                    🚨 Zgłoszenia ({zgloszenia.length})
-                </button>
-            </div>
-
-            {loading ? (
-                <div className="loading">Ładowanie...</div>
-            ) : (
-                <div className="tab-content">
-                    {activeTab === 'statystyki' && renderStatystyki()}
-                    {activeTab === 'komentarze' && renderKomentarze()}
-                    {activeTab === 'oferty' && renderOferty()}
-                    {activeTab === 'zgloszenia' && renderZgloszenia()}
+        <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
+            <div className="max-w-7xl mx-auto px-4">
+                <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 mb-8">
+                    <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center">🛡️ Panel Moderatora</h1>
                 </div>
-            )}
+
+                <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-6 mb-8">
+                    <div className="flex flex-wrap gap-3 justify-center">
+                        <button 
+                            className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
+                                activeTab === 'statystyki' 
+                                ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+                                : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
+                            }`}
+                            onClick={() => setActiveTab('statystyki')}
+                        >
+                            📊 Statystyki
+                        </button>
+                        <button 
+                            className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
+                                activeTab === 'komentarze' 
+                                ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+                                : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
+                            }`}
+                            onClick={() => setActiveTab('komentarze')}
+                        >
+                            💬 Komentarze ({komentarze.length})
+                        </button>
+                        <button 
+                            className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
+                                activeTab === 'oferty' 
+                                ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+                                : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
+                            }`}
+                            onClick={() => setActiveTab('oferty')}
+                        >
+                            🛍️ Oferty ({oferty.length})
+                        </button>
+                        <button 
+                            className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
+                                activeTab === 'zgloszenia' 
+                                ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+                                : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
+                            }`}
+                            onClick={() => setActiveTab('zgloszenia')}
+                        >
+                            🚩 Zgłoszenia ({zgloszenia.length})
+                        </button>
+                    </div>
+                </div>
+
+                {loading && (
+                    <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 text-center">
+                        <div className="text-2xl mb-4">🔄</div>
+                        <div className="text-lg font-semibold">Ładowanie...</div>
+                    </div>
+                )}
+
+                {!loading && (
+                    <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
+                        {activeTab === 'statystyki' && renderStatystyki()}
+                        {activeTab === 'komentarze' && renderKomentarze()}
+                        {activeTab === 'oferty' && renderOferty()}
+                        {activeTab === 'zgloszenia' && renderZgloszenia()}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
