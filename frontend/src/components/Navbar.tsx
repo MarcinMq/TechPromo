@@ -66,7 +66,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
                   </button>
 
                   {/* Profile Link */}
-                  <Link to="/profile" className="user-profile-link">
+                  <Link to="/konto/profil" className="user-profile-link">
                     <span>👤</span>
                     <span className="user-name">{userName || 'Profil'}</span>
                   </Link>
@@ -81,10 +81,10 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
             ) : (
               /* Auth Buttons */
               <div className="auth-buttons">
-                <Link to="/login" className="login-link">
+                <Link to="/auth/login" className="login-link">
                   Zaloguj się
                 </Link>
-                <Link to="/register" className="btn btn-primary">
+                <Link to="/auth/register" className="btn btn-primary">
                   Zarejestruj się
                 </Link>
               </div>
