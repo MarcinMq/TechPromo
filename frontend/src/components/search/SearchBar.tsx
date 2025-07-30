@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Settings, Search } from 'lucide-react';
 
 interface SearchBarProps {
   onSearch: (query: string, filters: SearchFilters) => void;
@@ -85,7 +86,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
         <div className="flex items-center bg-white/70 backdrop-blur-2xl rounded-2xl shadow-lg border border-white/40 overflow-hidden">
           {/* Ikona */}
           <div className="flex items-center justify-center w-12 h-12 text-xl text-gray-600">
-            🔍
+            <Search className="w-5 h-5" />
           </div>
           
           {/* Pole tekstowe */}
@@ -113,7 +114,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
             className="mt-2 flex items-center justify-center space-x-2 px-4 py-2 bg-white/50 backdrop-blur-xl rounded-xl border border-white/40 text-gray-700 font-semibold hover:bg-white/70 transition-all duration-300 text-sm"
             onClick={() => setShowFilters(!showFilters)}
           >
-            <span className="text-lg">⚙️</span>
+            <Settings className="w-4 h-4" />
             <span>Filtry zaawansowane</span>
             <span className="text-sm transition-transform duration-300">{showFilters ? '▲' : '▼'}</span>
           </button>
@@ -147,7 +148,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 className="w-full p-3 bg-white/80 backdrop-blur-sm rounded-xl border border-white/50 text-gray-900 font-medium focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               >
                 <option value="hot">🔥 Najgorętsze</option>
-                <option value="newest">🆕 Najnowsze</option>
+                <option value="newest">✨ Najnowsze</option>
                 <option value="price">💰 Najtańsze</option>
               </select>
             </div>

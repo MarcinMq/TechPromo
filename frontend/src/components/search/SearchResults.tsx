@@ -1,4 +1,5 @@
 import React from 'react';
+import { Flame, Snowflake, Search } from 'lucide-react';
 
 interface SearchResult {
   id: number;
@@ -33,7 +34,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, query, loading =
     return (
       <div className="relative bg-white/50 backdrop-blur-2xl rounded-3xl shadow-2xl border border-white/40 p-12 text-center">
         <div className="flex flex-col items-center space-y-6">
-          <div className="text-6xl mb-4">🔍</div>
+          <Search className="w-16 h-16 text-gray-400" />
           <h3 className="text-2xl font-black text-gray-900 mb-4">Brak wyników dla "{query}"</h3>
           <p className="text-lg text-gray-700 font-medium max-w-md">
             Spróbuj użyć innych słów kluczowych lub zmienić filtry wyszukiwania.
@@ -105,11 +106,11 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, query, loading =
                 <div className="flex items-center justify-between pt-6 border-t border-gray-200/50">
                   <div className="flex space-x-3">
                     <span className="flex items-center space-x-1 bg-gradient-to-r from-red-100 to-pink-100 backdrop-blur-sm text-red-600 px-3 py-1 rounded-2xl font-bold text-sm">
-                      <span>🔥</span>
+                      <Flame className="w-4 h-4" />
                       <span>{result.votes.hot}</span>
                     </span>
                     <span className="flex items-center space-x-1 bg-gradient-to-r from-blue-100 to-cyan-100 backdrop-blur-sm text-blue-600 px-3 py-1 rounded-2xl font-bold text-sm">
-                      <span>❄️</span>
+                      <Snowflake className="w-4 h-4" />
                       <span>{result.votes.cold}</span>
                     </span>
                   </div>

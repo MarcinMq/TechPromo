@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import PanelSelector from './PanelSelector';
-import OfferTypeModal from './OfferTypeModal';
-import SearchBar from './search/SearchBar';
+import { Rocket, Search, Edit3, Settings, User, LogOut } from 'lucide-react';
+import PanelSelector from '../ui/PanelSelector';
+import OfferTypeModal from '../modals/OfferTypeModal';
+import SearchBar from '../search/SearchBar';
+import UserInfo from './UserInfo';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -39,7 +41,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
           <div className="flex items-center justify-between h-20">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-3 text-2xl font-extrabold text-gray-900 flex-shrink-0">
-              <span className="text-3xl">🚀</span>
+              <Rocket className="w-8 h-8 text-custom-blue" />
               <span className="font-bold">TechPromo</span>
             </Link>
 
@@ -57,7 +59,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
                     className="flex items-center space-x-2 px-6 py-3 bg-custom-blue text-white rounded-xl hover:bg-custom-blue-dark transition-all duration-300 font-semibold shadow-lg hover:shadow-xl" 
                     onClick={handlePublish}
                   >
-                    <span className="text-xl">📝</span>
+                    <Edit3 className="w-5 h-5" />
                     <span>Publikuj</span>
                   </button>
 
@@ -68,7 +70,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
                       onClick={handlePanelClick} 
                       className="p-3 rounded-xl hover:bg-gray-200 transition-all duration-300 hover:shadow-lg"
                     >
-                      <span className="text-xl">⚙️</span>
+                      <Settings className="w-5 h-5" />
                     </button>
 
                     {/* Profil */}
@@ -76,7 +78,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
                       to="/konto/profil" 
                       className="flex items-center space-x-2 text-gray-700 hover:text-custom-blue transition-all duration-300 font-semibold px-3 py-2 rounded-xl hover:bg-gray-100"
                     >
-                      <span className="text-xl">👤</span>
+                      <User className="w-5 h-5" />
                       <span>{userName || 'Profil'}</span>
                     </Link>
 
@@ -85,7 +87,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
                       onClick={onLogout} 
                       className="p-3 rounded-xl hover:bg-red-100 transition-all duration-300 hover:shadow-lg"
                     >
-                      <span className="text-xl">🚪</span>
+                      <LogOut className="w-5 h-5 text-red-600" />
                     </button>
                   </div>
                 </>

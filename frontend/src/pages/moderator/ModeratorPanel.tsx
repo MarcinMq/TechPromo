@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { MessageCircle, ShoppingBag, BarChart3, Flag, Shield } from 'lucide-react';
 import { api } from '../../utils/api';
 
 interface Komentarz {
@@ -231,7 +232,10 @@ const ModeratorPanel: React.FC = () => {
 
         return (
             <div>
-                <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">📊 Statystyki Moderatora</h2>
+                <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+                    <BarChart3 className="w-6 h-6 mr-2 text-blue-600" />
+                    Statystyki Moderatora
+                </h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30 text-center">
                         <h3 className="text-3xl font-bold text-custom-blue mb-2">{statystyki.oczekujaceOferty}</h3>
@@ -256,7 +260,10 @@ const ModeratorPanel: React.FC = () => {
 
     const renderKomentarze = () => (
         <div>
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">💬 Moderacja komentarzy</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+              <MessageCircle className="w-6 h-6 mr-2 text-blue-600" />
+              Moderacja komentarzy
+            </h2>
             {komentarze.length === 0 ? (
                 <div className="text-center text-gray-600">Brak komentarzy do moderacji</div>
             ) : (
@@ -293,7 +300,10 @@ const ModeratorPanel: React.FC = () => {
 
     const renderOferty = () => (
         <div>
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">🛍️ Moderacja ofert</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+              <ShoppingBag className="w-6 h-6 mr-2 text-green-600" />
+              Moderacja ofert
+            </h2>
             {oferty.length === 0 ? (
                 <div className="text-center text-gray-600">Brak ofert do moderacji</div>
             ) : (
@@ -346,7 +356,10 @@ const ModeratorPanel: React.FC = () => {
 
     const renderZgloszenia = () => (
         <div>
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">🚩 Obsługa zgłoszeń</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+                <Flag className="w-6 h-6 mr-2 text-red-600" />
+                Obsługa zgłoszeń
+            </h2>
             {zgloszenia.length === 0 ? (
                 <div className="text-center text-gray-600">Brak zgłoszeń do rozpatrzenia</div>
             ) : (
@@ -393,7 +406,10 @@ const ModeratorPanel: React.FC = () => {
         <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
             <div className="max-w-7xl mx-auto px-4">
                 <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 mb-8">
-                    <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center">🛡️ Panel Moderatora</h1>
+                    <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center flex items-center justify-center">
+                        <Shield className="w-10 h-10 mr-3 text-blue-600" />
+                        Panel Moderatora
+                    </h1>
                 </div>
 
                 <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-6 mb-8">
@@ -406,7 +422,8 @@ const ModeratorPanel: React.FC = () => {
                             }`}
                             onClick={() => setActiveTab('statystyki')}
                         >
-                            📊 Statystyki
+                            <BarChart3 className="w-5 h-5 inline mr-2" />
+                            Statystyki
                         </button>
                         <button 
                             className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -416,7 +433,8 @@ const ModeratorPanel: React.FC = () => {
                             }`}
                             onClick={() => setActiveTab('komentarze')}
                         >
-                            💬 Komentarze ({komentarze.length})
+                            <MessageCircle className="w-5 h-5 inline mr-2" />
+                            Komentarze ({komentarze.length})
                         </button>
                         <button 
                             className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -426,7 +444,8 @@ const ModeratorPanel: React.FC = () => {
                             }`}
                             onClick={() => setActiveTab('oferty')}
                         >
-                            🛍️ Oferty ({oferty.length})
+                            <ShoppingBag className="w-5 h-5 inline mr-2" />
+                            Oferty ({oferty.length})
                         </button>
                         <button 
                             className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -436,7 +455,8 @@ const ModeratorPanel: React.FC = () => {
                             }`}
                             onClick={() => setActiveTab('zgloszenia')}
                         >
-                            🚩 Zgłoszenia ({zgloszenia.length})
+                            <Flag className="w-5 h-5 inline mr-2" />
+                            Zgłoszenia ({zgloszenia.length})
                         </button>
                     </div>
                 </div>

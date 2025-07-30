@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { User, Flame, Snowflake, MessageCircle, ShoppingBag, Vote, Trophy, MapPin, BarChart3, Flag, Filter } from 'lucide-react';
 import { authorizedFetch, apiPost } from '../../utils/api';
 
 type Oferta = {
@@ -221,8 +222,9 @@ const UserPanel = () => {
     <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 mb-8">
-          <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center">
-            👤 Panel Użytkownika
+          <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center flex items-center justify-center">
+            <User className="w-10 h-10 mr-3 text-custom-blue" />
+            Panel Użytkownika
           </h1>
           <p className="text-gray-600 text-center text-lg">Zarządzaj swoimi ofertami, komentarzami i profilem</p>
         </div>
@@ -246,7 +248,8 @@ const UserPanel = () => {
               }`}
               onClick={() => setActiveTab('offers')}
             >
-              🛍️ Dodane Oferty ({offers.length})
+              <ShoppingBag className="w-5 h-5 inline mr-1" />
+              Dodane Oferty ({offers.length})
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -256,7 +259,8 @@ const UserPanel = () => {
               }`}
               onClick={() => setActiveTab('activity')}
             >
-              📊 Historia Aktywności ({userActivity.length})
+              <BarChart3 className="w-5 h-5 inline mr-1" />
+              Historia Aktywności ({userActivity.length})
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -266,7 +270,8 @@ const UserPanel = () => {
               }`}
               onClick={() => setActiveTab('badges')}
             >
-              🏆 Moje Odznaki ({userBadges.length})
+              <Trophy className="w-5 h-5 inline mr-1" />
+              Moje Odznaki ({userBadges.length})
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -276,7 +281,8 @@ const UserPanel = () => {
               }`}
               onClick={() => setActiveTab('comments')}
             >
-              💬 Moje Komentarze ({userComments.length})
+              <MessageCircle className="w-5 h-5 inline mr-1" />
+              Moje Komentarze ({userComments.length})
             </button>
           </div>
         </div>
@@ -284,7 +290,10 @@ const UserPanel = () => {
       {activeTab === 'offers' && (
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
           <div className="mb-6">
-            <h3 className="text-2xl font-bold mb-4 text-gray-900">🔍 Filtruj i Sortuj Oferty</h3>
+            <h3 className="text-2xl font-bold mb-4 text-gray-900 flex items-center">
+              <Filter className="w-6 h-6 mr-2 text-blue-600" />
+              Filtruj i Sortuj Oferty
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <select 
                 value={categoryFilter} 
@@ -366,7 +375,10 @@ const UserPanel = () => {
                       )}
                     </div>
                   )}
-                  <span className="text-sm text-gray-600">📍 {offer.sklep}</span>
+                  <span className="text-sm text-gray-600 flex items-center">
+                    <MapPin className="w-4 h-4 mr-1" />
+                    {offer.sklep}
+                  </span>
                 </div>
                 
                 <div className="mb-4 flex flex-wrap gap-2">
@@ -386,7 +398,8 @@ const UserPanel = () => {
                       onClick={() => voteOffer(offer.id, 'hot')}
                       disabled={loading}
                     >
-                      🔥 {offer.votes.hot}
+                      <Flame className="w-4 h-4 inline mr-1" />
+                      {offer.votes.hot}
                     </button>
                     <button 
                       className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${
@@ -397,11 +410,15 @@ const UserPanel = () => {
                       onClick={() => voteOffer(offer.id, 'cold')}
                       disabled={loading}
                     >
-                      🧊 {offer.votes.cold}
+                      <Snowflake className="w-4 h-4 inline mr-1" />
+                      {offer.votes.cold}
                     </button>
                   </div>
                   
-                  <span className="text-sm text-gray-600">💬 {offer.komentarze}</span>
+                  <span className="text-sm text-gray-600 flex items-center">
+                    <MessageCircle className="w-4 h-4 inline mr-1" />
+                    {offer.komentarze}
+                  </span>
                   
                   <button 
                     className="text-red-500 hover:text-red-700 transition-colors text-sm"
@@ -410,7 +427,8 @@ const UserPanel = () => {
                       if (reason) reportContent('offer', offer.id, reason);
                     }}
                   >
-                    🚩 Zgłoś
+                    <Flag className="w-4 h-4 inline mr-1" />
+                    Zgłoś
                   </button>
                 </div>
                 
@@ -440,17 +458,20 @@ const UserPanel = () => {
 
       {activeTab === 'activity' && (
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">📊 Historia Twojej Aktywności</h2>
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+            <BarChart3 className="w-6 h-6 mr-2 text-blue-600" />
+            Historia Twojej Aktywności
+          </h2>
           
           <div className="space-y-4">
             {userActivity.map(activity => (
               <div key={activity.id} className="bg-white/60 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/30">
                 <div className="flex items-start space-x-4">
                   <div className="text-2xl">
-                    {activity.typ === 'oferta' && '🛍️'}
-                    {activity.typ === 'komentarz' && '💬'}
-                    {activity.typ === 'glos' && '🗳️'}
-                    {activity.typ === 'odznaka' && '🏆'}
+                    {activity.typ === 'oferta' && <ShoppingBag className="w-6 h-6 text-green-600" />}
+                    {activity.typ === 'komentarz' && <MessageCircle className="w-6 h-6 text-blue-600" />}
+                    {activity.typ === 'glos' && <Vote className="w-6 h-6 text-purple-600" />}
+                    {activity.typ === 'odznaka' && <Trophy className="w-6 h-6 text-yellow-600" />}
                   </div>
                   <div className="flex-1">
                     <p className="text-gray-900 mb-2">{activity.opis}</p>
@@ -470,7 +491,10 @@ const UserPanel = () => {
 
       {activeTab === 'badges' && (
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">🏆 Twoje Zdobyte Odznaki</h2>
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+            <Trophy className="w-6 h-6 mr-2 text-yellow-600" />
+            Twoje Zdobyte Odznaki
+          </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {userBadges.map(badge => (
@@ -494,7 +518,10 @@ const UserPanel = () => {
 
       {activeTab === 'comments' && (
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">💬 Twoje Komentarze</h2>
+          <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+            <MessageCircle className="w-6 h-6 mr-2 text-blue-600" />
+            Twoje Komentarze
+          </h2>
           
           <div className="space-y-4">
             {userComments.map(comment => (

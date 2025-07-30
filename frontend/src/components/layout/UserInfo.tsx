@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getUserData, isAuthenticated, logout } from '../utils/auth';
+import { getUserData, isAuthenticated, logout } from '../../utils/auth';
 import { useNavigate } from 'react-router-dom';
 
 const UserInfo = () => {
@@ -42,7 +42,12 @@ const UserInfo = () => {
     <div className="user-info">
       <span>Witaj, <strong>{userData.nick}</strong>!</span>
       <span>Punkty: <strong>{userData.points}</strong></span>
-      <button onClick={() => navigate('/konto/profil')}>Profil</button>
+              <button 
+          onClick={() => navigate('/profile')}
+          className="px-3 py-2 bg-blue-500/30 text-white font-semibold rounded-lg hover:bg-blue-500/50 transition-all duration-300 text-sm backdrop-blur-sm border border-blue-500/30"
+        >
+          Profil
+        </button>
       {userData.role === 'Admin' && (
         <button onClick={() => navigate('/admin')}>Panel Admin</button>
       )}

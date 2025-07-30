@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { MessageCircle, Users, ShoppingBag, Trash2, Trophy, Zap, Clipboard, Settings, Check } from 'lucide-react';
 import { authorizedFetch, apiPost, apiPut, apiDelete } from '../../utils/api'; // Prostsze API funkcje
 
 type Uzytkownik = {
@@ -321,7 +322,10 @@ const AdminPanel = () => {
     <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
       <div className="max-w-7xl mx-auto px-4">
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 mb-8">
-          <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center">🔧 Panel Admina</h1>
+          <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center flex items-center justify-center">
+            <Settings className="w-10 h-10 mr-3 text-blue-600" />
+            Panel Admina
+          </h1>
         </div>
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-6 mb-8">
           <div className="flex flex-wrap gap-3 justify-center">
@@ -333,7 +337,8 @@ const AdminPanel = () => {
               }`}
               onClick={() => setActiveTab('users')}
             >
-              👥 Użytkownicy ({users.length})
+              <Users className="w-5 h-5 inline mr-2" />
+              Użytkownicy ({users.length})
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -343,7 +348,8 @@ const AdminPanel = () => {
               }`}
               onClick={() => setActiveTab('badges')}
             >
-              🏆 Odznaki ({badges.length})
+              <Trophy className="w-5 h-5 inline mr-2" />
+              Odznaki ({badges.length})
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -353,7 +359,8 @@ const AdminPanel = () => {
               }`}
               onClick={() => setActiveTab('assign')}
             >
-              ⚡ Przyznaj Odznakę
+              <Zap className="inline w-5 h-5 mr-2" />
+              Przyznaj Odznakę
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -363,7 +370,8 @@ const AdminPanel = () => {
               }`}
               onClick={() => setActiveTab('reports')}
             >
-              📋 Zgłoszenia ({reports.length})
+              <Clipboard className="inline w-5 h-5 mr-2" />
+              Zgłoszenia ({reports.length})
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -373,7 +381,8 @@ const AdminPanel = () => {
               }`}
               onClick={() => setActiveTab('comments')}
             >
-              💬 Komentarze ({comments.length})
+              <MessageCircle className="w-5 h-5 inline mr-2" />
+              Komentarze ({comments.length})
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -383,14 +392,18 @@ const AdminPanel = () => {
               }`}
               onClick={() => setActiveTab('offers')}
             >
-              🛍️ Oferty ({offers.length})
+              <ShoppingBag className="w-5 h-5 inline mr-2" />
+              Oferty ({offers.length})
             </button>
           </div>
         </div>
 
         {activeTab === 'users' && (
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">👥 Zarządzanie Użytkownikami</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+              <Users className="w-6 h-6 mr-2 text-blue-600" />
+              Zarządzanie Użytkownikami
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {users.map(user => (
                 <div key={user.id} className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl hover:shadow-2xl transition-all border border-white/30">
@@ -437,7 +450,10 @@ const AdminPanel = () => {
 
         {activeTab === 'badges' && (
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">🏆 Zarządzanie Odznakami</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+              <Trophy className="w-7 h-7 mr-2" />
+              Zarządzanie Odznakami
+            </h2>
             
             <div className="bg-white/70 rounded-xl p-6 shadow-lg mb-8">
               <form onSubmit={createBadge} className="space-y-4">
@@ -494,7 +510,8 @@ const AdminPanel = () => {
                     onClick={() => deleteBadge(badge.idOdznaka)}
                     disabled={loading}
                   >
-                    🗑️ Usuń
+                    <Trash2 className="w-4 h-4 inline mr-1" />
+                    Usuń
                   </button>
                 </div>
               ))}
@@ -504,7 +521,10 @@ const AdminPanel = () => {
 
         {activeTab === 'assign' && (
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">⚡ Przyznaj Odznakę Użytkownikowi</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+              <Zap className="w-7 h-7 mr-2" />
+              Przyznaj Odznakę Użytkownikowi
+            </h2>
             
             <div className="max-w-xl mx-auto bg-white/70 rounded-xl p-8 shadow-lg">
               <form onSubmit={assignBadge} className="space-y-6">
@@ -560,7 +580,10 @@ const AdminPanel = () => {
         
         {activeTab === 'reports' && (
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">📋 Przeglądanie Zgłoszeń</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+              <Clipboard className="w-7 h-7 mr-2" />
+              Przeglądanie Zgłoszeń
+            </h2>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {reports.map(report => (
                 <div key={report.id} className="bg-white/60 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all border-l-4 border-yellow-500">
@@ -580,7 +603,8 @@ const AdminPanel = () => {
                       onClick={() => approveReport(report.id)}
                       disabled={loading}
                     >
-                      ✅ Zatwierdź
+                      <Check className="w-4 h-4 inline mr-1" />
+                      Zatwierdź
                     </button>
                     <button 
                       className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
@@ -604,7 +628,10 @@ const AdminPanel = () => {
 
         {activeTab === 'comments' && (
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">💬 Moderacja Komentarzy</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+              <MessageCircle className="w-6 h-6 mr-2 text-blue-600" />
+              Moderacja Komentarzy
+            </h2>
             <div className="space-y-4">
               {comments.map(comment => (
                 <div key={comment.id} className="bg-white/60 rounded-xl p-6 shadow-md hover:shadow-lg transition-all">
@@ -635,14 +662,15 @@ const AdminPanel = () => {
                       onClick={() => deleteComment(comment.id)}
                       disabled={loading}
                     >
-                      <span className="mr-1">🗑️</span> Usuń Komentarz
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Usuń Komentarz
                     </button>
                   </div>
                 </div>
               ))}
               {comments.length === 0 && (
                 <div className="text-center p-12 bg-white/40 rounded-xl border-2 border-dashed border-gray-300">
-                  <div className="text-5xl mb-4">💬</div>
+                  <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                   <div className="text-xl font-medium text-gray-600">Brak komentarzy do moderacji</div>
                 </div>
               )}
@@ -652,7 +680,10 @@ const AdminPanel = () => {
 
         {activeTab === 'offers' && (
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">🛍️ Moderacja Ofert</h2>
+            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
+              <ShoppingBag className="w-6 h-6 mr-2 text-green-600" />
+              Moderacja Ofert
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {offers.map(offer => (
                 <div key={offer.id} className="bg-white/60 rounded-xl p-6 shadow-md hover:shadow-lg transition-all border-l-4 border-custom-blue">
@@ -680,21 +711,23 @@ const AdminPanel = () => {
                       onClick={() => approveOffer(offer.id)}
                       disabled={loading}
                     >
-                      ✅ Zatwierdź
+                      <Check className="w-4 h-4 inline mr-1" />
+                      Zatwierdź
                     </button>
                     <button 
                       className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
                       onClick={() => deleteOffer(offer.id)}
                       disabled={loading}
                     >
-                      🗑️ Usuń
+                      <Trash2 className="w-4 h-4 inline mr-1" />
+                      Usuń
                     </button>
                   </div>
                 </div>
               ))}
               {offers.length === 0 && (
                 <div className="col-span-full text-center p-12 bg-white/40 rounded-xl border-2 border-dashed border-gray-300">
-                  <div className="text-5xl mb-4">🛍️</div>
+                  <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-gray-400" />
                   <div className="text-xl font-medium text-gray-600">Brak ofert do moderacji</div>
                 </div>
               )}

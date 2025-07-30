@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Search } from 'lucide-react';
 import SearchResults from '../components/search/SearchResults';
 import SearchBar from '../components/search/SearchBar';
 
@@ -109,8 +110,9 @@ const SearchPage: React.FC = () => {
             <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-transparent to-white/10"></div>
             
             <div className="relative z-10">
-              <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">
-                🔍 Wyszukiwanie okazji
+              <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent flex items-center justify-center">
+                <Search className="w-12 h-12 mr-4 text-blue-600" />
+                Wyszukiwanie okazji
               </h1>
               <p className="text-xl text-gray-700 font-medium max-w-2xl mx-auto">
                 Znajdź najlepsze promocje z tysięcy sklepów internetowych

@@ -1,11 +1,11 @@
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import Navbar from './components/Navbar';
+import Navbar from './components/layout/Navbar';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
-import Profil from './pages/konto/Profil';
+import Profil from './pages/profile/Profil';
 import AdminPanel from './pages/admin/AdminPanel';
 import ModeratorPanel from './pages/moderator/ModeratorPanel';
 import UserPanel from './pages/user/UserPanel';

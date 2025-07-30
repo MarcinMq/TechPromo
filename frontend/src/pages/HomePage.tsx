@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { Flame, Snowflake, MapPin, MessageCircle } from 'lucide-react';
 
 function HomePage() {
   // Przykładowe dane promocji -
@@ -81,7 +82,10 @@ function HomePage() {
         {/* Polecane okazje */}
         <div>
           <div className="flex items-center justify-between mb-10">
-            <h2 className="text-4xl font-black text-gray-900 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent">🔥 Najgorętsze okazje</h2>
+            <h2 className="text-4xl font-black text-gray-900 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-transparent flex items-center">
+              <Flame className="w-10 h-10 mr-3 text-orange-500" />
+              Najgorętsze okazje
+            </h2>
             <Link to="/deals" className="text-lg font-bold text-blue-600 hover:text-purple-600 transition-colors">Zobacz wszystkie →</Link>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -102,17 +106,25 @@ function HomePage() {
                       <span className="text-3xl font-black text-red-600">{deal.salePrice} zł</span>
                       <span className="text-lg line-through text-gray-400">{deal.originalPrice} zł</span>
                     </div>
-                    <p className="mt-4 text-sm text-gray-600 font-medium">📍 {deal.shop}</p>
+                    <p className="mt-4 text-sm text-gray-600 font-medium flex items-center">
+                      <MapPin className="w-4 h-4 mr-1" />
+                      {deal.shop}
+                    </p>
                     <div className="mt-6 pt-6 border-t border-gray-200/50 flex items-center justify-between">
                       <div className="flex space-x-3">
                         <button className="flex items-center space-x-2 bg-gradient-to-r from-red-100 to-pink-100 backdrop-blur-sm text-red-600 px-4 py-2 rounded-2xl font-bold hover:from-red-200 hover:to-pink-200 transition-all shadow-lg">
-                          <span>🔥</span><span>{deal.votes.hot}</span>
+                          <Flame className="w-4 h-4" />
+                          <span>{deal.votes.hot}</span>
                         </button>
                         <button className="flex items-center space-x-2 bg-gradient-to-r from-blue-100 to-cyan-100 backdrop-blur-sm text-blue-600 px-4 py-2 rounded-2xl font-bold hover:from-blue-200 hover:to-cyan-200 transition-all shadow-lg">
-                          <span>🧊</span><span>{deal.votes.cold}</span>
+                          <Snowflake className="w-4 h-4" />
+                          <span>{deal.votes.cold}</span>
                         </button>
                       </div>
-                      <div className="text-gray-600 text-lg font-bold">💬 {deal.comments}</div>
+                      <div className="text-gray-600 text-lg font-bold flex items-center">
+                        <MessageCircle className="w-5 h-5 mr-1" />
+                        {deal.comments}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -146,7 +158,7 @@ function HomePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
             {[
               {num:1,title:'Znajdź okazję',desc:'Przeglądaj tysiące promocji z elektroniki lub dodaj własną znalezioną w sieci'},
-              {num:2,title:'Głosuj',desc:'Oceń promocje jako "HOT" 🔥 lub "COLD" 🧊 i pomóż innym znaleźć najlepsze okazje'},
+              {num:2,title:'Głosuj',desc:'Oceń promocje jako "HOT" lub "COLD" i pomóż innym znaleźć najlepsze okazje'},
               {num:3,title:'Dyskutuj',desc:'Komentuj, zadawaj pytania i dziel się opiniami ze społecznością'},
               {num:4,title:'Oszczędzaj',desc:'Korzystaj z najlepszych promocji i buduj swoją reputację w społeczności'}
             ].map(step => (

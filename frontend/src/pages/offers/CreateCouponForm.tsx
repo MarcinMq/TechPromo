@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Ticket, Clock } from 'lucide-react';
 import { apiPost } from '../../utils/api';
 
 interface CouponFormData {
@@ -407,7 +408,17 @@ const CreateCouponForm: React.FC = () => {
                 disabled={loading}
                 className="w-full sm:w-auto p-4 border border-transparent rounded-2xl bg-custom-blue text-white font-semibold focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all hover:bg-custom-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {loading ? '⏳ Dodawanie...' : '🎫 Opublikuj Kupon'}
+                {loading ? (
+                  <>
+                    <Clock className="w-5 h-5 animate-spin inline mr-2" />
+                    Dodawanie...
+                  </>
+                ) : (
+                  <>
+                    <Ticket className="w-5 h-5 inline mr-2" />
+                    Opublikuj Kupon
+                  </>
+                )}
               </button>
             </div>
           </form>
