@@ -10,11 +10,19 @@ public class Oferta
 
     [Required]
     [MaxLength(100)]
-    public string Nazwa { get; set; }
+    public string Nazwa { get; set; } = string.Empty;
+
+    [MaxLength(20)]
+    public string Typ { get; set; } = "okazja"; // okazja lub kupon
 
     public decimal? Cena { get; set; }
-    public string Opis { get; set; }
-    public string Link { get; set; }
+    public decimal? CenaPoprzednia { get; set; } // Cena przed promocją
+    
+    [MaxLength(50)]
+    public string? Kod { get; set; } // Kod promocyjny dla kuponów
+    
+    public string Opis { get; set; } = string.Empty;
+    public string Link { get; set; } = string.Empty;
     public DateTime DataDodania { get; set; } = DateTime.UtcNow;
 
     public int LiczbaHot { get; set; } = 0;
@@ -29,18 +37,18 @@ public class Oferta
 
     [ForeignKey("Uzytkownik")]
     public int IdUzytkownik { get; set; }
-    public Uzytkownik Uzytkownik { get; set; }
+    public Uzytkownik Uzytkownik { get; set; } = null!;
 
     [ForeignKey("Kategoria")]
     public int? IdKategoria { get; set; }
-    public Kategoria Kategoria { get; set; }
+    public Kategoria? Kategoria { get; set; }
 
     // Opcjonalnie: jeśli chcesz przechowywać embeddingi jako tekst
-    public string Embedding { get; set; }
+    public string Embedding { get; set; } = string.Empty;
 
-    public ICollection<OfertaZdjecie> Zdjecia { get; set; }
-    public ICollection<Komentarz> Komentarze { get; set; }
-    public ICollection<Glos> Glosy { get; set; }
-    public ICollection<OfertaTag> OfertaTagi { get; set; }
-    public ICollection<Powiadomienie> Powiadomienia { get; set; }
+    public ICollection<OfertaZdjecie> Zdjecia { get; set; } = new List<OfertaZdjecie>();
+    public ICollection<Komentarz> Komentarze { get; set; } = new List<Komentarz>();
+    public ICollection<Glos> Glosy { get; set; } = new List<Glos>();
+    public ICollection<OfertaTag> OfertaTagi { get; set; } = new List<OfertaTag>();
+    public ICollection<Powiadomienie> Powiadomienia { get; set; } = new List<Powiadomienie>();
 }

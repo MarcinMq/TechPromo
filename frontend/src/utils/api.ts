@@ -40,6 +40,45 @@ export const apiPost = (url: string, data: any) =>
     body: JSON.stringify(data)
   });
 
+export const apiPostFormData = async (url: string, formData: FormData) => {
+  if (!isAuthenticated()) {
+    throw new Error('Nie jesteś zalogowany');
+  }
+
+  const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;
+
+  console.log('=== apiPostFormData Debug ===');
+  console.log('URL:', fullUrl);
+  console.log('Auth headers:', getAuthHeaders());
+  
+  // Debug FormData contents
+  console.log('FormData contents:');
+  for (let [key, value] of formData.entries()) {
+    console.log(`${key}:`, value);
+  }
+
+  const response = await fetch(fullUrl, {
+    method: 'POST',
+    headers: {
+      ...getAuthHeaders()
+      // Nie ustawiamy Content-Type - przeglądarka automatycznie ustawi z boundary
+    },
+    body: formData
+  });
+
+  console.log('Response status:', response.status);
+  console.log('Response headers:', [...response.headers.entries()]);
+
+  // Obsługa błędów autoryzacji
+  if (response.status === 401) {
+    logout();
+    window.location.href = '/auth/login';
+    throw new Error('Sesja wygasła. Zaloguj się ponownie.');
+  }
+
+  return response;
+};
+
 export const apiPut = (url: string, data: any) => 
   authorizedFetch(url, {
     method: 'PUT',

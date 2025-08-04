@@ -19,13 +19,29 @@ type Odznaka = {
   ikona: string;
 };
 
+type Oferta = {
+  id: number;
+  idOferta: number;
+  tytul: string;
+  opis: string;
+  autor: string;
+  kategoria: string;
+  dataUtworzenia: string;
+  dataDodania: string;
+  status: string;
+  aktywna: boolean;
+  zatwierdzona: boolean;
+  cena: number;
+  link: string;
+};
+
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'badges' | 'assign' | 'reports' | 'comments' | 'offers'>('users');
   const [users, setUsers] = useState<Uzytkownik[]>([]);
   const [badges, setBadges] = useState<Odznaka[]>([]);
   const [reports, setReports] = useState<any[]>([]);
   const [comments, setComments] = useState<any[]>([]);
-  const [offers, setOffers] = useState<any[]>([]);
+  const [offers, setOffers] = useState<Oferta[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>('');
 
@@ -690,11 +706,10 @@ const AdminPanel = () => {
                   <div className="flex justify-between items-start mb-3">
                     <h4 className="text-lg font-bold">{offer.tytul}</h4>
                     <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      offer.status === 'Zatwierdzona' ? 'bg-green-100 text-green-800' : 
-                      offer.status === 'Oczekująca' ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-red-100 text-red-800'
+                      offer.zatwierdzona ? 'bg-green-100 text-green-800' : 
+                      'bg-yellow-100 text-yellow-800'
                     }`}>
-                      {offer.status}
+                      {offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}
                     </span>
                   </div>
                   <div className="bg-white/70 p-4 rounded-lg mb-4">
@@ -706,14 +721,16 @@ const AdminPanel = () => {
                     <p><strong>Cena:</strong> {offer.cena ? <span className="font-bold text-green-600">{offer.cena} PLN</span> : <span className="text-gray-500">Brak</span>}</p>
                   </div>
                   <div className="flex space-x-3 pt-3 border-t border-gray-200">
-                    <button 
-                      className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium disabled:opacity-50"
-                      onClick={() => approveOffer(offer.id)}
-                      disabled={loading}
-                    >
-                      <Check className="w-4 h-4 inline mr-1" />
-                      Zatwierdź
-                    </button>
+                    {!offer.zatwierdzona && (
+                      <button 
+                        className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium disabled:opacity-50"
+                        onClick={() => approveOffer(offer.id)}
+                        disabled={loading}
+                      >
+                        <Check className="w-4 h-4 inline mr-1" />
+                        Zatwierdź
+                      </button>
+                    )}
                     <button 
                       className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
                       onClick={() => deleteOffer(offer.id)}

@@ -9,12 +9,12 @@ interface OfferTypeModalProps {
 const OfferTypeModal: React.FC<OfferTypeModalProps> = ({ isVisible, onClose }) => {
   const navigate = useNavigate();
 
-  const handleOfferTypeSelect = (type: 'deal' | 'coupon') => {
+  const handleOfferTypeSelect = (type: 'okazja' | 'kupon') => {
     onClose();
-    if (type === 'deal') {
-      navigate('/create-offer/deal');
+    if (type === 'okazja') {
+      navigate('/stworz-oferte/okazja');
     } else {
-      navigate('/create-offer/coupon');
+      navigate('/stworz-oferte/kupon');
     }
   };
 
@@ -28,7 +28,7 @@ const OfferTypeModal: React.FC<OfferTypeModalProps> = ({ isVisible, onClose }) =
         <div className="flex flex-col space-y-4 mb-6">
           <div 
             className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/30 cursor-pointer transition-all hover:shadow-xl hover:scale-105 flex flex-col justify-between h-full"
-            onClick={() => handleOfferTypeSelect('deal')}
+            onClick={() => handleOfferTypeSelect('okazja')}
           >
             <span className="text-4xl mb-4">🏷️</span>
             <h3 className="text-lg font-semibold mb-2 text-gray-900">Okazja</h3>
@@ -45,7 +45,7 @@ const OfferTypeModal: React.FC<OfferTypeModalProps> = ({ isVisible, onClose }) =
 
           <div 
             className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/30 cursor-pointer transition-all hover:shadow-xl hover:scale-105 flex flex-col justify-between h-full"
-            onClick={() => handleOfferTypeSelect('coupon')}
+            onClick={() => handleOfferTypeSelect('kupon')}
           >
             <span className="text-4xl mb-4">✂️</span>
             <h3 className="text-lg font-semibold mb-2 text-gray-900">Kupon</h3>

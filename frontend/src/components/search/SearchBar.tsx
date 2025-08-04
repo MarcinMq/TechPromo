@@ -5,6 +5,8 @@ interface SearchBarProps {
   onSearch: (query: string, filters: SearchFilters) => void;
   placeholder?: string;
   showAdvancedFilters?: boolean;
+  compact?: boolean; // Nowa prop dla kompaktowego trybu
+  className?: string; // Klasy CSS dla kontenera
 }
 
 interface SearchFilters {
@@ -23,10 +25,13 @@ interface Category {
 const SearchBar: React.FC<SearchBarProps> = ({ 
   onSearch, 
   placeholder = "Wyszukaj okazje... (np. iPhone, laptop, słuchawki)",
-  showAdvancedFilters = false 
+  showAdvancedFilters = false,
+  compact = false,
+  className = ""
 }) => {
   const [query, setQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
   const [filters, setFilters] = useState<SearchFilters>({
     sortBy: 'hot'
@@ -79,8 +84,34 @@ const SearchBar: React.FC<SearchBarProps> = ({
     onSearch('', { sortBy: 'hot' });
   };
 
+  // Handler dla kliknięcia ikony w trybie kompaktowym
+  const handleExpandClick = () => {
+    if (compact) {
+      setIsExpanded(true);
+    }
+  };
+
+  // Handler dla utraty fokusa w trybie kompaktowym
+  const handleBlur = () => {
+    if (compact && query === '') {
+      setIsExpanded(false);
+    }
+  };
+
+  // Jeśli tryb kompaktowy i nie rozwinięty, pokaż tylko ikonę
+  if (compact && !isExpanded) {
+    return (
+      <button
+        onClick={handleExpandClick}
+        className={`flex items-center justify-center w-10 h-10 bg-white/70 backdrop-blur-xl rounded-xl shadow-lg border border-white/40 text-gray-600 hover:bg-white/90 transition-all duration-300 ${className}`}
+      >
+        <Search className="w-5 h-5" />
+      </button>
+    );
+  }
+
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${className}`}>
       {/* Główna wyszukiwarka */}
       <div className="relative">
         <div className="flex items-center bg-white/70 backdrop-blur-2xl rounded-2xl shadow-lg border border-white/40 overflow-hidden">
@@ -97,6 +128,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyPress={handleKeyPress}
+            onBlur={handleBlur}
+            autoFocus={compact && isExpanded}
           />
           
           {/* Przycisk */}

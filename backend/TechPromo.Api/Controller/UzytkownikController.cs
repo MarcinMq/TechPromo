@@ -155,11 +155,14 @@ namespace TechPromo.Api.Controllers
 
         // GET: api/uzytkownik/oferty
         [HttpGet("oferty")]
-        public async Task<ActionResult<IEnumerable<OfertaDto>>> GetUserOffers()
+        public async Task<ActionResult<IEnumerable<OfertaDto>>> GetUserOffers(
+            [FromQuery] string? kategoria = null,
+            [FromQuery] string? tag = null,
+            [FromQuery] string? sortBy = "newest")
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             
-            var offers = await _context.Oferty
+            var query = _context.Oferty
                 .Where(o => o.IdUzytkownik == userId)
                 .Include(o => o.Uzytkownik)
                 .Include(o => o.Kategoria)
@@ -167,13 +170,41 @@ namespace TechPromo.Api.Controllers
                 .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
                 .Include(o => o.Glosy)
                 .Include(o => o.Komentarze)
-                .OrderByDescending(o => o.DataDodania)
+                .AsQueryable();
+
+            // Filtrowanie po kategorii
+            if (!string.IsNullOrEmpty(kategoria))
+            {
+                query = query.Where(o => o.Kategoria != null && o.Kategoria.Nazwa == kategoria);
+            }
+
+            // Filtrowanie po tagu
+            if (!string.IsNullOrEmpty(tag))
+            {
+                query = query.Where(o => o.OfertaTagi.Any(ot => ot.Tag.Nazwa.Contains(tag)));
+            }
+
+            // Sortowanie
+            query = sortBy switch
+            {
+                "hot" => query.OrderByDescending(o => o.LiczbaHot - o.LiczbaCold),
+                "cold" => query.OrderBy(o => o.LiczbaHot - o.LiczbaCold),
+                "comments" => query.OrderByDescending(o => o.Komentarze.Count),
+                "newest" => query.OrderByDescending(o => o.DataDodania),
+                "oldest" => query.OrderBy(o => o.DataDodania),
+                _ => query.OrderByDescending(o => o.DataDodania)
+            };
+
+            var offers = await query
                 .Select(o => new OfertaDto
                 {
                     Id = o.IdOferta,
                     Tytul = o.Nazwa,
                     Opis = o.Opis,
+                    Typ = o.Typ,
                     Cena = o.Cena,
+                    CenaPoprzednia = o.CenaPoprzednia,
+                    Kod = o.Kod,
                     Sklep = o.Link, // Tymczasowo używamy Link jako sklep
                     Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
                     Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
@@ -295,6 +326,7 @@ namespace TechPromo.Api.Controllers
 
         // POST: api/uzytkownik/oferta/{id}/glos
         [HttpPost("oferta/{id}/glos")]
+        [Authorize]
         public async Task<ActionResult> VoteOffer(int id, [FromBody] GlosDto dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");

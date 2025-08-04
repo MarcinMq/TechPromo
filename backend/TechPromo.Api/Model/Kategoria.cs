@@ -12,10 +12,11 @@ public class Kategoria
 
     [Required]
     [MaxLength(50)]
-    public string Nazwa { get; set; }
+    public string Nazwa { get; set; } = string.Empty;
 
-    public string Opis { get; set; }
+    [MaxLength(200)]
+    public string Opis { get; set; } = string.Empty;
 
-    public ICollection<Oferta> Oferty { get; set; }
+    public ICollection<Oferta> Oferty { get; set; } = new List<Oferta>();
 }
 }

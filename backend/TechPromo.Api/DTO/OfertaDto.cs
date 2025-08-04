@@ -3,15 +3,17 @@ namespace TechPromo.Api.DTO
     public class OfertaDto
     {
         public int Id { get; set; }
-        public string Tytul { get; set; }
-        public string Opis { get; set; }
+        public string Tytul { get; set; } = string.Empty;
+        public string Opis { get; set; } = string.Empty;
+        public string Typ { get; set; } = "okazja"; // okazja lub kupon
         public decimal? Cena { get; set; }
         public decimal? CenaPoprzednia { get; set; }
-        public string Sklep { get; set; }
-        public string Kategoria { get; set; }
+        public string? Kod { get; set; } // Kod promocyjny dla kuponów
+        public string Sklep { get; set; } = string.Empty;
+        public string Kategoria { get; set; } = string.Empty;
         public List<string> Tagi { get; set; } = new List<string>();
-        public string Autor { get; set; }
-        public string DataUtworzenia { get; set; }
+        public string Autor { get; set; } = string.Empty;
+        public string DataUtworzenia { get; set; } = string.Empty;
         public VotesDto Votes { get; set; } = new VotesDto();
         public int Komentarze { get; set; }
         public string? UserVote { get; set; } // hot, cold lub null

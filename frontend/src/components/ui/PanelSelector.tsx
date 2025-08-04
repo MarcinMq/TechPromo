@@ -31,7 +31,7 @@ const PanelSelector: React.FC<PanelSelectorProps> = ({ userRole, isVisible, onSe
           {/* Panel Użytkownika - zawsze dostępny dla zalogowanych */}
           <button 
             className="w-full flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl transition-all transform hover:scale-[1.02] border border-blue-200"
-            onClick={() => handlePanelClick('/user/panel')}
+            onClick={() => handlePanelClick('/uzytkownik/panel')}
           >
             <User className="w-8 h-8 mr-4 text-blue-600" />
             <div className="text-left">

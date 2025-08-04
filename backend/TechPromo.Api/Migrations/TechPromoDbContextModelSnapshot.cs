@@ -289,6 +289,9 @@ namespace TechPromo.Api.Migrations
                     b.Property<decimal?>("Cena")
                         .HasColumnType("numeric");
 
+                    b.Property<decimal?>("CenaPoprzednia")
+                        .HasColumnType("numeric");
+
                     b.Property<DateTime>("DataDodania")
                         .HasColumnType("timestamp with time zone");
 
@@ -301,6 +304,10 @@ namespace TechPromo.Api.Migrations
 
                     b.Property<int>("IdUzytkownik")
                         .HasColumnType("integer");
+
+                    b.Property<string>("Kod")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)");
 
                     b.Property<int>("LiczbaCold")
                         .HasColumnType("integer");
@@ -322,6 +329,11 @@ namespace TechPromo.Api.Migrations
                         .HasColumnType("text");
 
                     b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.Property<string>("Typ")
                         .IsRequired()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
@@ -454,7 +466,8 @@ namespace TechPromo.Api.Migrations
 
                     b.Property<string>("Opis")
                         .IsRequired()
-                        .HasColumnType("text");
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
 
                     b.HasKey("IdKategoria");
 

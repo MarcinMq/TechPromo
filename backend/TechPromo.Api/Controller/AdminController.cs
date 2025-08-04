@@ -300,14 +300,20 @@ namespace TechPromo.Api.Controllers
         {
             var oferty = await _context.Oferty
                 .Include(o => o.Uzytkownik)
-                .OrderByDescending(o => o.DataDodania) // Prawidłowa nazwa
+                .Include(o => o.Kategoria)
+                .OrderByDescending(o => o.DataDodania)
                 .Select(o => new {
                     id = o.IdOferta,
-                    tytul = o.Nazwa, // Prawidłowa nazwa właściwości
+                    idOferta = o.IdOferta, // Dodane dla zgodności z ModeratorController
+                    tytul = o.Nazwa,
                     opis = o.Opis,
-                    autor = o.Uzytkownik.UserName,
+                    autor = o.Uzytkownik.UserName ?? "Nieznany",
+                    kategoria = o.Kategoria != null ? o.Kategoria.Nazwa ?? "Brak" : "Brak",
                     dataUtworzenia = o.DataDodania.ToString("yyyy-MM-dd HH:mm"),
-                    status = o.Status, // Używamy Status zamiast Aktywna
+                    dataDodania = o.DataDodania.ToString("yyyy-MM-dd HH:mm"), // Dodane dla zgodności
+                    status = o.Status,
+                    aktywna = o.Aktywna, // Dodane pole z ModeratorController
+                    zatwierdzona = o.Zatwierdzona, // Dodane pole z ModeratorController
                     cena = o.Cena,
                     link = o.Link
                 })
@@ -323,11 +329,36 @@ namespace TechPromo.Api.Controllers
             if (oferta == null)
                 return NotFound("Nie znaleziono oferty");
 
-            // Aktywuj ofertę
-            oferta.Status = "aktywny";
+            // Zatwierdź i aktywuj ofertę - używaj tych samych pól co ModeratorController
+            oferta.Zatwierdzona = true;
+            oferta.Aktywna = true;
+            oferta.Status = "aktywny"; // Dodatkowo ustaw status dla zgodności
             await _context.SaveChangesAsync();
 
             return Ok($"Oferta '{oferta.Nazwa}' została zatwierdzona i aktywowana");
+        }
+
+        [HttpPut("oferta/{id}/odrzuc")]
+        public async Task<IActionResult> OdrzucOferte(int id, [FromBody] OdrzucenieDto odrzucenieDto)
+        {
+            try
+            {
+                var oferta = await _context.Oferty.FindAsync(id);
+                if (oferta == null)
+                    return NotFound(new { message = "Oferta nie została znaleziona" });
+
+                // Odrzuć ofertę - zgodnie z ModeratorController
+                oferta.Zatwierdzona = false;
+                oferta.Aktywna = false;
+                oferta.Status = "odrzucony";
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Oferta została odrzucona" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas odrzucania oferty", error = ex.Message });
+            }
         }
 
         [HttpDelete("oferta/{id}")]

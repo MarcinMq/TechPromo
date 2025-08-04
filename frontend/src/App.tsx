@@ -1,6 +1,7 @@
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Navbar from './components/layout/Navbar';
+import Footer from './components/layout/Footer';
 import HomePage from './pages/HomePage';
 import SearchPage from './pages/SearchPage';
 import Login from './pages/auth/Login';
@@ -97,17 +98,17 @@ function App() {
           <Route path="/search" element={<SearchPage />} />
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
-          <Route path="/create-offer/deal" element={
+          <Route path="/stworz-oferte/okazja" element={
             <ProtectedRoute>
               <CreateDealForm />
             </ProtectedRoute>
           } />
-          <Route path="/create-offer/coupon" element={
+          <Route path="/stworz-oferte/kupon" element={
             <ProtectedRoute>
               <CreateCouponForm />
             </ProtectedRoute>
           } />
-          <Route path="/user/panel" element={
+          <Route path="/uzytkownik/panel" element={
             <ProtectedRoute>
               <UserPanel />
             </ProtectedRoute>
@@ -129,6 +130,9 @@ function App() {
           } />
         </Routes>
       </main>
+      
+      {/* Stopka */}
+      <Footer />
     </div>
   );
 }

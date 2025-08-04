@@ -6,8 +6,10 @@ type Oferta = {
   id: number;
   tytul: string;
   opis: string;
+  typ: string; // "okazja" lub "kupon"
   cena?: number;
   cenaPoprzednia?: number;
+  kod?: string; // Kod promocyjny dla kuponów
   sklep: string;
   kategoria: string;
   tagi: string[];
@@ -64,7 +66,8 @@ const UserPanel = () => {
   
   const fetchOffers = async () => {
     try {
-      let url = `${API_BASE}/oferta`;
+      // Zmieniony endpoint na oferty użytkownika
+      let url = `${API_BASE}/api/uzytkownik/oferty`;
       const params = new URLSearchParams();
       
       if (categoryFilter) params.append('kategoria', categoryFilter);
@@ -343,8 +346,9 @@ const UserPanel = () => {
                 
                 <p className="text-gray-600 mb-4">{offer.opis}</p>
                 
-                {offer.zdjecia && offer.zdjecia.length > 0 && (
-                  <div className="mb-4">
+                {/* Zdjęcia lub ikona fallback */}
+                <div className="mb-4">
+                  {offer.zdjecia && offer.zdjecia.length > 0 ? (
                     <div className="flex space-x-2 mb-2">
                       {offer.zdjecia.slice(0, 3).map((image, index) => (
                         <img 
@@ -363,17 +367,50 @@ const UserPanel = () => {
                         </div>
                       )}
                     </div>
-                  </div>
-                )}
+                  ) : (
+                    <div className="w-16 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-2xl mb-2">
+                      {offer.typ === 'kupon' ? '🎫' : '🛍️'}
+                    </div>
+                  )}
+                </div>
                 
                 <div className="mb-4">
-                  {offer.cena && (
-                    <div className="flex items-baseline space-x-2 mb-2">
-                      <span className="text-xl font-bold text-green-600">{offer.cena} PLN</span>
-                      {offer.cenaPoprzednia && (
-                        <span className="text-sm line-through text-gray-400">{offer.cenaPoprzednia} PLN</span>
+                  {offer.typ === 'kupon' ? (
+                    // Wyświetlanie dla kuponów
+                    <div className="flex flex-wrap items-center space-x-2 mb-2">
+                      <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-2 py-1 rounded">
+                        🎫 KUPON
+                      </span>
+                      {offer.kod && (
+                        <span className="bg-gray-100 text-gray-800 text-sm font-mono px-2 py-1 rounded border">
+                          {offer.kod}
+                        </span>
+                      )}
+                      {offer.cenaPoprzednia && offer.cena && (
+                        <>
+                          <span className="text-base line-through text-gray-400">{offer.cenaPoprzednia} PLN</span>
+                          <span className="text-xl font-bold text-purple-600">{offer.cena} PLN</span>
+                          <span className="bg-purple-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                            -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
+                          </span>
+                        </>
                       )}
                     </div>
+                  ) : (
+                    // Wyświetlanie dla okazji
+                    offer.cena && (
+                      <div className="flex items-baseline space-x-2 mb-2">
+                        <span className="text-xl font-bold text-green-600">{offer.cena} PLN</span>
+                        {offer.cenaPoprzednia && offer.cenaPoprzednia > offer.cena && (
+                          <>
+                            <span className="text-sm line-through text-gray-400">{offer.cenaPoprzednia} PLN</span>
+                            <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                              -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    )
                   )}
                   <span className="text-sm text-gray-600 flex items-center">
                     <MapPin className="w-4 h-4 mr-1" />

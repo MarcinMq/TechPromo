@@ -10,12 +10,12 @@ using TechPromo.Api.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 //CORS (Cross-Origin Resource Sharing) - pozwala na dostęp z innej domeny
-var allowedOrigin = "http://localhost:5173";
+var allowedOrigins = new[] { "http://localhost:5173", "http://localhost:5174", "http://localhost:5175" };
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendDevCors", policy =>
     {
-        policy.WithOrigins(allowedOrigin)
+        policy.WithOrigins(allowedOrigins)
               .AllowAnyHeader()
               .AllowAnyMethod()
               .AllowCredentials();
@@ -118,7 +118,11 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-app.UseHttpsRedirection();
+// HTTPS redirection only in production
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Obsługa plików statycznych (zdjęcia ofert)
 app.UseStaticFiles();

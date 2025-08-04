@@ -1,70 +1,54 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, Clock } from 'lucide-react';
-import { apiPost } from '../../utils/api';
+import { Rocket, Clock, Tag, Store, DollarSign, FileText, Upload, Image, X } from 'lucide-react';
 
-interface DealFormData {
+interface OfferFormData {
   tytul: string;
   opis: string;
-  cena: string;
+  cenaAktualna: string;
   cenaPoprzednia: string;
-  sklep: string;
   kategoria: string;
+  sklep: string;
   tagi: string;
-  link: string;
+  typ: 'okazja';
+  zdjecia: File[];
 }
+
+// Te same kategorie co na stronie głównej
+const categories = [
+  { name: 'Telefony', icon: '📱' },
+  { name: 'Laptopy', icon: '💻' },
+  { name: 'Audio', icon: '🎧' },
+  { name: 'TV', icon: '📺' },
+  { name: 'Gaming', icon: '🎮' },
+  { name: 'Foto', icon: '📷' },
+  { name: 'Smartwatche', icon: '⌚' },
+  { name: 'Tablety', icon: '📱' },
+  { name: 'PC', icon: '🖥️' },
+  { name: 'Akcesoria', icon: '🔌' },
+];
 
 const CreateDealForm: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [isDragOver, setIsDragOver] = useState(false);
   
-  const [formData, setFormData] = useState<DealFormData>({
+  const [formData, setFormData] = useState<OfferFormData>({
     tytul: '',
     opis: '',
-    cena: '',
+    cenaAktualna: '',
     cenaPoprzednia: '',
+    kategoria: 'Telefony',
     sklep: '',
-    kategoria: 'Elektronika',
     tagi: '',
-    link: ''
+    typ: 'okazja',
+    zdjecia: []
   });
-
-  const [selectedImages, setSelectedImages] = useState<File[]>([]);
-  const [imagePreview, setImagePreview] = useState<string[]>([]);
-
-  const categories = [
-    'Elektronika', 'Moda', 'Dom i Ogród', 'Sport', 'Książki', 
-    'Gry', 'Kosmetyki', 'Jedzenie', 'Podróże', 'Inne'
-  ];
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-  };
-
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length + selectedImages.length > 5) {
-      setMessage({ type: 'error', text: 'Możesz dodać maksymalnie 5 zdjęć' });
-      return;
-    }
-
-    setSelectedImages(prev => [...prev, ...files]);
-    
-    // Podgląd zdjęć
-    files.forEach(file => {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setImagePreview(prev => [...prev, e.target?.result as string]);
-      };
-      reader.readAsDataURL(file);
-    });
-  };
-
-  const removeImage = (index: number) => {
-    setSelectedImages(prev => prev.filter((_, i) => i !== index));
-    setImagePreview(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,36 +57,130 @@ const CreateDealForm: React.FC = () => {
     setMessage(null);
 
     try {
-      const submitData = new FormData();
+      // Walidacja podstawowa
+      if (!formData.tytul.trim()) {
+        throw new Error('Tytuł jest wymagany');
+      }
+      if (!formData.opis.trim()) {
+        throw new Error('Opis jest wymagany');
+      }
+      if (!formData.kategoria) {
+        throw new Error('Kategoria jest wymagana');
+      }
+
+      // Przygotuj dane do wysłania jako FormData
+      const formDataToSend = new FormData();
+      formDataToSend.append('tytul', formData.tytul.trim());
+      formDataToSend.append('opis', formData.opis.trim());
       
-      // Dodaj dane tekstowe
-      Object.entries(formData).forEach(([key, value]) => {
-        if (value) submitData.append(key, value);
+      if (formData.cenaAktualna) {
+        formDataToSend.append('cena', formData.cenaAktualna);
+      }
+      if (formData.cenaPoprzednia) {
+        formDataToSend.append('cenaPoprzednia', formData.cenaPoprzednia);
+      }
+      
+      formDataToSend.append('kategoria', formData.kategoria);
+      if (formData.sklep.trim()) {
+        formDataToSend.append('sklep', formData.sklep.trim());
+      }
+      if (formData.tagi.trim()) {
+        formDataToSend.append('tagi', formData.tagi.trim());
+      }
+      formDataToSend.append('typ', formData.typ);
+
+      // Dodaj pliki zdjęć
+      formData.zdjecia.forEach((file) => {
+        formDataToSend.append('zdjecia', file);
       });
 
-      // Dodaj typ oferty
-      submitData.append('typ', 'okazja');
-      
-      // Dodaj zdjęcia
-      selectedImages.forEach((file, index) => {
-        submitData.append(`zdjecie_${index}`, file);
-      });
+      console.log('Wysyłanie danych:', formDataToSend);
 
-      const response = await apiPost('/oferta', submitData);
+      // Wyślij jako FormData
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/oferta/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+          // Nie dodawaj Content-Type dla FormData - przeglądarka ustawi automatycznie z boundary
+        },
+        body: formDataToSend
+      });
       
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Okazja została dodana pomyślnie!' });
+        setMessage({ 
+          type: 'success', 
+          text: `${formData.typ === 'okazja' ? 'Okazja' : 'Kupon'} została dodana pomyślnie! Oczekuje na potwierdzenie przez Administrację.` 
+        });
+        
+        // Reset formularza
+        setFormData({
+          tytul: '',
+          opis: '',
+          cenaAktualna: '',
+          cenaPoprzednia: '',
+          kategoria: 'Telefony',
+          sklep: '',
+          tagi: '',
+          typ: 'okazja',
+          zdjecia: []
+        });
+
+        // Przekierowanie po 3 sekundach
         setTimeout(() => {
-          navigate('/user/panel');
-        }, 2000);
+          navigate('/uzytkownik/panel');
+        }, 3000);
       } else {
-        throw new Error('Błąd podczas dodawania okazji');
+        const errorData = await response.text();
+        throw new Error(errorData || 'Błąd podczas dodawania oferty');
       }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Wystąpił błąd podczas dodawania okazji' });
+    } catch (error: any) {
+      console.error('Błąd:', error);
+      setMessage({ 
+        type: 'error', 
+        text: error.message || 'Wystąpił nieoczekiwany błąd' 
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  // File handling functions
+  const handleFileSelect = (files: File[]) => {
+    const validFiles = files.filter(file => {
+      // Check file type
+      if (!file.type.startsWith('image/')) {
+        setMessage({ type: 'error', text: 'Dozwolone są tylko pliki graficzne (JPG, PNG, etc.)' });
+        return false;
+      }
+      // Check file size (5MB limit)
+      if (file.size > 5 * 1024 * 1024) {
+        setMessage({ type: 'error', text: `Plik ${file.name} jest za duży. Maksymalny rozmiar to 5MB.` });
+        return false;
+      }
+      return true;
+    });
+
+    setFormData(prev => {
+      const newFiles = [...prev.zdjecia, ...validFiles];
+      if (newFiles.length > 5) {
+        setMessage({ type: 'error', text: 'Można dodać maksymalnie 5 zdjęć' });
+        return { ...prev, zdjecia: newFiles.slice(0, 5) };
+      }
+      return { ...prev, zdjecia: newFiles };
+    });
+
+    // Clear any previous error messages if files are valid
+    if (validFiles.length > 0) {
+      setMessage(null);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setFormData(prev => ({
+      ...prev,
+      zdjecia: prev.zdjecia.filter((_, i) => i !== index)
+    }));
   };
 
   return (
@@ -124,26 +202,35 @@ const CreateDealForm: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Tytuł */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tytuł okazji *
-                <span className="block text-xs text-gray-500 mt-1">Krótko opisz produkt i promocję</span>
+              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
+                <div className="flex items-center mb-1">
+                  <FileText className="w-4 h-4 mr-1" />
+                  Tytuł okazji *
+                </div>
+                <span className="text-xs text-gray-500 font-normal">Krótko opisz produkt i promocję</span>
               </label>
-              <input
-                type="text"
-                name="tytul"
-                value={formData.tytul}
-                onChange={handleInputChange}
-                placeholder="np. iPhone 15 Pro 128GB - 23% taniej w Media Expert"
-                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
-                required
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  name="tytul"
+                  value={formData.tytul}
+                  onChange={handleInputChange}
+                  placeholder="np. iPhone 15 Pro 128GB - 23% taniej w Media Expert"
+                  className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
+                  required
+                />
+                <FileText className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              </div>
             </div>
 
             {/* Opis */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Opis *
-                <span className="block text-xs text-gray-500 mt-1">Szczegółowy opis produktu i warunków promocji</span>
+              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
+                <div className="flex items-center mb-1">
+                  <FileText className="w-4 h-4 mr-1" />
+                  Opis *
+                </div>
+                <span className="text-xs text-gray-500 font-normal">Szczegółowy opis produktu i warunków promocji</span>
               </label>
               <textarea
                 name="opis"
@@ -156,131 +243,197 @@ const CreateDealForm: React.FC = () => {
               />
             </div>
 
-            {/* Ceny */}
+            {/* Ceny - poprzednia i aktualna */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Cena promocyjna *
+                <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
+                  <div className="flex items-center mb-1">
+                    <DollarSign className="w-4 h-4 mr-1" />
+                    Cena poprzednia
+                  </div>
+                  <span className="text-xs text-gray-500 font-normal">Cena przed promocją</span>
                 </label>
-                <input
-                  type="number"
-                  name="cena"
-                  value={formData.cena}
-                  onChange={handleInputChange}
-                  placeholder="4599"
-                  step="0.01"
-                  className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
-                  required
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    name="cenaPoprzednia"
+                    value={formData.cenaPoprzednia}
+                    onChange={handleInputChange}
+                    placeholder="5999.99"
+                    step="0.01"
+                    min="0"
+                    className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
+                  />
+                  <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                </div>
               </div>
+              
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Cena przed promocją
+                <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
+                  <div className="flex items-center mb-1">
+                    <DollarSign className="w-4 h-4 mr-1 text-red-500" />
+                    Cena promocyjna *
+                  </div>
+                  <span className="text-xs text-gray-500 font-normal">Aktualna cena promocyjna</span>
                 </label>
-                <input
-                  type="number"
-                  name="cenaPoprzednia"
-                  value={formData.cenaPoprzednia}
-                  onChange={handleInputChange}
-                  placeholder="5999"
-                  step="0.01"
-                  className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
-                />
+                <div className="relative">
+                  <input
+                    type="number"
+                    name="cenaAktualna"
+                    value={formData.cenaAktualna}
+                    onChange={handleInputChange}
+                    placeholder="4599.99"
+                    step="0.01"
+                    min="0"
+                    className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
+                    required
+                  />
+                  <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-500" />
+                </div>
               </div>
             </div>
 
-            {/* Sklep i kategoria */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Sklep *
-                </label>
+            {/* Sklep */}
+            <div>
+              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
+                <div className="flex items-center mb-1">
+                  <Store className="w-4 h-4 mr-1" />
+                  Sklep
+                </div>
+                <span className="text-xs text-gray-500 font-normal">Nazwa sklepu</span>
+              </label>
+              <div className="relative">
                 <input
                   type="text"
                   name="sklep"
                   value={formData.sklep}
                   onChange={handleInputChange}
                   placeholder="np. Media Expert, x-kom, RTV Euro AGD"
-                  className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
-                  required
+                  className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Kategoria *
-                </label>
-                <select
-                  name="kategoria"
-                  value={formData.kategoria}
-                  onChange={handleInputChange}
-                  className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
-                  required
-                >
-                  {categories.map(category => (
-                    <option key={category} value={category}>{category}</option>
-                  ))}
-                </select>
+                <Store className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               </div>
             </div>
 
-            {/* Link */}
+            {/* Kategoria - ładny wybór z ikonkami */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Link do oferty
-                <span className="block text-xs text-gray-500 mt-1">Bezpośredni link do produktu</span>
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Kategoria *
               </label>
-              <input
-                type="url"
-                name="link"
-                value={formData.link}
-                onChange={handleInputChange}
-                placeholder="https://example.com/produkt"
-                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
-              />
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                {categories.map(category => (
+                  <button
+                    key={category.name}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, kategoria: category.name }))}
+                    className={`p-3 rounded-xl border transition-all text-center hover:scale-105 ${
+                      formData.kategoria === category.name
+                        ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-md'
+                        : 'bg-white/90 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
+                    }`}
+                  >
+                    <div className="text-2xl mb-1">{category.icon}</div>
+                    <div className="text-xs font-medium">{category.name}</div>
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Tagi */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tagi
-                <span className="block text-xs text-gray-500 mt-1">Słowa kluczowe oddzielone przecinkami</span>
+              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
+                <div className="flex items-center mb-1">
+                  <Tag className="w-4 h-4 mr-1" />
+                  Tagi
+                </div>
+                <span className="text-xs text-gray-500 font-normal">Słowa kluczowe oddzielone przecinkami</span>
               </label>
-              <input
-                type="text"
-                name="tagi"
-                value={formData.tagi}
-                onChange={handleInputChange}
-                placeholder="np. apple, smartphone, promocja, black friday"
-                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
-              />
+              <div className="relative">
+                <input
+                  type="text"
+                  name="tagi"
+                  value={formData.tagi}
+                  onChange={handleInputChange}
+                  placeholder="np. apple, smartphone, promocja"
+                  className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
+                />
+                <Tag className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              </div>
             </div>
 
             {/* Zdjęcia */}
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Zdjęcia produktu
-                <span className="block text-xs text-gray-500 mt-1">Maksymalnie 5 zdjęć</span>
+              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
+                <div className="flex items-center mb-1">
+                  <Image className="w-4 h-4 mr-1" />
+                  Zdjęcia oferty
+                </div>
+                <span className="text-xs text-gray-500 font-normal">Dodaj do 5 zdjęć (JPG, PNG, max 5MB każde)</span>
               </label>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                onChange={handleImageSelect}
-                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all file:p-4 file:border-0 file:bg-custom-blue file:text-white file:rounded-full file:cursor-pointer file:mr-4 file:py-2 file:px-4 file:text-sm file:font-semibold file:bg-custom-blue-dark hover:bg-custom-blue-darker"
-              />
               
-              {imagePreview.length > 0 && (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mt-4">
-                  {imagePreview.map((preview, index) => (
-                    <div key={index} className="relative rounded-2xl overflow-hidden border border-gray-200/50">
-                      <img src={preview} alt={`Podgląd ${index + 1}`} className="w-full h-full object-cover" />
+              {/* Upload Area */}
+              <div 
+                className={`relative border-2 border-dashed rounded-2xl p-6 transition-all ${
+                  isDragOver 
+                    ? 'border-custom-blue bg-blue-50' 
+                    : 'border-gray-300 hover:border-gray-400'
+                }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(true);
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(false);
+                }}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setIsDragOver(false);
+                  const files = Array.from(e.dataTransfer.files);
+                  handleFileSelect(files);
+                }}
+              >
+                <div className="text-center">
+                  <Image className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-600 mb-2">
+                    Przeciągnij i upuść zdjęcia tutaj lub
+                  </p>
+                  <label className="inline-flex items-center px-4 py-2 bg-custom-blue text-white rounded-xl hover:bg-custom-blue-dark transition-all cursor-pointer">
+                    <Upload className="w-4 h-4 mr-2" />
+                    Wybierz pliki
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={(e) => handleFileSelect(Array.from(e.target.files || []))}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Preview Grid */}
+              {formData.zdjecia.length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
+                  {formData.zdjecia.map((file, index) => (
+                    <div key={index} className="relative group">
+                      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
+                        <img
+                          src={URL.createObjectURL(file)}
+                          alt={`Preview ${index + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
                       <button
                         type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-2 right-2 bg-red-500/80 text-white p-2 rounded-full hover:bg-red-600 transition-colors"
+                        onClick={() => removeFile(index)}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
                       >
-                        ✕
+                        <X className="w-3 h-3" />
                       </button>
+                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 rounded-b-xl">
+                        {file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}
+                      </div>
                     </div>
                   ))}
                 </div>
