@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Rocket, Clock, Tag, Store, DollarSign, FileText, Upload, Image, X } from 'lucide-react';
+import { getAuthToken, getUserData } from '../../utils/auth';
 
 interface OfferFormData {
   tytul: string;
@@ -33,6 +34,7 @@ const CreateDealForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
   
   const [formData, setFormData] = useState<OfferFormData>({
     tytul: '',
@@ -40,11 +42,44 @@ const CreateDealForm: React.FC = () => {
     cenaAktualna: '',
     cenaPoprzednia: '',
     kategoria: 'Telefony',
-    sklep: '',
+  sklep: '', // używane jako URL do sklepu / oferty
     tagi: '',
     typ: 'okazja',
     zdjecia: []
   });
+
+  // Detect edit mode
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const edit = params.get('edit');
+    if (edit) {
+      const idNum = parseInt(edit, 10);
+      if (!isNaN(idNum)) {
+        setEditId(idNum);
+        const role = getUserData()?.role;
+        const url = role === 'User' ? `/api/uzytkownik/oferta/${idNum}` : `/api/oferta/${idNum}`;
+        fetch(url)
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(data => {
+            setFormData(prev => ({
+              ...prev,
+              tytul: data.tytul || data.Tytul || '',
+              opis: data.opis || data.Opis || '',
+              cenaAktualna: (data.cena ?? data.Cena)?.toString() || '',
+              cenaPoprzednia: (data.cenaPoprzednia ?? data.CenaPoprzednia)?.toString() || '',
+              kategoria: data.kategoria || data.Kategoria || 'Telefony',
+              sklep: data.sklep || data.Sklep || '',
+              tagi: (data.tagi || data.Tagi || []).join(', '),
+              typ: 'okazja'
+            }));
+          })
+          .catch(() => {
+            setMessage({ type: 'error', text: 'Brak uprawnień do edycji tej oferty' });
+            setTimeout(()=> navigate('/uzytkownik/panel'), 1500);
+          });
+      }
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -68,6 +103,31 @@ const CreateDealForm: React.FC = () => {
         throw new Error('Kategoria jest wymagana');
       }
 
+      const token = getAuthToken();
+      if (!token) throw new Error('Brak tokenu uwierzytelniającego. Zaloguj się ponownie.');
+
+      // Edit mode: send JSON PUT
+      if (editId) {
+        const payload = {
+          tytul: formData.tytul.trim(),
+          opis: formData.opis.trim(),
+          cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+          cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
+          kod: null,
+          link: formData.sklep.trim() || null
+        };
+        const role = getUserData()?.role;
+        const putUrl = role === 'Admin' ? `/api/admin/oferta/${editId}` : role === 'Moderator' ? `/api/moderator/oferta/${editId}/edytuj` : `/api/uzytkownik/oferta/${editId}`;
+        const res = await fetch(putUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Nie udało się zaktualizować oferty');
+        setMessage({ type: 'success', text: role === 'User' ? 'Oferta zaktualizowana – oczekuje ponownej moderacji.' : 'Oferta zaktualizowana.' });
+        setTimeout(() => navigate(role === 'User' ? '/uzytkownik/panel' : '/'), 1500);
+        return;
+      }
       // Przygotuj dane do wysłania jako FormData
       const formDataToSend = new FormData();
       formDataToSend.append('tytul', formData.tytul.trim());
@@ -82,7 +142,11 @@ const CreateDealForm: React.FC = () => {
       
       formDataToSend.append('kategoria', formData.kategoria);
       if (formData.sklep.trim()) {
-        formDataToSend.append('sklep', formData.sklep.trim());
+        let url = formData.sklep.trim();
+        if (!/^https?:\/\//i.test(url)) {
+          url = 'https://' + url; // automatyczne dodanie protokołu
+        }
+        formDataToSend.append('sklep', url);
       }
       if (formData.tagi.trim()) {
         formDataToSend.append('tagi', formData.tagi.trim());
@@ -94,10 +158,9 @@ const CreateDealForm: React.FC = () => {
         formDataToSend.append('zdjecia', file);
       });
 
-      console.log('Wysyłanie danych:', formDataToSend);
+      console.log('Wysyłanie danych (okazja)');
 
-      // Wyślij jako FormData
-      const token = localStorage.getItem('token');
+      // Wyślij jako FormData z prawidłowym tokenem
       const response = await fetch('/api/oferta/upload', {
         method: 'POST',
         headers: {
@@ -132,7 +195,7 @@ const CreateDealForm: React.FC = () => {
         }, 3000);
       } else {
         const errorData = await response.text();
-        throw new Error(errorData || 'Błąd podczas dodawania oferty');
+        throw new Error(`Błąd (${response.status}): ${errorData || 'Nie udało się dodać oferty'}`);
       }
     } catch (error: any) {
       console.error('Błąd:', error);
@@ -187,7 +250,7 @@ const CreateDealForm: React.FC = () => {
     <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
       <div className="max-w-3xl mx-auto px-4">
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-          <h1 className="text-3xl font-bold mb-6 text-gray-900 text-center">🛍️ Nowa Okazja</h1>
+          <h1 className="text-3xl font-bold mb-6 text-gray-900 text-center">{editId ? '✏️ Edytuj Okazję' : '🛍️ Nowa Okazja'}</h1>
 
           {message && (
             <div className={`p-4 rounded-2xl mb-6 text-center font-semibold backdrop-blur-sm ${
@@ -293,14 +356,14 @@ const CreateDealForm: React.FC = () => {
               </div>
             </div>
 
-            {/* Sklep */}
+            {/* Link do oferty */}
             <div>
               <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
                 <div className="flex items-center mb-1">
                   <Store className="w-4 h-4 mr-1" />
-                  Sklep
+                  Link do oferty / sklepu
                 </div>
-                <span className="text-xs text-gray-500 font-normal">Nazwa sklepu</span>
+                <span className="text-xs text-gray-500 font-normal">Pełny URL (np. https://www.sklep.pl/produkt)</span>
               </label>
               <div className="relative">
                 <input
@@ -308,7 +371,7 @@ const CreateDealForm: React.FC = () => {
                   name="sklep"
                   value={formData.sklep}
                   onChange={handleInputChange}
-                  placeholder="np. Media Expert, x-kom, RTV Euro AGD"
+                  placeholder="https://..."
                   className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-custom-blue focus:border-transparent transition-all"
                 />
                 <Store className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -461,8 +524,17 @@ const CreateDealForm: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Rocket className="w-5 h-5 inline mr-2" />
-                    Opublikuj Okazję
+                    {editId ? (
+                      <>
+                        <Rocket className="w-5 h-5 inline mr-2" />
+                        Zapisz zmiany
+                      </>
+                    ) : (
+                      <>
+                        <Rocket className="w-5 h-5 inline mr-2" />
+                        Opublikuj Okazję
+                      </>
+                    )}
                   </>
                 )}
               </button>

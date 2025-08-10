@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getAuthHeaders, isAuthenticated, logout } from '../../utils/auth';
+import { getAuthHeaders, isAuthenticated, logout, saveUserSession, getAuthToken } from '../../utils/auth';
 import { useNavigate } from 'react-router-dom';
 
 type OdznakaData = {
@@ -23,6 +23,12 @@ const Profil = () => {
   const [data, setData] = useState<ProfilData | null>(null);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [nickEdit, setNickEdit] = useState('');
+  const [emailEdit, setEmailEdit] = useState('');
+  const [pwdCurrent, setPwdCurrent] = useState('');
+  const [pwdNew, setPwdNew] = useState('');
+  const [saving, setSaving] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -60,6 +66,42 @@ const Profil = () => {
     fetchProfil();
   }, [navigate]);
 
+  const startEdit = () => {
+    if (!data) return;
+    setNickEdit(data.nick);
+    setEmailEdit(data.email);
+    setEditing(true);
+  };
+
+  const cancelEdit = () => { setEditing(false); setPwdCurrent(''); setPwdNew(''); };
+
+  const saveProfile = async () => {
+    if (!data) return;
+    setSaving(true);
+    try {
+      const body:any = {};
+      if (nickEdit !== data.nick) body.nick = nickEdit;
+      if (emailEdit !== data.email) body.email = emailEdit;
+      if (pwdNew) { body.hasloAktualne = pwdCurrent; body.hasloNowe = pwdNew; }
+      const token = getAuthToken();
+      const res = await fetch('http://localhost:5023/konto/profil', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(await res.text());
+      const json = await res.json();
+      // odśwież localStorage jeśli token wrócił
+      if (json.token) {
+        saveUserSession({ token: json.token, nick: json.nick, email: json.email, rola: json.rola, punkty: json.punkty });
+      }
+      setData(d => d ? { ...d, nick: json.nick, email: json.email } : d);
+      setEditing(false);
+    } catch(e:any) {
+      alert(e.message || 'Błąd zapisu profilu');
+    } finally { setSaving(false); }
+  };
+
   if (loading) return (
     <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50/50 to-purple-50/50">
       <div className="p-8 bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 text-center">
@@ -84,30 +126,41 @@ const Profil = () => {
         <h2 className="text-3xl font-bold mb-8 text-gray-900 text-center">Profil użytkownika</h2>
         
         <div className="space-y-4 mb-8">
-          <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/30">
-            <span className="font-semibold text-gray-700">Nick:</span>
-            <span className="text-gray-900 font-bold">{data?.nick}</span>
-          </div>
-          
-          <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/30">
-            <span className="font-semibold text-gray-700">Email:</span>
-            <span className="text-gray-900">{data?.email}</span>
-          </div>
-          
-          <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/30">
-            <span className="font-semibold text-gray-700">Rola:</span>
-            <span className="text-custom-blue font-bold">{data?.rola}</span>
-          </div>
-          
-          <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/30">
-            <span className="font-semibold text-gray-700">Punkty:</span>
-            <span className="text-green-600 font-bold text-xl">{data?.punkty}</span>
-          </div>
-          
-          <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border border-white/30">
-            <span className="font-semibold text-gray-700">Data rejestracji:</span>
-            <span className="text-gray-600">{data?.dataRejestracji}</span>
-          </div>
+          {editing ? (
+            <>
+              <div className="p-4 bg-white/50 rounded-2xl border flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-600">Nick</label>
+                <input value={nickEdit} onChange={e=>setNickEdit(e.target.value)} className="p-3 rounded-xl border bg-white/80" />
+              </div>
+              <div className="p-4 bg-white/50 rounded-2xl border flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-600">Email</label>
+                <input value={emailEdit} onChange={e=>setEmailEdit(e.target.value)} className="p-3 rounded-xl border bg-white/80" />
+              </div>
+              <div className="p-4 bg-white/50 rounded-2xl border flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-600">Aktualne hasło (jeśli zmieniasz hasło)</label>
+                <input type="password" value={pwdCurrent} onChange={e=>setPwdCurrent(e.target.value)} className="p-3 rounded-xl border bg-white/80" />
+              </div>
+              <div className="p-4 bg-white/50 rounded-2xl border flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-600">Nowe hasło</label>
+                <input type="password" value={pwdNew} onChange={e=>setPwdNew(e.target.value)} className="p-3 rounded-xl border bg-white/80" />
+              </div>
+              <div className="flex gap-4 pt-2">
+                <button onClick={cancelEdit} type="button" className="flex-1 p-3 rounded-xl border bg-white hover:bg-gray-100">Anuluj</button>
+                <button onClick={saveProfile} disabled={saving} className="flex-1 p-3 rounded-xl bg-custom-blue text-white font-semibold disabled:opacity-50">{saving? 'Zapisywanie...' : 'Zapisz'}</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border"><span className="font-semibold text-gray-700">Nick:</span><span className="text-gray-900 font-bold">{data?.nick}</span></div>
+              <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border"><span className="font-semibold text-gray-700">Email:</span><span className="text-gray-900">{data?.email}</span></div>
+              <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border"><span className="font-semibold text-gray-700">Rola:</span><span className="text-custom-blue font-bold">{data?.rola}</span></div>
+              <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border"><span className="font-semibold text-gray-700">Punkty:</span><span className="text-green-600 font-bold text-xl">{data?.punkty}</span></div>
+              <div className="flex justify-between items-center p-4 bg-white/50 backdrop-blur-sm rounded-2xl border"><span className="font-semibold text-gray-700">Data rejestracji:</span><span className="text-gray-600">{data?.dataRejestracji}</span></div>
+              <div className="pt-2 text-right">
+                <button onClick={startEdit} className="px-4 py-2 rounded-xl bg-custom-blue text-white font-semibold hover:bg-blue-700">Edytuj profil</button>
+              </div>
+            </>
+          )}
         </div>
         
         <div>

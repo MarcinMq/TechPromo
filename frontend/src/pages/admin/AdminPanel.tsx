@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MessageCircle, Users, ShoppingBag, Trash2, Trophy, Zap, Clipboard, Settings, Check } from 'lucide-react';
+// import FullOfferForm from '../../components/forms/FullOfferForm';
 import { authorizedFetch, apiPost, apiPut, apiDelete } from '../../utils/api'; // Prostsze API funkcje
 
 type Uzytkownik = {
@@ -33,6 +34,7 @@ type Oferta = {
   zatwierdzona: boolean;
   cena: number;
   link: string;
+  typ?: string;
 };
 
 const AdminPanel = () => {
@@ -44,6 +46,8 @@ const AdminPanel = () => {
   const [offers, setOffers] = useState<Oferta[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>('');
+  // const [editingOffer, setEditingOffer] = useState<Oferta | null>(null);
+  // const [editForm, setEditForm] = useState({ tytul: '', opis: '', cena: '', cenaPoprzednia: '', kod: '', link: '' }); // legacy state (minimal)
 
   // Formularz nowej odznaki
   const [newBadge, setNewBadge] = useState({ nazwa: '', opis: '', ikona: '🏆' });
@@ -731,6 +735,16 @@ const AdminPanel = () => {
                         Zatwierdź
                       </button>
                     )}
+                    <button
+                      className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50"
+                      onClick={() => {
+                        const target = offer.typ === 'kupon' ? `/stworz-oferte/kupon?edit=${offer.id}` : `/stworz-oferte/okazja?edit=${offer.id}`;
+                        window.location.href = target;
+                      }}
+                      disabled={loading}
+                    >
+                      Edytuj
+                    </button>
                     <button 
                       className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
                       onClick={() => deleteOffer(offer.id)}

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { User, Flame, Snowflake, MessageCircle, ShoppingBag, Vote, Trophy, MapPin, BarChart3, Flag, Filter } from 'lucide-react';
+import { User, Flame, Snowflake, MessageCircle, ShoppingBag, Vote, Trophy, BarChart3, Flag, Filter } from 'lucide-react';
 import { authorizedFetch, apiPost } from '../../utils/api';
 
 type Oferta = {
@@ -376,7 +376,7 @@ const UserPanel = () => {
                 
                 <div className="mb-4">
                   {offer.typ === 'kupon' ? (
-                    // Wyświetlanie dla kuponów
+                    // Wyświetlanie dla kuponów (tylko nowa cena)
                     <div className="flex flex-wrap items-center space-x-2 mb-2">
                       <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-2 py-1 rounded">
                         🎫 KUPON
@@ -386,14 +386,8 @@ const UserPanel = () => {
                           {offer.kod}
                         </span>
                       )}
-                      {offer.cenaPoprzednia && offer.cena && (
-                        <>
-                          <span className="text-base line-through text-gray-400">{offer.cenaPoprzednia} PLN</span>
-                          <span className="text-xl font-bold text-purple-600">{offer.cena} PLN</span>
-                          <span className="bg-purple-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-                            -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
-                          </span>
-                        </>
+                      {offer.cena && (
+                        <span className="text-xl font-bold text-purple-600">{offer.cena} PLN</span>
                       )}
                     </div>
                   ) : (
@@ -412,10 +406,7 @@ const UserPanel = () => {
                       </div>
                     )
                   )}
-                  <span className="text-sm text-gray-600 flex items-center">
-                    <MapPin className="w-4 h-4 mr-1" />
-                    {offer.sklep}
-                  </span>
+                  
                 </div>
                 
                 <div className="mb-4 flex flex-wrap gap-2">
@@ -486,6 +477,17 @@ const UserPanel = () => {
                 
                 <div className="text-xs text-gray-500">
                   Dodane przez: {offer.autor} | {offer.dataUtworzenia}
+                </div>
+                <div className="mt-4 flex justify-end">
+                  <button
+                    className="px-4 py-2 rounded-xl bg-custom-blue text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
+                    onClick={() => {
+                      const base = offer.typ === 'kupon' ? '/stworz-oferte/kupon' : '/stworz-oferte/okazja';
+                      window.location.href = `${base}?edit=${offer.id}`;
+                    }}
+                  >
+                    Edytuj
+                  </button>
                 </div>
               </div>
             ))}

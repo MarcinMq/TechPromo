@@ -384,6 +384,92 @@ namespace TechPromo.Api.Controllers
             return Ok($"Oferta '{oferta.Nazwa}' użytkownika '{oferta.Uzytkownik.UserName}' została usunięta");
         }
 
+        [HttpPut("oferta/{id}")]
+        public async Task<IActionResult> AktualizujOferte(int id, [FromBody] UpdateOfertaDto dto)
+        {
+            try
+            {
+                var oferta = await _context.Oferty.FirstOrDefaultAsync(o => o.IdOferta == id);
+                if (oferta == null)
+                    return NotFound(new { message = "Nie znaleziono oferty" });
+
+                bool changed = false;
+
+                if (dto.Tytul != null && dto.Tytul != oferta.Nazwa)
+                {
+                    if (dto.Tytul.Length > 100) return BadRequest(new { message = "Tytuł max 100 znaków" });
+                    oferta.Nazwa = dto.Tytul.Trim();
+                    changed = true;
+                }
+                if (dto.Opis != null && dto.Opis != oferta.Opis)
+                {
+                    oferta.Opis = dto.Opis.Trim();
+                    changed = true;
+                }
+                if (dto.Cena.HasValue && dto.Cena.Value != oferta.Cena)
+                {
+                    if (dto.Cena < 0) return BadRequest(new { message = "Cena nie może być ujemna" });
+                    oferta.Cena = decimal.Round(dto.Cena.Value, 2);
+                    changed = true;
+                }
+                if (dto.CenaPoprzednia.HasValue && dto.CenaPoprzednia.Value != oferta.CenaPoprzednia)
+                {
+                    if (dto.CenaPoprzednia < 0) return BadRequest(new { message = "Cena poprzednia nie może być ujemna" });
+                    oferta.CenaPoprzednia = decimal.Round(dto.CenaPoprzednia.Value, 2);
+                    changed = true;
+                }
+                if (dto.Kod != null && dto.Kod != oferta.Kod)
+                {
+                    if (dto.Kod.Length > 50) return BadRequest(new { message = "Kod max 50 znaków" });
+                    oferta.Kod = dto.Kod.Trim();
+                    changed = true;
+                }
+                if (dto.Link != null && dto.Link != oferta.Link)
+                {
+                    oferta.Link = dto.Link.Trim();
+                    changed = true;
+                }
+                if (dto.Aktywna.HasValue && dto.Aktywna.Value != oferta.Aktywna)
+                {
+                    oferta.Aktywna = dto.Aktywna.Value;
+                    changed = true;
+                }
+                if (dto.Zatwierdzona.HasValue && dto.Zatwierdzona.Value != oferta.Zatwierdzona)
+                {
+                    oferta.Zatwierdzona = dto.Zatwierdzona.Value;
+                    // Gdy zatwierdzamy – automatycznie aktywuj
+                    if (oferta.Zatwierdzona) oferta.Aktywna = true;
+                    changed = true;
+                }
+
+                if (!changed)
+                    return Ok(new { message = "Brak zmian", oferta = new { oferta.IdOferta } });
+
+                await _context.SaveChangesAsync();
+
+                return Ok(new
+                {
+                    message = "Oferta zaktualizowana",
+                    oferta = new
+                    {
+                        id = oferta.IdOferta,
+                        tytul = oferta.Nazwa,
+                        opis = oferta.Opis,
+                        cena = oferta.Cena,
+                        cenaPoprzednia = oferta.CenaPoprzednia,
+                        kod = oferta.Kod,
+                        link = oferta.Link,
+                        aktywna = oferta.Aktywna,
+                        zatwierdzona = oferta.Zatwierdzona
+                    }
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas aktualizacji oferty", error = ex.Message });
+            }
+        }
+
         [HttpPut("oferta/{id}/moderuj")]
         public async Task<IActionResult> ModerujOferte(int id, [FromBody] ModerujOfertaDto dto)
         {
@@ -405,6 +491,8 @@ namespace TechPromo.Api.Controllers
 
             return Ok($"Oferta '{oferta.Nazwa}' została zmoderowana");
         }
+
+    // Usunięto duplikat endpointu EdytujOferte - używaj AktualizujOferte
 
         [HttpPut("uzytkownik/{id}/rola")]
         public async Task<IActionResult> ZmienRoleUzytkownika(int id, [FromBody] ZmienRoleDto dto)

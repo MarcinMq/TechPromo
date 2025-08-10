@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Ticket, Clock, Tag, Store, DollarSign, Upload, Image, X } from 'lucide-react';
+import { getAuthToken, getUserData } from '../../utils/auth';
 
 interface CouponFormData {
   tytul: string;
@@ -34,6 +35,7 @@ const CreateCouponForm: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
   
   const [formData, setFormData] = useState<CouponFormData>({
     tytul: '',
@@ -42,11 +44,44 @@ const CreateCouponForm: React.FC = () => {
     cenaPoprzednia: '',
     kod: '',
     kategoria: 'Telefony',
-    sklep: '',
+  sklep: '', // przechowuje URL
     tagi: '',
     typ: 'kupon',
     zdjecia: []
   });
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const edit = params.get('edit');
+    if (edit) {
+      const idNum = parseInt(edit, 10);
+      if (!isNaN(idNum)) {
+        setEditId(idNum);
+        const role = getUserData()?.role;
+        const url = role === 'User' ? `/api/uzytkownik/oferta/${idNum}` : `/api/oferta/${idNum}`;
+        fetch(url)
+          .then(r => r.ok ? r.json() : Promise.reject())
+          .then(data => {
+            setFormData(prev => ({
+              ...prev,
+              tytul: data.tytul || data.Tytul || '',
+              opis: data.opis || data.Opis || '',
+              cenaAktualna: (data.cena ?? data.Cena)?.toString() || '',
+              cenaPoprzednia: (data.cenaPoprzednia ?? data.CenaPoprzednia)?.toString() || '',
+              kod: data.kod || data.Kod || '',
+              kategoria: data.kategoria || data.Kategoria || 'Telefony',
+              sklep: data.sklep || data.Sklep || '',
+              tagi: (data.tagi || data.Tagi || []).join(', '),
+              typ: 'kupon'
+            }));
+          })
+          .catch(() => {
+            setMessage({ type: 'error', text: 'Brak uprawnień do edycji tego kuponu' });
+            setTimeout(()=> navigate('/uzytkownik/panel'), 1500);
+          });
+      }
+    }
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -73,6 +108,31 @@ const CreateCouponForm: React.FC = () => {
         throw new Error('Kategoria jest wymagana');
       }
 
+      const token = getAuthToken();
+      if (!token) throw new Error('Brak tokenu uwierzytelniającego. Zaloguj się ponownie.');
+
+      if (editId) {
+        const payload = {
+          tytul: formData.tytul.trim(),
+          opis: formData.opis.trim(),
+          cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+          cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
+          kod: formData.kod.trim(),
+          link: formData.sklep.trim() || null
+        };
+        const role = getUserData()?.role;
+        const putUrl = role === 'Admin' ? `/api/admin/oferta/${editId}` : role === 'Moderator' ? `/api/moderator/oferta/${editId}/edytuj` : `/api/uzytkownik/oferta/${editId}`;
+        const res = await fetch(putUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Nie udało się zaktualizować kuponu');
+        setMessage({ type: 'success', text: role === 'User' ? 'Kupon zaktualizowany – oczekuje ponownej moderacji.' : 'Kupon zaktualizowany.' });
+        setTimeout(() => navigate(role === 'User' ? '/uzytkownik/panel' : '/'), 1500);
+        return;
+      }
+
       // Przygotuj dane do wysłania jako FormData
       const formDataToSend = new FormData();
       formDataToSend.append('tytul', formData.tytul.trim());
@@ -88,7 +148,9 @@ const CreateCouponForm: React.FC = () => {
       formDataToSend.append('kod', formData.kod.trim());
       formDataToSend.append('kategoria', formData.kategoria);
       if (formData.sklep.trim()) {
-        formDataToSend.append('sklep', formData.sklep.trim());
+        let url = formData.sklep.trim();
+        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        formDataToSend.append('sklep', url);
       }
       if (formData.tagi.trim()) {
         formDataToSend.append('tagi', formData.tagi.trim());
@@ -100,15 +162,13 @@ const CreateCouponForm: React.FC = () => {
         formDataToSend.append('zdjecia', file);
       });
 
-      console.log('Wysyłanie danych kuponu:', formDataToSend);
+      console.log('Wysyłanie danych (kupon)');
 
-      // Wyślij jako FormData
-      const token = localStorage.getItem('token');
+      // Wyślij jako FormData z prawidłowym tokenem
       const response = await fetch('/api/oferta/upload', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
-          // Nie dodawaj Content-Type dla FormData - przeglądarka ustawi automatycznie z boundary
         },
         body: formDataToSend
       });
@@ -139,7 +199,7 @@ const CreateCouponForm: React.FC = () => {
         }, 3000);
       } else {
         const errorData = await response.text();
-        throw new Error(errorData || 'Błąd podczas dodawania kuponu');
+        throw new Error(`Błąd (${response.status}): ${errorData || 'Nie udało się dodać kuponu'}`);
       }
     } catch (error: any) {
       console.error('Błąd:', error);
@@ -194,7 +254,7 @@ const CreateCouponForm: React.FC = () => {
     <div className="min-h-screen py-8 bg-gradient-to-br from-purple-50/50 to-pink-50/50">
       <div className="max-w-3xl mx-auto px-4">
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-          <h1 className="text-3xl font-bold mb-6 text-gray-900 text-center">🎫 Nowy Kupon</h1>
+          <h1 className="text-3xl font-bold mb-6 text-gray-900 text-center">{editId ? '✏️ Edytuj Kupon' : '🎫 Nowy Kupon'}</h1>
 
           {message && (
             <div className={`p-4 rounded-2xl mb-6 text-center font-semibold backdrop-blur-sm ${
@@ -312,14 +372,14 @@ const CreateCouponForm: React.FC = () => {
               </div>
             </div>
 
-            {/* Sklep */}
+            {/* Link do strony kuponu / sklepu */}
             <div>
               <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
                 <div className="flex items-center mb-1">
                   <Store className="w-4 h-4 mr-1" />
-                  Sklep
+                  Link do oferty / sklepu
                 </div>
-                <span className="text-xs text-gray-500 font-normal">W którym sklepie obowiązuje kupon</span>
+                <span className="text-xs text-gray-500 font-normal">Pełny URL strony gdzie użyjesz kuponu</span>
               </label>
               <div className="relative">
                 <input
@@ -327,7 +387,7 @@ const CreateCouponForm: React.FC = () => {
                   name="sklep"
                   value={formData.sklep}
                   onChange={handleInputChange}
-                  placeholder="np. Media Expert, x-kom, RTV Euro AGD"
+                  placeholder="https://..."
                   className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
                 />
                 <Store className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -482,8 +542,17 @@ const CreateCouponForm: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Ticket className="w-5 h-5 inline mr-2" />
-                    Dodaj kupon
+                    {editId ? (
+                      <>
+                        <Ticket className="w-5 h-5 inline mr-2" />
+                        Zapisz zmiany
+                      </>
+                    ) : (
+                      <>
+                        <Ticket className="w-5 h-5 inline mr-2" />
+                        Dodaj kupon
+                      </>
+                    )}
                   </>
                 )}
               </button>

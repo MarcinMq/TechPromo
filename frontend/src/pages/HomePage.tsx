@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { Flame, Snowflake, MessageCircle, Filter, Star, Zap, Users } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search } from 'lucide-react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth';
 
 // Typy dla prawdziwych danych z API
@@ -26,93 +26,168 @@ interface OfertaDto {
   zdjecia: string[];
 }
 
+// Komponent odpowiedzialny za wyświetlanie miejsca na zdjęcie (zawsze rezerwuje przestrzeń)
+function OfferImage({ offer }: { offer: OfertaDto }) {
+  const imageUrl = offer.zdjecia && offer.zdjecia.length > 0 ? `http://localhost:5023${offer.zdjecia[0]}` : null;
+  return (
+    <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded border border-gray-200 overflow-hidden group bg-gray-50">
+      {imageUrl && (
+        <img
+          src={imageUrl}
+          alt={offer.tytul}
+          loading="lazy"
+          className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105 select-none"
+          onError={(e) => {
+            const target = e.target as HTMLImageElement;
+            target.style.display = 'none';
+            const fallback = target.nextElementSibling as HTMLElement;
+            if (fallback) fallback.classList.remove('hidden');
+          }}
+          draggable={false}
+        />
+      )}
+      <div className={`absolute inset-0 flex items-center justify-center text-gray-400 ${imageUrl ? 'hidden' : 'flex'}`}>
+        <span className="text-2xl">{offer.typ === 'kupon' ? '🎫' : '🛍️'}</span>
+      </div>
+    </div>
+  );
+}
+
 function HomePage() {
-  const [activeFilter, setActiveFilter] = useState('popularne');
+  // Proste filtry obsługiwane przez backend (hot/newest/price)
+  const [activeFilter, setActiveFilter] = useState<'gorace' | 'najnowsze' | 'cena' | 'wszystkie'>('gorace');
   const [selectedCategory, setSelectedCategory] = useState('wszystkie');
   const [offers, setOffers] = useState<OfertaDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [searchDebounced, setSearchDebounced] = useState('');
+  const [total, setTotal] = useState(0);
+  const pageSize = 30;
+  const loadingMoreRef = useRef(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+  const skipRef = useRef(0);
+
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => setSearchDebounced(search.trim().toLowerCase()), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   // Pobierz oferty z API
-  useEffect(() => {
-    const fetchOffers = async () => {
-      try {
+  const fetchOffers = useCallback(async (reset = false) => {
+    try {
+      if (loadingMoreRef.current) return;
+      loadingMoreRef.current = true;
+      if (reset) {
+  skipRef.current = 0;
         setLoading(true);
-        const response = await fetch('http://localhost:5023/api/oferta');
-        if (response.ok) {
-          const data = await response.json();
-          setOffers(data);
-        } else {
-          setError('Błąd podczas pobierania ofert');
-        }
-      } catch (err) {
-        setError('Błąd połączenia z serwerem');
-        console.error('Error fetching offers:', err);
-      } finally {
-        setLoading(false);
       }
-    };
+      const currentSkip = reset ? 0 : skipRef.current;
+      const sortMap: Record<typeof activeFilter, string> = {
+        gorace: 'hot',
+        najnowsze: 'newest',
+        cena: 'price',
+        wszystkie: 'newest'
+      };
+      const sortBy = sortMap[activeFilter];
+      const categoryParam = selectedCategory !== 'wszystkie' ? `&kategoria=${encodeURIComponent(selectedCategory)}` : '';
+      const response = await fetch(`/api/oferta?skip=${currentSkip}&take=${pageSize}&sortBy=${sortBy}${categoryParam}`);
+      if (!response.ok) throw new Error('Błąd podczas pobierania ofert');
+      const data = await response.json();
+      const items: OfertaDto[] = data.items || data.Items || data;
+      const newTotal = data.total ?? data.Total ?? items.length;
+      setTotal(newTotal);
+      setOffers(prev => reset ? items : [...prev, ...items]);
+  skipRef.current = currentSkip + items.length;
+    } catch (err) {
+      if (!error) setError('Błąd połączenia z serwerem');
+      console.error('Error fetching offers:', err);
+    } finally {
+      setLoading(false);
+      loadingMoreRef.current = false;
+    }
+  }, [activeFilter, selectedCategory]);
 
-    fetchOffers();
-  }, []);
+  useEffect(() => { fetchOffers(true); }, [activeFilter, selectedCategory]);
+
+  // Infinite scroll observer
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const el = sentinelRef.current;
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting && offers.length < total && !loading) {
+          fetchOffers();
+        }
+      });
+    }, { rootMargin: '200px' });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [offers, total, loading, fetchOffers]);
 
   // Funkcja głosowania
   const handleVote = async (offerId: number, voteType: 'hot' | 'cold') => {
-    try {
-      const token = getAuthToken(); // Użycie funkcji z auth.ts
-      console.log('Token z localStorage:', token ? 'Znaleziony' : 'Brak');
-      
-      if (!token) {
-        alert('Musisz być zalogowany, aby głosować');
-        return;
+    const token = getAuthToken();
+    if (!token) { alert('Musisz być zalogowany, aby głosować'); return; }
+    // Optymistyczna aktualizacja
+    setOffers(prev => prev.map(o => {
+      if (o.id !== offerId) return o;
+      const already = o.userVote === voteType;
+      let hot = o.votes.hot;
+      let cold = o.votes.cold;
+      if (voteType === 'hot') {
+        if (already) hot -= 1; else { hot += 1; if (o.userVote === 'cold') cold -= 1; }
+      } else {
+        if (already) cold -= 1; else { cold += 1; if (o.userVote === 'hot') hot -= 1; }
       }
-
-      console.log(`Wysyłanie głosu ${voteType} dla oferty ${offerId}`);
-      
-      const response = await fetch(`http://localhost:5023/api/uzytkownik/oferta/${offerId}/glos`, {
+      return { ...o, votes: { hot, cold }, userVote: already ? undefined : voteType };
+    }));
+    try {
+      const res = await fetch(`/api/uzytkownik/oferta/${offerId}/glos`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ typ: voteType })
       });
-
-      console.log('Status odpowiedzi:', response.status);
-      
-      if (response.ok) {
-        console.log('Głosowanie udane');
-        // Odśwież listę ofert po głosowaniu
-        const refreshResponse = await fetch('http://localhost:5023/api/oferta');
-        if (refreshResponse.ok) {
-          const updatedData = await refreshResponse.json();
-          setOffers(updatedData);
-        }
-      } else {
-        const errorText = await response.text();
-        console.error('Błąd podczas głosowania:', response.status, errorText);
-        alert(`Błąd podczas głosowania: ${errorText || 'Nieznany błąd'}`);
+      if (!res.ok) {
+        // Revert if failed
+        setOffers(prev => prev); // minimal revert (could refetch single)
+        const t = await res.text();
+        console.error('Vote error', t);
       }
-    } catch (error) {
-      console.error('Błąd sieci podczas głosowania:', error);
-      alert('Błąd połączenia z serwerem');
+    } catch (e) {
+      console.error('Network vote error', e);
     }
   };
 
   // Przykładowe kategorie - można będzie później pobrać z API
-  const categories = [
-    { name: 'Wszystkie', count: offers.length, icon: '🔥' },
-    { name: 'Telefony', count: 0, icon: '📱' },
-    { name: 'Laptopy', count: 0, icon: '💻' },
-    { name: 'Audio', count: 0, icon: '🎧' },
-    { name: 'TV', count: 0, icon: '📺' },
-    { name: 'Gaming', count: 0, icon: '🎮' },
-    { name: 'Foto', count: 0, icon: '📷' },
-    { name: 'Smartwatche', count: 0, icon: '⌚' },
-    { name: 'Tablety', count: 0, icon: '📱' },
-    { name: 'PC', count: 0, icon: '🖥️' },
-    { name: 'Akcesoria', count: 0, icon: '🔌' },
-  ];
+  const categories = useMemo(() => {
+    const base = [
+      { name: 'Wszystkie', icon: '🔥' },
+      { name: 'Telefony', icon: '📱' },
+      { name: 'Laptopy', icon: '💻' },
+      { name: 'Audio', icon: '🎧' },
+      { name: 'TV', icon: '📺' },
+      { name: 'Gaming', icon: '🎮' },
+      { name: 'Foto', icon: '📷' },
+      { name: 'Smartwatche', icon: '⌚' },
+      { name: 'Tablety', icon: '📱' },
+      { name: 'PC', icon: '🖥️' },
+      { name: 'Akcesoria', icon: '�' },
+    ];
+    return base.map(c => ({ ...c, count: c.name === 'Wszystkie' ? offers.length : offers.filter(o => o.kategoria.toLowerCase() === c.name.toLowerCase()).length }));
+  }, [offers]);
+
+  const filteredOffers = useMemo(() => {
+    let list = [...offers];
+    if (selectedCategory !== 'wszystkie') {
+      list = list.filter(o => o.kategoria.toLowerCase() === selectedCategory.toLowerCase());
+    }
+    if (searchDebounced) {
+      list = list.filter(o => o.tytul.toLowerCase().includes(searchDebounced) || o.opis.toLowerCase().includes(searchDebounced) || o.tagi.some(t => t.toLowerCase().includes(searchDebounced)));
+    }
+    return list;
+  }, [offers, selectedCategory, searchDebounced]);
 
   const getTemperatureColor = (temp: number) => {
     if (temp >= 100) return 'text-red-600 bg-red-50 border-red-200';
@@ -153,36 +228,45 @@ function HomePage() {
           <div className="flex flex-col sm:flex-row sm:items-center py-3 border-b gap-3">
             <div className="flex space-x-1 overflow-x-auto">
               {[
-                { key: 'popularne', label: 'Popularne' },
-                { key: 'najgoretsze', label: 'Najgorętsze' },
                 { key: 'gorace', label: 'Gorące' },
+                { key: 'najnowsze', label: 'Najnowsze' },
+                { key: 'cena', label: 'Cena' },
                 { key: 'wszystkie', label: 'Wszystkie' }
-              ].map(filter => (
+              ].map(f => (
                 <button
-                  key={filter.key}
-                  onClick={() => setActiveFilter(filter.key)}
-                  className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
-                    activeFilter === filter.key
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  }`}
+                  key={f.key}
+                  onClick={() => setActiveFilter(f.key as any)}
+                  className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeFilter === f.key ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
                 >
-                  {filter.label}
+                  {f.label}
                 </button>
               ))}
             </div>
             
-            <div className="text-sm text-gray-600 flex items-center">
-              <span className="hidden sm:inline">Filtruj</span>
-              <Filter className="inline w-4 h-4 ml-1" />
+            <div className="flex-1" />
+            <div className="relative w-full sm:w-64">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Szukaj..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+              />
             </div>
           </div>
           
           <div className="py-2 text-lg font-bold text-gray-900">
-            Popularne okazje
+            {activeFilter === 'gorace' && 'Gorące'}
+            {activeFilter === 'najnowsze' && 'Najnowsze'}
+            {activeFilter === 'cena' && 'Według ceny'}
+            {activeFilter === 'wszystkie' && 'Wszystkie'}
           </div>
           <div className="pb-2 text-sm text-gray-600">
-            Okazje cieszące się największym zainteresowaniem
+            {activeFilter === 'gorace' && 'Sortowanie wg (hot - cold)'}
+            {activeFilter === 'najnowsze' && 'Najświeższe dodane oferty'}
+            {activeFilter === 'cena' && 'Rosnąco według ceny'}
+            {activeFilter === 'wszystkie' && 'Domyślnie najnowsze'}
           </div>
         </div>
       </div>
@@ -247,14 +331,17 @@ function HomePage() {
               <div className="text-center py-8">
                 <div className="text-lg text-red-600">{error}</div>
               </div>
-            ) : offers.length === 0 ? (
+      ) : filteredOffers.length === 0 ? (
               <div className="text-center py-8">
                 <div className="text-lg text-gray-600">Brak ofert do wyświetlenia</div>
               </div>
             ) : (
               <div className="space-y-3">
-                {offers.map(offer => (
-                  <div key={offer.id} className="bg-white rounded border hover:shadow-md transition-shadow">
+                {filteredOffers.map(offer => {
+                  const temperatura = offer.votes.hot - offer.votes.cold;
+                  const gradient = temperatura > 100 ? 'from-red-500/10 to-orange-500/10' : temperatura > 50 ? 'from-orange-500/10 to-yellow-500/10' : temperatura > 20 ? 'from-yellow-400/10 to-amber-400/10' : temperatura < -10 ? 'from-blue-500/10 to-cyan-500/10' : 'from-gray-200/5 to-gray-100/5';
+                  return (
+                  <div key={offer.id} className={`bg-white rounded border hover:shadow-md transition-shadow bg-gradient-to-r ${gradient}`}>
                     <div className="p-3 sm:p-4">
                       <div className="flex flex-col sm:flex-row">
                         {/* Sekcja temperatury i zdjęcia - na mobile poziomo */}
@@ -282,30 +369,8 @@ function HomePage() {
                             </div>
                           </div>
 
-                          {/* Zdjęcie produktu */}
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 flex-shrink-0 bg-gray-100 rounded flex items-center justify-center text-2xl sm:text-3xl overflow-hidden">
-                            {offer.zdjecia && offer.zdjecia.length > 0 ? (
-                              <img 
-                                src={`http://localhost:5023${offer.zdjecia[0]}`} 
-                                alt={offer.tytul} 
-                                className="w-full h-full object-cover rounded"
-                                onError={(e) => {
-                                  // Fallback do ikony gdy zdjęcie się nie załaduje
-                                  const target = e.target as HTMLImageElement;
-                                  target.style.display = 'none';
-                                  const fallback = target.nextElementSibling as HTMLElement;
-                                  if (fallback) fallback.style.display = 'flex';
-                                }}
-                              />
-                            ) : null}
-                            <div 
-                              className={`w-full h-full flex items-center justify-center text-2xl sm:text-3xl ${
-                                offer.zdjecia && offer.zdjecia.length > 0 ? 'hidden' : 'flex'
-                              }`}
-                            >
-                              {offer.typ === 'kupon' ? '🎫' : '🛍️'}
-                            </div>
-                          </div>
+                          {/* Zdjęcie produktu / placeholder (zawsze rezerwuje miejsce) */}
+                          <OfferImage offer={offer} />
                         </div>
 
                         {/* Główne informacje */}
@@ -320,50 +385,38 @@ function HomePage() {
                           {/* Cena - duża i widoczna */}
                           <div className="flex flex-wrap items-baseline space-x-2 mb-2">
                             {offer.typ === 'kupon' ? (
-                              // Wyświetlanie dla kuponów
-                              <div className="flex items-center space-x-2">
-                                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-2 py-1 rounded">
-                                  🎫 KUPON
-                                </span>
+                              <div className="flex items-center flex-wrap gap-2">
+                                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-2 py-1 rounded">🎫 KUPON</span>
                                 {offer.kod && (
-                                  <span className="bg-gray-100 text-gray-800 text-sm font-mono px-2 py-1 rounded border">
-                                    {offer.kod}
-                                  </span>
+                                  <span className="bg-gray-100 text-gray-800 text-sm font-mono px-2 py-1 rounded border">{offer.kod}</span>
                                 )}
-                                {offer.cenaPoprzednia && offer.cena && (
-                                  <>
-                                    <span className="text-lg line-through text-gray-400">{offer.cenaPoprzednia} zł</span>
-                                    <span className="text-xl font-black text-purple-600">{offer.cena} zł</span>
-                                    <span className="bg-purple-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-                                      -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
-                                    </span>
-                                  </>
+                                {offer.cena && (
+                                  <span className="text-xl font-black text-purple-600">{offer.cena} zł</span>
                                 )}
+                                {!offer.cena && <span className="text-sm text-gray-600">Sprawdź cenę</span>}
                               </div>
                             ) : (
-                              // Wyświetlanie dla okazji
                               <>
                                 {offer.cena ? (
-                                  <>
+                                  <div className="flex items-center flex-wrap gap-2">
+                                    {offer.cenaPoprzednia && (
+                                      <span className="text-sm line-through text-gray-400" title="Stara cena">{offer.cenaPoprzednia} zł</span>
+                                    )}
                                     <span className="text-xl font-black text-red-600">{offer.cena} zł</span>
                                     {offer.cenaPoprzednia && offer.cenaPoprzednia > offer.cena && (
-                                      <>
-                                        <span className="text-base line-through text-gray-400">{offer.cenaPoprzednia} zł</span>
-                                        <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-                                          -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
-                                        </span>
-                                      </>
+                                      <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                                        -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
+                                      </span>
                                     )}
-                                  </>
+                                  </div>
                                 ) : (
                                   <span className="text-lg text-gray-600">Sprawdź cenę</span>
                                 )}
                               </>
                             )}
                           </div>
-                          {/* Informacje o sklepie */}
+                          {/* Informacje: ukryty sklep (link pokazujemy tylko w przycisku na stronie szczegółowej) */}
                           <div className="flex flex-wrap items-center space-x-3 text-sm text-gray-600 mb-3">
-                            <span>Sklep: {offer.sklep || 'Sprawdź online'}</span>
                             <span>Kategoria: {offer.kategoria}</span>
                           </div>
 
@@ -382,7 +435,7 @@ function HomePage() {
                                 <MessageCircle className="w-4 h-4" />
                                 <span>{offer.komentarze}</span>
                               </button>
-                              
+                              {/* Usunięto bezpośredni link do sklepu z listy */}
                               <Link 
                                 to={`/okazja/${offer.id}`}
                                 className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors font-medium"
@@ -393,20 +446,31 @@ function HomePage() {
                           </div>
                         </div>
                       </div>
-                    </div>
+                     </div>
+                   </div>
+                 )})}
+                {loading && (
+                  <div className="space-y-3" aria-hidden>
+                    {Array.from({length: 3}).map((_,i)=>(
+                      <div key={i} className="animate-pulse bg-white rounded border p-4 flex">
+                        <div className="w-28 h-28 bg-gray-200 rounded mr-4" />
+                        <div className="flex-1 space-y-3">
+                          <div className="h-4 bg-gray-200 rounded w-3/4" />
+                          <div className="h-4 bg-gray-200 rounded w-1/2" />
+                          <div className="flex space-x-2 pt-2">
+                            <div className="h-6 w-16 bg-gray-200 rounded" />
+                            <div className="h-6 w-20 bg-gray-200 rounded" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                )}
               </div>
             )}
 
             {/* Załaduj więcej */}
-            {offers.length > 0 && (
-              <div className="text-center mt-6">
-                <button className="bg-white border text-gray-700 px-6 py-2 rounded hover:bg-gray-50 transition-colors">
-                  Załaduj więcej ofert
-                </button>
-              </div>
-            )}
+            <div ref={sentinelRef} className="h-4" />
           </div>
 
           {/* Prawny sidebar - najgorętsze dziś, kupony, jak to działa */}

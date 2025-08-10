@@ -16,7 +16,7 @@ namespace TechPromo.Api.DTO
         public decimal? CenaPoprzednia { get; set; }
 
         [Required(ErrorMessage = "Sklep jest wymagany")]
-        [MaxLength(100, ErrorMessage = "Nazwa sklepu nie może być dłuższa niż 100 znaków")]
+    [MaxLength(300, ErrorMessage = "Link nie może być dłuższy niż 300 znaków")]
         public string Sklep { get; set; }
 
         [Required(ErrorMessage = "Kategoria jest wymagana")]

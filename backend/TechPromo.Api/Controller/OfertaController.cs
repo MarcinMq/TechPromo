@@ -2,8 +2,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TechPromo.Api.Data;
-using TechPromo.Api.DTO;
 using TechPromo.Api.Model;
+using TechPromo.Api.DTO;
 using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
 
@@ -22,11 +22,14 @@ namespace TechPromo.Api.Controllers
 
         // GET: api/oferta
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<OfertaDto>>> GetOffers(
+        public async Task<ActionResult<PagedResult<OfertaDto>>> GetOffers(
             [FromQuery] string? kategoria = null,
             [FromQuery] string? tag = null,
-            [FromQuery] string? sortBy = "newest")
+            [FromQuery] string? sortBy = "newest",
+            [FromQuery] int skip = 0,
+            [FromQuery] int take = 30)
         {
+            if (take > 100) take = 100; // limit bezpieczeństwa
             var query = _context.Oferty
                 .Where(o => o.Aktywna && o.Zatwierdzona)
                 .Include(o => o.Uzytkownik)
@@ -63,8 +66,11 @@ namespace TechPromo.Api.Controllers
                 userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             }
 
+            var total = await query.CountAsync();
+
             var offers = await query
-                .Take(50) // Ograniczenie do 50 ofert
+                .Skip(skip)
+                .Take(take)
                 .Select(o => new OfertaDto
                 {
                     Id = o.IdOferta,
@@ -81,12 +87,19 @@ namespace TechPromo.Api.Controllers
                     DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
                     Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
                     Komentarze = o.Komentarze.Count,
-                    UserVote = null, // Will be set after ToList
+                    UserVote = userId != 0 ? o.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null,
                     Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
                 })
                 .ToListAsync();
 
-            return Ok(offers);
+            var result = new PagedResult<OfertaDto>
+            {
+                Items = offers,
+                Total = total,
+                Skip = skip,
+                Take = take
+            };
+            return Ok(result);
         }
 
         // GET: api/oferta/{id}
@@ -123,7 +136,7 @@ namespace TechPromo.Api.Controllers
                     DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
                     Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
                     Komentarze = o.Komentarze.Count,
-                    UserVote = null, 
+                    UserVote = userId != 0 ? o.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null, 
                     Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
                 })
                 .FirstOrDefaultAsync();
@@ -134,6 +147,51 @@ namespace TechPromo.Api.Controllers
             }
 
             return Ok(offer);
+        }
+
+        // POST: api/oferta/{id}/komentarze - dodanie komentarza do oferty
+        [HttpPost("{id}/komentarze")]
+        [Authorize]
+        public async Task<ActionResult<KomentarzDto>> AddComment(int id, [FromBody] CreateCommentRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Tresc))
+                return BadRequest("Treść komentarza jest wymagana.");
+
+            var oferta = await _context.Oferty.FirstOrDefaultAsync(o => o.IdOferta == id && o.Aktywna && o.Zatwierdzona);
+            if (oferta == null)
+                return NotFound("Oferta nie istnieje lub nie została zatwierdzona.");
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0)
+                return Unauthorized();
+
+            var komentarz = new Komentarz
+            {
+                IdOferta = oferta.IdOferta,
+                IdUzytkownik = userId,
+                Tresc = request.Tresc.Trim(),
+                DataDodania = DateTime.UtcNow,
+                Status = "aktywny"
+            };
+
+            _context.Komentarze.Add(komentarz);
+            await _context.SaveChangesAsync();
+
+            // Możemy w razie potrzeby zaktualizować licznik komentarzy w ofercie (jeśli będzie kolumna cache) – pomijam.
+
+            var result = await _context.Komentarze
+                .Where(k => k.IdKomentarz == komentarz.IdKomentarz)
+                .Include(k => k.Uzytkownik)
+                .Select(k => new KomentarzDto
+                {
+                    Id = k.IdKomentarz,
+                    Tresc = k.Tresc,
+                    Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
+                    Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                    Oferta = string.Empty
+                }).FirstOrDefaultAsync();
+
+            return Created($"/api/oferta/{id}/komentarze/{komentarz.IdKomentarz}", result);
         }
 
         // GET: api/oferta/kategorie
@@ -286,6 +344,7 @@ namespace TechPromo.Api.Controllers
             var tagNames = tagiString.Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(t => t.Trim())
                 .Where(t => !string.IsNullOrEmpty(t))
+                .Where(t => t.Length <= 50)
                 .Distinct()
                 .ToList();
 
@@ -323,6 +382,7 @@ namespace TechPromo.Api.Controllers
                 .Where(o => o.IdOferta == ofertaId)
                 .Include(o => o.Uzytkownik)
                 .Include(o => o.Kategoria)
+                .Include(o => o.Zdjecia)
                 .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
                 .Select(o => new OfertaDto
                 {
@@ -341,7 +401,7 @@ namespace TechPromo.Api.Controllers
                     Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
                     Komentarze = 0,
                     UserVote = null,
-                    Zdjecia = new List<string>()
+                    Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
                 })
                 .FirstOrDefaultAsync();
         }
@@ -384,6 +444,14 @@ namespace TechPromo.Api.Controllers
                 if (string.IsNullOrEmpty(kategoria))
                     return BadRequest("Kategoria jest wymagana.");
 
+                // Dodatkowa walidacja długości (symetria z CreateOfferRequest)
+                if (tytul.Length > 100) return BadRequest("Tytuł nie może być dłuższy niż 100 znaków.");
+                if (opis.Length > 2000) return BadRequest("Opis nie może być dłuższy niż 2000 znaków.");
+                if (kategoria.Length > 50) return BadRequest("Kategoria nie może być dłuższa niż 50 znaków.");
+                if (!string.IsNullOrEmpty(sklep) && sklep.Length > 300) return BadRequest("Link nie może być dłuższy niż 300 znaków.");
+                if (!string.IsNullOrEmpty(kod) && kod.Length > 50) return BadRequest("Kod nie może być dłuższy niż 50 znaków.");
+                if (!string.IsNullOrEmpty(tagi) && tagi.Length > 200) return BadRequest("Tagi nie mogą być dłuższe niż 200 znaków.");
+
                 // 4. Parsowanie cen
                 decimal? cena = null;
                 decimal? cenaPoprzednia = null;
@@ -414,7 +482,7 @@ namespace TechPromo.Api.Controllers
                     Link = !string.IsNullOrEmpty(sklep) ? sklep : string.Empty,
                     IdKategoria = kategoriaEntity.IdKategoria,
                     IdUzytkownik = userId,
-                    DataDodania = DateTime.Now,
+                    DataDodania = DateTime.UtcNow,
                     LiczbaHot = 0,
                     LiczbaCold = 0,
                     Aktywna = true,
@@ -422,11 +490,26 @@ namespace TechPromo.Api.Controllers
                 };
 
                 _context.Oferty.Add(oferta);
-                await _context.SaveChangesAsync();
+                try
+                {
+                    await _context.SaveChangesAsync();
+                }
+                catch (DbUpdateException dbEx)
+                {
+                    var inner = dbEx.InnerException?.Message;
+                    return StatusCode(500, $"Błąd bazy danych (etap: oferta) : {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
+                }
 
-                // 8. Obsługa zdjęć
+                // 8. Obsługa zdjęć (walidacja podstawowa)
                 if (zdjecia.Count > 0)
                 {
+                    const int MAX_FILES = 5;
+                    const long MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+                    var allowedExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+
+                    if (zdjecia.Count > MAX_FILES)
+                        return BadRequest($"Maksymalnie {MAX_FILES} zdjęć.");
+
                     var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "oferty");
                     if (!Directory.Exists(uploadDir))
                         Directory.CreateDirectory(uploadDir);
@@ -434,32 +517,61 @@ namespace TechPromo.Api.Controllers
                     int kolejnosc = 1;
                     foreach (var file in zdjecia)
                     {
-                        if (file.Length > 0)
-                        {
-                            var fileName = $"{Guid.NewGuid()}_{file.FileName}";
-                            var filePath = Path.Combine(uploadDir, fileName);
-                            
-                            using (var stream = new FileStream(filePath, FileMode.Create))
-                            {
-                                await file.CopyToAsync(stream);
-                            }
+                        if (file.Length == 0) continue;
+                        if (file.Length > MAX_FILE_BYTES)
+                            return BadRequest($"Plik {file.FileName} jest za duży (limit 5MB).");
 
-                            var zdjecie = new OfertaZdjecie
-                            {
-                                IdOferta = oferta.IdOferta,
-                                UrlZdjecia = $"/uploads/oferty/{fileName}",
-                                Kolejnosc = kolejnosc++
-                            };
-                            _context.OfertyZdjecia.Add(zdjecie);
+                        var ext = Path.GetExtension(file.FileName);
+                        if (string.IsNullOrEmpty(ext) || !allowedExt.Contains(ext))
+                            return BadRequest($"Niedozwolony format pliku: {file.FileName}.");
+
+                        // Opcjonalne sprawdzenie MIME (najprostsza weryfikacja)
+                        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                            return BadRequest($"Plik {file.FileName} nie jest obrazem.");
+
+                        var baseName = Path.GetFileNameWithoutExtension(file.FileName);
+                        // Sanitizacja – tylko litery/cyfry
+                        var safeBase = new string(baseName.Where(char.IsLetterOrDigit).ToArray());
+                        if (string.IsNullOrWhiteSpace(safeBase)) safeBase = "img";
+                        var fileName = $"{Guid.NewGuid()}_{safeBase}{ext.ToLowerInvariant()}";
+                        var filePath = Path.Combine(uploadDir, fileName);
+
+                        using (var stream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await file.CopyToAsync(stream);
                         }
+
+                        var zdjecie = new OfertaZdjecie
+                        {
+                            IdOferta = oferta.IdOferta,
+                            UrlZdjecia = $"/uploads/oferty/{fileName}",
+                            Kolejnosc = kolejnosc++
+                        };
+                        _context.OfertyZdjecia.Add(zdjecie);
                     }
-                    await _context.SaveChangesAsync();
+                    try
+                    {
+                        await _context.SaveChangesAsync();
+                    }
+                    catch (DbUpdateException dbEx)
+                    {
+                        var inner = dbEx.InnerException?.Message;
+                        return StatusCode(500, $"Błąd bazy danych (etap: zdjęcia) : {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
+                    }
                 }
 
                 // 9. Obsługa tagów
                 if (!string.IsNullOrEmpty(tagi))
                 {
-                    await AddTagsToOffer(oferta.IdOferta, tagi);
+                    try
+                    {
+                        await AddTagsToOffer(oferta.IdOferta, tagi);
+                    }
+                    catch (DbUpdateException dbEx)
+                    {
+                        var inner = dbEx.InnerException?.Message;
+                        return StatusCode(500, $"Błąd bazy danych (etap: tagi) : {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
+                    }
                 }
 
                 // 10. Zwracanie wyniku
@@ -467,9 +579,14 @@ namespace TechPromo.Api.Controllers
                 return result != null ? Ok(result) : BadRequest("Błąd podczas tworzenia odpowiedzi");
 
             }
+            catch (DbUpdateException dbEx)
+            {
+                var inner = dbEx.InnerException?.Message;
+                return StatusCode(500, $"Błąd bazy danych: {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
+            }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                return StatusCode(500, $"Błąd serwera: {ex.Message}{(ex.InnerException != null ? " | Szczegóły: " + ex.InnerException.Message : string.Empty)}");
             }
         }
     }
@@ -494,7 +611,7 @@ namespace TechPromo.Api.Controllers
         [StringLength(50, ErrorMessage = "Nazwa kategorii nie może być dłuższa niż 50 znaków")]
         public string Kategoria { get; set; } = string.Empty;
 
-        [StringLength(100, ErrorMessage = "Nazwa sklepu nie może być dłuższa niż 100 znaków")]
+    [StringLength(300, ErrorMessage = "Link nie może być dłuższy niż 300 znaków")]
         public string? Sklep { get; set; }
 
         [StringLength(200, ErrorMessage = "Tagi nie mogą być dłuższe niż 200 znaków")]
@@ -502,5 +619,12 @@ namespace TechPromo.Api.Controllers
 
         [RegularExpression("^(okazja|kupon)$", ErrorMessage = "Typ musi być 'okazja' lub 'kupon'")]
         public string Typ { get; set; } = "okazja";
+    }
+
+    public class CreateCommentRequest
+    {
+        [Required]
+        [StringLength(2000, ErrorMessage = "Komentarz nie może być dłuższy niż 2000 znaków")]
+        public string Tresc { get; set; } = string.Empty;
     }
 }

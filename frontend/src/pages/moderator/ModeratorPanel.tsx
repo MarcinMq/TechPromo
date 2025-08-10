@@ -21,6 +21,7 @@ interface Oferta {
     kategoria: string;
     aktywna: boolean;
     zatwierdzona: boolean;
+    typ?: string;
 }
 
 interface Zgloszenie {
@@ -169,28 +170,11 @@ const ModeratorPanel: React.FC = () => {
         }
     };
 
-    const handleEdytujOferte = async (id: number) => {
-        const nowyTytul = prompt('Nowy tytuł (lub pozostaw pusty):');
-        const nowyOpis = prompt('Nowy opis (lub pozostaw pusty):');
-        const powod = prompt('Powód edycji:');
-        
-        if (!powod) return;
-
-        try {
-            await api(`moderator/oferta/${id}/edytuj`, {
-                method: 'PUT',
-                body: JSON.stringify({ 
-                    nowyTytul: nowyTytul || '',
-                    nowyOpis: nowyOpis || '',
-                    powod 
-                })
-            });
-            alert('Oferta została zedytowana');
-            fetchOferty();
-        } catch (error) {
-            console.error('Błąd podczas edycji oferty:', error);
-            alert('Błąd podczas edycji oferty');
-        }
+    const handleEdytujOferte = (id: number) => {
+        const of = oferty.find(o => o.idOferta === id);
+        if (!of) return;
+        const isKupon = of.typ === 'kupon';
+        window.location.href = isKupon ? `/stworz-oferte/kupon?edit=${of.idOferta}` : `/stworz-oferte/okazja?edit=${of.idOferta}`;
     };
 
     const handleRozpatrzZgloszenie = async (id: number) => {

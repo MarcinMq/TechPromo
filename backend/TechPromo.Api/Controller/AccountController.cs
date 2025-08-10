@@ -154,5 +154,60 @@ namespace TechPromo.Api.Controllers
 
             return Ok(profilResponse);
         }
+
+        public class UpdateProfilDto
+        {
+            public string? Nick { get; set; }
+            public string? Email { get; set; }
+            public string? HasloAktualne { get; set; }
+            public string? HasloNowe { get; set; }
+        }
+
+        [HttpPut("profil")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfil([FromBody] UpdateProfilDto dto)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            bool changed = false;
+            if (!string.IsNullOrWhiteSpace(dto.Nick) && dto.Nick != user.UserName)
+            {
+                user.UserName = dto.Nick.Trim();
+                changed = true;
+            }
+            if (!string.IsNullOrWhiteSpace(dto.Email) && dto.Email != user.Email)
+            {
+                user.Email = dto.Email.Trim();
+                changed = true;
+            }
+
+            if (!string.IsNullOrWhiteSpace(dto.HasloNowe))
+            {
+                if (string.IsNullOrWhiteSpace(dto.HasloAktualne))
+                    return BadRequest("Aktualne hasło jest wymagane do zmiany hasła.");
+                var passResult = await _userManager.ChangePasswordAsync(user, dto.HasloAktualne, dto.HasloNowe);
+                if (!passResult.Succeeded)
+                    return BadRequest(passResult.Errors);
+            }
+
+            if (changed)
+            {
+                var result = await _userManager.UpdateAsync(user);
+                if (!result.Succeeded) return BadRequest(result.Errors);
+            }
+
+            // Odśwież token jeśli zmieniono nick/email
+            var roles = await _userManager.GetRolesAsync(user);
+            var token = await _jwtService.GenerateTokenAsync(user);
+            return Ok(new {
+                message = "Profil zaktualizowany",
+                token,
+                nick = user.UserName,
+                email = user.Email,
+                rola = roles.FirstOrDefault() ?? "Uzytkownik",
+                punkty = user.Punkty
+            });
+        }
     }
 }

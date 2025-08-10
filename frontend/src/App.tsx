@@ -12,6 +12,7 @@ import ModeratorPanel from './pages/moderator/ModeratorPanel';
 import UserPanel from './pages/user/UserPanel';
 import CreateDealForm from './pages/offers/CreateDealForm';
 import CreateCouponForm from './pages/offers/CreateCouponForm';
+import OfferDetailsPage from './pages/offers/OfferDetailsPage';
 import ProtectedRoute from './components/ProtectedRoute';
 import { isAuthenticated, getUserData, logout } from './utils/auth';
 
@@ -92,9 +93,10 @@ function App() {
         onLogout={handleLogout}
       />
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
           <Route path="/" element={<HomePage />} />
+      <Route path="/okazja/:id" element={<OfferDetailsPage />} />
           <Route path="/search" element={<SearchPage />} />
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />

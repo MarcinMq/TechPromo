@@ -219,6 +219,38 @@ namespace TechPromo.Api.Controllers
             return Ok(offers);
         }
 
+        // GET: api/uzytkownik/oferta/{id}  (pojedyncza oferta właściciela do edycji)
+        [HttpGet("oferta/{id}")]
+        public async Task<ActionResult<OfertaDto>> GetOwnOffer(int id)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var o = await _context.Oferty
+                .Include(x => x.Kategoria)
+                .Include(x => x.Zdjecia)
+                .Include(x => x.OfertaTagi).ThenInclude(ot => ot.Tag)
+                .FirstOrDefaultAsync(x => x.IdOferta == id && x.IdUzytkownik == userId);
+            if (o == null) return NotFound();
+            var dto = new OfertaDto
+            {
+                Id = o.IdOferta,
+                Tytul = o.Nazwa,
+                Opis = o.Opis,
+                Typ = o.Typ,
+                Cena = o.Cena,
+                CenaPoprzednia = o.CenaPoprzednia,
+                Kod = o.Kod,
+                Sklep = o.Link,
+                Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
+                Tagi = o.OfertaTagi.Select(t => t.Tag.Nazwa).ToList(),
+                Autor = User.Identity?.Name ?? "Ty",
+                DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
+                Komentarze = o.Komentarze.Count,
+                Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+            };
+            return Ok(dto);
+        }
+
         // POST: api/uzytkownik/oferta
         [HttpPost("oferta")]
         public async Task<ActionResult> CreateOffer([FromForm] UtworzOfertaDto dto)
@@ -426,6 +458,29 @@ namespace TechPromo.Api.Controllers
             // TODO: Dodaj model Zgloszenie i implementuj zgłaszanie treści
             // Na razie zwróć sukces
             return Ok("Zgłoszenie zostało przesłane do moderacji.");
+        }
+
+        // PUT: api/uzytkownik/oferta/{id}
+        [HttpPut("oferta/{id}")]
+        public async Task<ActionResult> UpdateOwnOffer(int id, [FromBody] AktualizujOferteDto dto)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var oferta = await _context.Oferty.FirstOrDefaultAsync(o => o.IdOferta == id && o.IdUzytkownik == userId);
+            if (oferta == null) return NotFound("Oferta nie znaleziona lub brak uprawnień.");
+
+            if (!string.IsNullOrWhiteSpace(dto.Tytul)) oferta.Nazwa = dto.Tytul.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Opis)) oferta.Opis = dto.Opis.Trim();
+            if (dto.Cena.HasValue) oferta.Cena = dto.Cena;
+            if (dto.CenaPoprzednia.HasValue) oferta.CenaPoprzednia = dto.CenaPoprzednia;
+            if (!string.IsNullOrWhiteSpace(dto.Kod)) oferta.Kod = dto.Kod.Trim();
+            if (!string.IsNullOrWhiteSpace(dto.Link)) oferta.Link = dto.Link.Trim();
+
+            // Reset akceptacji po edycji przez zwykłego użytkownika
+            oferta.Zatwierdzona = false;
+            oferta.Aktywna = true;
+
+            await _context.SaveChangesAsync();
+            return Ok("Oferta zaktualizowana – oczekuje ponownej moderacji.");
         }
     }
 }
