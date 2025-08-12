@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
+// DTO: zmiana punktów użytkownika
 namespace TechPromo.Api.DTO
 {
     public class AktualizujPunktyDto

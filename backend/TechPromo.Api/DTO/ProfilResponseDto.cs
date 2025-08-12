@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 
+// DTO: profil użytkownika
 namespace TechPromo.Api.DTO
 {
     public class ProfilResponseDto

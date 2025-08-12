@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
+// DTO: utworzenie odznaki
 namespace TechPromo.Api.DTO
 {
     public class UtworzOdznakaDto

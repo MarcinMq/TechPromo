@@ -1,3 +1,4 @@
+// DTO: częściowa aktualizacja oferty
 namespace TechPromo.Api.DTO
 {
     /// <summary>

@@ -1,3 +1,4 @@
+// Admin: zarządzanie użytkownikami i ofertami
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -267,8 +268,8 @@ namespace TechPromo.Api.Controllers
                 .Select(k => new {
                     id = k.IdKomentarz,
                     tresc = k.Tresc,
-                    autor = k.Uzytkownik.UserName,
-                    oferta = k.Oferta.Nazwa, // Prawidłowa nazwa
+                    autor = k.Uzytkownik != null ? k.Uzytkownik.UserName : string.Empty,
+                    oferta = k.Oferta != null ? k.Oferta.Nazwa : string.Empty,
                     dataUtworzenia = k.DataDodania.ToString("yyyy-MM-dd HH:mm"),
                     idOferty = k.IdOferta,
                     status = k.Status
@@ -291,7 +292,7 @@ namespace TechPromo.Api.Controllers
             _context.Komentarze.Remove(komentarz);
             await _context.SaveChangesAsync();
 
-            return Ok($"Komentarz użytkownika '{komentarz.Uzytkownik.UserName}' został usunięty");
+            return Ok($"Komentarz użytkownika '{komentarz.Uzytkownik?.UserName}' został usunięty");
         }
 
         // === MODERACJA OFERT ===

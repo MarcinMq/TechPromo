@@ -9,11 +9,12 @@ using System.ComponentModel.DataAnnotations;
 
 namespace TechPromo.Api.Controllers
 {
+    // Oferty: listowanie, szczegóły, tworzenie, komentarze, głosy.
     [ApiController]
     [Route("api/[controller]")]
     public class OfertaController : ControllerBase
     {
-        private readonly TechPromoDbContext _context;
+        private readonly TechPromoDbContext _context; // EF Core kontekst
 
         public OfertaController(TechPromoDbContext context)
         {
@@ -22,7 +23,8 @@ namespace TechPromo.Api.Controllers
 
         // GET: api/oferta
         [HttpGet]
-        public async Task<ActionResult<PagedResult<OfertaDto>>> GetOffers(
+    // Lista ofert z filtrem kategorii / tagu, sortem i paginacją
+    public async Task<ActionResult<PagedResult<OfertaDto>>> GetOffers(
             [FromQuery] string? kategoria = null,
             [FromQuery] string? tag = null,
             [FromQuery] string? sortBy = "newest",
@@ -104,7 +106,8 @@ namespace TechPromo.Api.Controllers
 
         // GET: api/oferta/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<OfertaDto>> GetOffer(int id)
+    // Szczegóły jednej oferty
+    public async Task<ActionResult<OfertaDto>> GetOffer(int id)
         {
             var userId = 0;
             if (User.Identity?.IsAuthenticated == true)
@@ -152,7 +155,8 @@ namespace TechPromo.Api.Controllers
         // POST: api/oferta/{id}/komentarze - dodanie komentarza do oferty
         [HttpPost("{id}/komentarze")]
         [Authorize]
-        public async Task<ActionResult<KomentarzDto>> AddComment(int id, [FromBody] CreateCommentRequest request)
+        // Dodanie komentarza lub odpowiedzi
+    public async Task<ActionResult<KomentarzDto>> AddComment(int id, [FromBody] CreateCommentRequest request)
         {
             if (string.IsNullOrWhiteSpace(request.Tresc))
                 return BadRequest("Treść komentarza jest wymagana.");
@@ -165,13 +169,23 @@ namespace TechPromo.Api.Controllers
             if (userId == 0)
                 return Unauthorized();
 
+            // walidacja rodzica (opcjonalna)
+            Komentarz? parent = null;
+            if (request.ParentId.HasValue)
+            {
+                parent = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == request.ParentId.Value);
+                if (parent == null || parent.IdOferta != oferta.IdOferta)
+                    return BadRequest("Nieprawidłowy parentId.");
+            }
+
             var komentarz = new Komentarz
             {
                 IdOferta = oferta.IdOferta,
                 IdUzytkownik = userId,
                 Tresc = request.Tresc.Trim(),
                 DataDodania = DateTime.UtcNow,
-                Status = "aktywny"
+                Status = "aktywny",
+                ParentId = request.ParentId
             };
 
             _context.Komentarze.Add(komentarz);
@@ -188,7 +202,11 @@ namespace TechPromo.Api.Controllers
                     Tresc = k.Tresc,
                     Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
                     Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Oferta = string.Empty
+                    Oferta = string.Empty,
+                    ParentId = k.ParentId,
+                    Up = k.LiczbaUp,
+                    Down = k.LiczbaDown,
+                    UserVote = null
                 }).FirstOrDefaultAsync();
 
             return Created($"/api/oferta/{id}/komentarze/{komentarz.IdKomentarz}", result);
@@ -196,7 +214,8 @@ namespace TechPromo.Api.Controllers
 
         // GET: api/oferta/kategorie
         [HttpGet("kategorie")]
-        public async Task<ActionResult<IEnumerable<string>>> GetCategories()
+    // Lista nazw kategorii
+    public async Task<ActionResult<IEnumerable<string>>> GetCategories()
         {
             var categories = await _context.Kategorie
                 .Select(k => k.Nazwa)
@@ -208,7 +227,8 @@ namespace TechPromo.Api.Controllers
 
         // GET: api/oferta/tagi
         [HttpGet("tagi")]
-        public async Task<ActionResult<IEnumerable<string>>> GetTags()
+    // Lista tagów (max 50)
+    public async Task<ActionResult<IEnumerable<string>>> GetTags()
         {
             var tags = await _context.Tagi
                 .Select(t => t.Nazwa)
@@ -221,29 +241,95 @@ namespace TechPromo.Api.Controllers
 
         // GET: api/oferta/{id}/komentarze
         [HttpGet("{id}/komentarze")]
-        public async Task<ActionResult<IEnumerable<KomentarzDto>>> GetOfferComments(int id)
+    // Komentarze z paginacją i sortowaniem
+    public async Task<ActionResult<PagedResult<KomentarzDto>>> GetOfferComments(
+            int id,
+            [FromQuery] int skip = 0,
+            [FromQuery] int take = 20,
+            [FromQuery] string sort = "newest")
         {
-            var comments = await _context.Komentarze
-                .Where(k => k.IdOferta == id)
-                .Include(k => k.Uzytkownik)
-                .OrderByDescending(k => k.DataDodania)
+            if (take > 100) take = 100;
+            var baseQuery = _context.Komentarze.Where(k => k.IdOferta == id);
+            var total = await baseQuery.CountAsync();
+
+            var userId = 0;
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            }
+
+            IQueryable<Komentarz> query = baseQuery.Include(k => k.Uzytkownik);
+            query = sort switch
+            {
+                "oldest" => query.OrderBy(k => k.DataDodania),
+                "helpful" => query.OrderByDescending(k => (k.LiczbaUp - k.LiczbaDown)).ThenByDescending(k => k.DataDodania),
+                "best" => query.OrderByDescending(k => k.LiczbaUp).ThenByDescending(k => (k.LiczbaUp - k.LiczbaDown)).ThenByDescending(k => k.DataDodania),
+                _ => query.OrderByDescending(k => k.DataDodania)
+            };
+
+            var items = await query
+                .Skip(skip)
+                .Take(take)
                 .Select(k => new KomentarzDto
                 {
                     Id = k.IdKomentarz,
                     Tresc = k.Tresc,
                     Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
                     Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Oferta = "" // Nie potrzebujemy nazwy oferty w tym kontekście
+                    Oferta = "",
+                    ParentId = k.ParentId,
+                    Up = k.LiczbaUp,
+                    Down = k.LiczbaDown,
+                    UserVote = userId != 0 ? _context.KomentarzGlosy.Where(g => g.IdKomentarz == k.IdKomentarz && g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null
                 })
                 .ToListAsync();
 
-            return Ok(comments);
+            var result = new PagedResult<KomentarzDto>
+            {
+                Items = items,
+                Total = total,
+                Skip = skip,
+                Take = take
+            };
+            return Ok(result);
+        }
+
+        [HttpPost("komentarz/{id}/glos")]
+        [Authorize]
+    // Głosowanie na komentarz (toggle)
+    public async Task<ActionResult> VoteComment(int id, [FromBody] CommentVoteRequest request)
+        {
+            if (request == null || (request.Typ != "up" && request.Typ != "down"))
+                return BadRequest("Nieprawidłowy typ głosu.");
+
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var komentarz = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == id);
+            if (komentarz == null) return NotFound("Komentarz nie znaleziony.");
+
+            var existing = await _context.KomentarzGlosy.FirstOrDefaultAsync(g => g.IdKomentarz == id && g.IdUzytkownik == userId);
+            if (existing != null)
+            {
+                if (existing.TypGlosu == "up") komentarz.LiczbaUp--; else komentarz.LiczbaDown--;
+                _context.KomentarzGlosy.Remove(existing);
+                if (existing.TypGlosu == request.Typ)
+                {
+                    await _context.SaveChangesAsync();
+                    return Ok(new { komentarz.IdKomentarz, komentarz.LiczbaUp, komentarz.LiczbaDown, userVote = (string?)null });
+                }
+            }
+
+            var vote = new KomentarzGlos { IdKomentarz = id, IdUzytkownik = userId, TypGlosu = request.Typ, DataGlosu = DateTime.UtcNow };
+            _context.KomentarzGlosy.Add(vote);
+            if (request.Typ == "up") komentarz.LiczbaUp++; else komentarz.LiczbaDown++;
+            await _context.SaveChangesAsync();
+            return Ok(new { komentarz.IdKomentarz, komentarz.LiczbaUp, komentarz.LiczbaDown, userVote = request.Typ });
         }
 
         // POST: api/oferta - Główny endpoint do tworzenia ofert
         [HttpPost]
         [Authorize]
-        public async Task<ActionResult<OfertaDto>> CreateOffer([FromBody] CreateOfferRequest request)
+    // Tworzenie nowej oferty
+    public async Task<ActionResult<OfertaDto>> CreateOffer([FromBody] CreateOfferRequest request)
         {
             try
             {
@@ -312,14 +398,16 @@ namespace TechPromo.Api.Controllers
         // POST: api/oferta/kupon - Alias dla kuponów
         [HttpPost("kupon")]
         [Authorize]
-        public async Task<ActionResult<OfertaDto>> CreateCoupon([FromBody] CreateOfferRequest request)
+    // Tworzenie kuponu (alias)
+    public async Task<ActionResult<OfertaDto>> CreateCoupon([FromBody] CreateOfferRequest request)
         {
             request.Typ = "kupon";
             return await CreateOffer(request);
         }
 
         // Metoda pomocnicza - znajdź lub utwórz kategorię
-        private async Task<Kategoria> GetOrCreateCategory(string nazwaKategorii)
+    // Szukanie lub tworzenie kategorii
+    private async Task<Kategoria> GetOrCreateCategory(string nazwaKategorii)
         {
             var kategoria = await _context.Kategorie
                 .FirstOrDefaultAsync(k => k.Nazwa == nazwaKategorii);
@@ -339,7 +427,8 @@ namespace TechPromo.Api.Controllers
         }
 
         // Metoda pomocnicza - dodawanie tagów
-        private async Task AddTagsToOffer(int ofertaId, string tagiString)
+    // Dodawanie tagów do oferty
+    private async Task AddTagsToOffer(int ofertaId, string tagiString)
         {
             var tagNames = tagiString.Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(t => t.Trim())
@@ -626,5 +715,13 @@ namespace TechPromo.Api.Controllers
         [Required]
         [StringLength(2000, ErrorMessage = "Komentarz nie może być dłuższy niż 2000 znaków")]
         public string Tresc { get; set; } = string.Empty;
+    public int? ParentId { get; set; }
+    }
+
+    public class CommentVoteRequest
+    {
+        [Required]
+        [RegularExpression("^(up|down)$", ErrorMessage = "Typ musi być 'up' lub 'down'")]
+        public string Typ { get; set; } = "up";
     }
 }

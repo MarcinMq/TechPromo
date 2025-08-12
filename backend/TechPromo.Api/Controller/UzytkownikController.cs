@@ -60,7 +60,7 @@ namespace TechPromo.Api.Controllers
                 {
                     Id = k.IdKomentarz,
                     Typ = "komentarz",
-                    Opis = $"Skomentowałeś ofertę: {k.Oferta.Nazwa}",
+                    Opis = "Skomentowałeś ofertę: " + (k.Oferta != null ? k.Oferta.Nazwa : ""),
                     Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
                     Punkty = 2
                 })
@@ -144,9 +144,13 @@ namespace TechPromo.Api.Controllers
                 {
                     Id = k.IdKomentarz,
                     Tresc = k.Tresc,
-                    Oferta = k.Oferta.Nazwa,
+                    Oferta = k.Oferta != null ? k.Oferta.Nazwa : string.Empty,
                     Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Autor = k.Uzytkownik.UserName ?? "Nieznany" // Używamy UserName zamiast Nick
+                        Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
+                        ParentId = k.ParentId,
+                        Up = k.LiczbaUp,
+                        Down = k.LiczbaDown,
+                        UserVote = null
                 })
                 .ToListAsync();
 
@@ -417,7 +421,7 @@ namespace TechPromo.Api.Controllers
 
         // POST: api/uzytkownik/oferta/{id}/komentarz
         [HttpPost("oferta/{id}/komentarz")]
-        public async Task<ActionResult> AddComment(int id, [FromBody] DodajKomentarzDto dto)
+    public async Task<ActionResult> AddComment(int id, [FromBody] DodajKomentarzDto dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
@@ -427,12 +431,21 @@ namespace TechPromo.Api.Controllers
                 return NotFound("Oferta nie została znaleziona.");
             }
 
+            Komentarz? parent = null;
+            if (dto.ParentId.HasValue)
+            {
+                parent = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == dto.ParentId.Value);
+                if (parent == null || parent.IdOferta != id)
+                    return BadRequest("Nieprawidłowy parentId.");
+            }
             var komentarz = new Komentarz
             {
                 IdOferta = id,
                 IdUzytkownik = userId,
-                Tresc = dto.Tresc,
-                DataDodania = DateTime.UtcNow
+                Tresc = dto.Tresc.Trim(),
+                DataDodania = DateTime.UtcNow,
+                ParentId = dto.ParentId,
+                Status = "aktywny"
             };
 
             _context.Komentarze.Add(komentarz);

@@ -91,7 +91,7 @@ function HomePage() {
         wszystkie: 'newest'
       };
       const sortBy = sortMap[activeFilter];
-      const categoryParam = selectedCategory !== 'wszystkie' ? `&kategoria=${encodeURIComponent(selectedCategory)}` : '';
+  const categoryParam = selectedCategory.toLowerCase() !== 'wszystkie' ? `&kategoria=${encodeURIComponent(selectedCategory)}` : '';
       const response = await fetch(`/api/oferta?skip=${currentSkip}&take=${pageSize}&sortBy=${sortBy}${categoryParam}`);
       if (!response.ok) throw new Error('Błąd podczas pobierania ofert');
       const data = await response.json();
@@ -180,7 +180,8 @@ function HomePage() {
 
   const filteredOffers = useMemo(() => {
     let list = [...offers];
-    if (selectedCategory !== 'wszystkie') {
+    // Use case-insensitive comparison for the special 'Wszystkie' category
+    if (selectedCategory.toLowerCase() !== 'wszystkie') {
       list = list.filter(o => o.kategoria.toLowerCase() === selectedCategory.toLowerCase());
     }
     if (searchDebounced) {
@@ -284,9 +285,9 @@ function HomePage() {
                   {categories.map(category => (
                     <button
                       key={category.name}
-                      onClick={() => setSelectedCategory(category.name.toLowerCase())}
+                      onClick={() => setSelectedCategory(category.name)}
                       className={`flex-shrink-0 flex items-center space-x-1 px-3 py-2 rounded-full text-sm transition-colors ${
-                        selectedCategory === category.name.toLowerCase()
+                        selectedCategory.toLowerCase() === category.name.toLowerCase()
                           ? 'bg-blue-600 text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
@@ -303,9 +304,9 @@ function HomePage() {
                 {categories.map(category => (
                   <button
                     key={category.name}
-                    onClick={() => setSelectedCategory(category.name.toLowerCase())}
+                    onClick={() => setSelectedCategory(category.name)}
                     className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-left text-sm transition-colors ${
-                      selectedCategory === category.name.toLowerCase()
+                      selectedCategory.toLowerCase() === category.name.toLowerCase()
                         ? 'bg-blue-50 text-blue-700'
                         : 'text-gray-700 hover:bg-gray-50'
                     }`}

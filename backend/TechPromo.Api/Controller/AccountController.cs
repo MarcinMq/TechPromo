@@ -1,3 +1,4 @@
+// Konto: rejestracja, logowanie, profil
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;

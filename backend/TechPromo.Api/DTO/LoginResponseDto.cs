@@ -1,3 +1,4 @@
+// DTO: odpowiedź logowania z tokenem
 namespace TechPromo.Api.DTO
 {
     public class LoginResponseDto

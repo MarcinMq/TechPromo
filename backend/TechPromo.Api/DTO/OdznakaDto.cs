@@ -1,3 +1,4 @@
+// DTO: odznaka użytkownika
 namespace TechPromo.Api.DTO
 {
     public class OdznakaDto

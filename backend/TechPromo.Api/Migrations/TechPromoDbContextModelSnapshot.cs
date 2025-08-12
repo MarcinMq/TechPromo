@@ -99,6 +99,15 @@ namespace TechPromo.Api.Migrations
                     b.Property<int>("IdUzytkownik")
                         .HasColumnType("integer");
 
+                    b.Property<int>("LiczbaDown")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("LiczbaUp")
+                        .HasColumnType("integer");
+
+                    b.Property<int?>("ParentId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasMaxLength(20)
@@ -113,6 +122,8 @@ namespace TechPromo.Api.Migrations
                     b.HasIndex("IdOferta");
 
                     b.HasIndex("IdUzytkownik");
+
+                    b.HasIndex("ParentId");
 
                     b.ToTable("Komentarze");
                 });
@@ -474,6 +485,37 @@ namespace TechPromo.Api.Migrations
                     b.ToTable("Kategorie");
                 });
 
+            modelBuilder.Entity("TechPromo.Api.Model.KomentarzGlos", b =>
+                {
+                    b.Property<int>("IdKomentarzGlos")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("IdKomentarzGlos"));
+
+                    b.Property<DateTime>("DataGlosu")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("IdKomentarz")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdUzytkownik")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("TypGlosu")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)");
+
+                    b.HasKey("IdKomentarzGlos");
+
+                    b.HasIndex("IdKomentarz");
+
+                    b.HasIndex("IdUzytkownik");
+
+                    b.ToTable("KomentarzGlosy");
+                });
+
             modelBuilder.Entity("TechPromo.Api.Model.Uzytkownik", b =>
                 {
                     b.Property<int>("Id")
@@ -609,7 +651,13 @@ namespace TechPromo.Api.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("Komentarz", "Parent")
+                        .WithMany("Replies")
+                        .HasForeignKey("ParentId");
+
                     b.Navigation("Oferta");
+
+                    b.Navigation("Parent");
 
                     b.Navigation("Uzytkownik");
                 });
@@ -735,6 +783,25 @@ namespace TechPromo.Api.Migrations
                     b.Navigation("Uzytkownik");
                 });
 
+            modelBuilder.Entity("TechPromo.Api.Model.KomentarzGlos", b =>
+                {
+                    b.HasOne("Komentarz", "Komentarz")
+                        .WithMany()
+                        .HasForeignKey("IdKomentarz")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TechPromo.Api.Model.Uzytkownik", "Uzytkownik")
+                        .WithMany()
+                        .HasForeignKey("IdUzytkownik")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Komentarz");
+
+                    b.Navigation("Uzytkownik");
+                });
+
             modelBuilder.Entity("UzytkownikOdznaka", b =>
                 {
                     b.HasOne("Odznaka", "Odznaka")
@@ -757,6 +824,8 @@ namespace TechPromo.Api.Migrations
             modelBuilder.Entity("Komentarz", b =>
                 {
                     b.Navigation("Powiadomienia");
+
+                    b.Navigation("Replies");
                 });
 
             modelBuilder.Entity("Odznaka", b =>

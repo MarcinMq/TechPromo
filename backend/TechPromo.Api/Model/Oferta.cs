@@ -1,3 +1,4 @@
+// Model oferty: dane podstawowe, relacje i głosy.
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;

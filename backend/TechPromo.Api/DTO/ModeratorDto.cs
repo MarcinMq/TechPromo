@@ -1,3 +1,4 @@
+// DTO: dane moderatora
 namespace TechPromo.Api.DTO
 {
     public class OstrzezenieDto

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
+// DTO: aktualizacja oferty (admin/mod)
 namespace TechPromo.Api.DTO
 {
     public class AktualizujOferteDto

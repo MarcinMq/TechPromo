@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
+// DTO: logowanie (wejście)
 namespace TechPromo.Api.DTO
 {
     public class LoginDto

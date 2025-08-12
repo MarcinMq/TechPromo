@@ -19,6 +19,7 @@ namespace TechPromo.Api.Data
         public DbSet<OfertaTag> OfertaTagi { get; set; }
         public DbSet<Komentarz> Komentarze { get; set; }
         public DbSet<Glos> Glosy { get; set; }
+    public DbSet<KomentarzGlos> KomentarzGlosy { get; set; }
         public DbSet<Powiadomienie> Powiadomienia { get; set; }
         public DbSet<Aktywnosc> Aktywnosci { get; set; }
         public DbSet<Odznaka> Odznaki { get; set; }

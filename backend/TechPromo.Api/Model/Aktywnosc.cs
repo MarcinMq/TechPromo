@@ -1,3 +1,4 @@
+// Aktywność użytkownika (log prostych zdarzeń).
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -9,11 +10,11 @@ public class Aktywnosc
 
         [ForeignKey("Uzytkownik")]
         public int IdUzytkownik { get; set; }
-        public Uzytkownik Uzytkownik { get; set; }
+    public Uzytkownik? Uzytkownik { get; set; }
 
         [Required]
         [MaxLength(50)]
-        public string TypAktywnosci { get; set; }
+    public string TypAktywnosci { get; set; } = string.Empty;
 
         public int? IdElementu { get; set; }
         public DateTime Data { get; set; } = DateTime.UtcNow;

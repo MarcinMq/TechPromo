@@ -1,3 +1,4 @@
+// Głos na ofertę (hot/cold)
 using System;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -9,15 +10,15 @@ public class Glos
 
         [ForeignKey("Uzytkownik")]
         public int IdUzytkownik { get; set; }
-        public Uzytkownik Uzytkownik { get; set; }
+    public Uzytkownik? Uzytkownik { get; set; }
 
         [ForeignKey("Oferta")]
         public int IdOferta { get; set; }
-        public Oferta Oferta { get; set; }
+    public Oferta? Oferta { get; set; }
 
         [Required]
         [MaxLength(10)]
-        public string TypGlosu { get; set; }
+    public string TypGlosu { get; set; } = string.Empty;
 
         public DateTime DataGlosu { get; set; } = DateTime.UtcNow;
     }

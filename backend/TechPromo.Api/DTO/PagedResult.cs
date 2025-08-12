@@ -1,3 +1,4 @@
+// DTO: wynik stronicowany
 namespace TechPromo.Api.DTO
 {
     public class PagedResult<T>

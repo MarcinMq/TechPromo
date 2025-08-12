@@ -1,3 +1,4 @@
+// DTO: akcja moderacji oferty
 namespace TechPromo.Api.DTO
 {
     public class ModerujOfertaDto

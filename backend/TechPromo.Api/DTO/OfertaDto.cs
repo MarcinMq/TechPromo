@@ -1,3 +1,4 @@
+// DTO oferty do API (bez encji EF, tylko dane dla klienta).
 namespace TechPromo.Api.DTO
 {
     public class OfertaDto

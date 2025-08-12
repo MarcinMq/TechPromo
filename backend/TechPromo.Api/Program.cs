@@ -1,3 +1,4 @@
+// Start API: konfiguracja usług i uruchomienie.
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
