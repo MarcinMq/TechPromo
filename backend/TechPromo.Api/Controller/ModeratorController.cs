@@ -38,8 +38,8 @@ namespace TechPromo.Api.Controllers
                         idKomentarz = k.IdKomentarz,
                         tresc = k.Tresc,
                         dataDodania = k.DataDodania.ToString("yyyy-MM-dd HH:mm"),
-                        autor = k.Uzytkownik.UserName ?? "Nieznany",
-                        ofertaTytul = k.Oferta.Nazwa ?? "Brak",
+                        autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
+                        ofertaTytul = k.Oferta != null ? (k.Oferta.Nazwa ?? "Brak") : "Brak",
                         zgloszen = _context.Powiadomienia.Count(p => p.Tresc.Contains(k.IdKomentarz.ToString()) && p.Typ == "Zgłoszenie")
                     })
                     .ToListAsync();
@@ -60,6 +60,15 @@ namespace TechPromo.Api.Controllers
                 var komentarz = await _context.Komentarze.FindAsync(id);
                 if (komentarz == null)
                     return NotFound(new { message = "Komentarz nie został znaleziony" });
+
+                // Usuń powiązane powiadomienia (zgłoszenia, ostrzeżenia, itd.) odnoszące się do tego komentarza
+                var powiadomieniaKomentarza = await _context.Powiadomienia
+                    .Where(p => p.IdKomentarz == id)
+                    .ToListAsync();
+                if (powiadomieniaKomentarza.Count > 0)
+                {
+                    _context.Powiadomienia.RemoveRange(powiadomieniaKomentarza);
+                }
 
                 _context.Komentarze.Remove(komentarz);
                 await _context.SaveChangesAsync();
@@ -129,7 +138,7 @@ namespace TechPromo.Api.Controllers
                         cena = o.Cena,
                         dataDodania = o.DataDodania.ToString("yyyy-MM-dd HH:mm"),
                         autor = o.Uzytkownik.UserName ?? "Nieznany",
-                        kategoria = o.Kategoria.Nazwa ?? "Brak",
+                        kategoria = o.Kategoria != null ? (o.Kategoria.Nazwa ?? "Brak") : "Brak",
                         aktywna = o.Aktywna,
                         zatwierdzona = o.Zatwierdzona
                     })
@@ -262,17 +271,24 @@ namespace TechPromo.Api.Controllers
             try
             {
                 var zgloszenia = await _context.Powiadomienia
-                    .Where(p => p.Typ == "Zgłoszenie")
+                    // Akceptuj również historyczne wpisy bez ogonka
+                    .Where(p => p.Typ == "Zgłoszenie" || p.Typ == "Zgloszenie")
                     .Include(p => p.Uzytkownik)
+                    .Include(p => p.Komentarz)
+                    .Include(p => p.Oferta)
                     .OrderByDescending(p => p.DataUtworzenia)
                     .Select(p => new
                     {
                         idZgloszenie = p.IdPowiadomienie,
-                        tytul = p.Typ, // Użyję Typ jako tytuł
+                        typ = p.Typ,
                         tresc = p.Tresc,
                         dataDodania = p.DataUtworzenia.ToString("yyyy-MM-dd HH:mm"),
                         zgloszonePrzez = p.Uzytkownik.UserName ?? "Nieznany",
-                        status = p.Przeczytane ? "Rozpatrzone" : "Oczekujące"
+                        status = p.Przeczytane ? "Rozpatrzone" : "Oczekujące",
+                        idKomentarz = p.IdKomentarz,
+                        fragmentKomentarza = p.Komentarz != null ? p.Komentarz.Tresc.Substring(0, Math.Min(120, p.Komentarz.Tresc.Length)) : null,
+                        idOferta = p.IdOferta,
+                        tytulOferty = p.Oferta != null ? p.Oferta.Nazwa : null
                     })
                     .ToListAsync();
 

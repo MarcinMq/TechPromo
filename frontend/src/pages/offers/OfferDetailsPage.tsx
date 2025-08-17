@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Flame, Snowflake, MessageCircle, Share2, Bookmark, ArrowLeft, ExternalLink } from 'lucide-react';
+import ReportCommentModal from '../../components/modals/ReportCommentModal';
 import { getAuthToken } from '../../utils/auth';
 
 interface OfertaDto {
@@ -50,6 +51,9 @@ export default function OfferDetailsPage() {
   const [commentText, setCommentText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [commentSort, setCommentSort] = useState<'newest'|'oldest'|'helpful'|'best'>('newest');
+  const [reportingCommentId, setReportingCommentId] = useState<number | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSuccessFlash, setReportSuccessFlash] = useState<string | null>(null);
 
   const fetchComments = async (reset: boolean) => {
     if (!id) return;
@@ -223,6 +227,39 @@ export default function OfferDetailsPage() {
     }
   };
 
+  // Start zgłaszania
+  const openReport = (commentId: number) => {
+    const token = getAuthToken();
+    if (!token) { alert('Zaloguj się aby zgłosić komentarz'); return; }
+    setReportingCommentId(commentId);
+  };
+
+  const submitReport = async (reason: string) => {
+    if (reportingCommentId === null) return;
+    const token = getAuthToken();
+    if (!token) { alert('Sesja wygasła – zaloguj się ponownie'); return; }
+    setReportLoading(true);
+    try {
+  const res = await fetch('/api/uzytkownik/zgloszenie', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ typ: 'comment', idTresci: reportingCommentId, powod: reason })
+      });
+      if (res.ok) {
+        setReportSuccessFlash('Zgłoszenie wysłane do moderacji');
+        setTimeout(()=> setReportSuccessFlash(null), 4000);
+        setReportingCommentId(null);
+      } else {
+        const txt = await res.text();
+        alert('Błąd zgłaszania: ' + txt);
+      }
+    } catch {
+      alert('Nie udało się wysłać zgłoszenia');
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
   const renderComments = (nodes: CommentNode[], depth = 0) => (
     nodes.map(c => (
       <div key={c.id} className={`rounded p-3 mb-3 ${depth === 0 ? 'bg-gray-50 border' : 'bg-white border-l-2'} `} style={depth>0?{marginLeft: depth * 16}:{}}>
@@ -234,6 +271,7 @@ export default function OfferDetailsPage() {
             <button onClick={()=>handleCommentVote(c.id,'down')} className={`px-2 py-0.5 rounded border ${c.userVote==='down' ? 'bg-red-600 text-white border-red-600' : 'bg-white hover:bg-red-50 text-red-600 border-red-300'}`}>▼ {c.down ?? 0}</button>
           </div>
           <button onClick={() => setReplyParentId(replyParentId === c.id ? null : c.id)} className="text-xs text-blue-600 hover:underline">{replyParentId === c.id ? 'Anuluj' : 'Odpowiedz'}</button>
+          <button onClick={() => openReport(c.id)} className="text-xs text-red-600 hover:underline">Zgłoś</button>
         </div>
         {replyParentId === c.id && (
           <div className="mt-2 space-y-2">
@@ -265,6 +303,11 @@ export default function OfferDetailsPage() {
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="w-full max-w-5xl mx-auto px-4 py-4">
+        {reportSuccessFlash && (
+          <div className="mb-4 px-4 py-2 rounded-xl bg-green-100 text-green-700 text-sm border border-green-200 shadow">
+            {reportSuccessFlash}
+          </div>
+        )}
         <div className="flex items-center mb-4 text-sm text-gray-600">
           <Link to="/" className="text-blue-600 hover:underline flex items-center"><ArrowLeft className="w-4 h-4 mr-1" /> Wróć</Link>
         </div>
@@ -395,6 +438,17 @@ export default function OfferDetailsPage() {
         </div>
 
       </div>
+      {/* Modal zgłoszenia komentarza */}
+      <ReportCommentModal
+        isVisible={reportingCommentId !== null}
+        commentId={reportingCommentId}
+        onClose={() => !reportLoading && setReportingCommentId(null)}
+        onSubmit={submitReport}
+        loading={reportLoading}
+      />
     </div>
   );
 }
+
+{/* Modal zgłoszenia komentarza */}
+{/* Umieszczony poza komponentem eksportowanym? Musi być wewnątrz return głównego komponentu - przeniesiono niżej */}

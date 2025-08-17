@@ -78,7 +78,7 @@ namespace TechPromo.Api.Controllers
                 {
                     Id = g.IdGlos,
                     Typ = "glos",
-                    Opis = $"Zagłosowałeś '{g.TypGlosu}' na ofertę: {g.Oferta.Nazwa}",
+                    Opis = $"Zagłosowałeś '{g.TypGlosu}' na ofertę: {(g.Oferta != null ? g.Oferta.Nazwa : "")}",
                     Data = g.DataGlosu.ToString("dd.MM.yyyy HH:mm"),
                     Punkty = 1
                 })
@@ -464,13 +464,51 @@ namespace TechPromo.Api.Controllers
 
         // POST: api/uzytkownik/zgloszenie
         [HttpPost("zgloszenie")]
-        public ActionResult ReportContent([FromBody] ZglosDto dto)
+        public async Task<ActionResult> ReportContent([FromBody] ZglosDto dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Brak użytkownika");
+            if (string.IsNullOrWhiteSpace(dto.Typ) || string.IsNullOrWhiteSpace(dto.Powod)) return BadRequest("Nieprawidłowe dane zgłoszenia");
 
-            // TODO: Dodaj model Zgloszenie i implementuj zgłaszanie treści
-            // Na razie zwróć sukces
-            return Ok("Zgłoszenie zostało przesłane do moderacji.");
+            // Normalizuj typ (offer/comment)
+            var typLower = dto.Typ.Trim().ToLower();
+            if (typLower != "offer" && typLower != "comment") return BadRequest("Nieobsługiwany typ zgłoszenia");
+
+            // Sprawdź czy obiekt istnieje
+            Oferta? oferta = null; Komentarz? komentarz = null;
+            if (typLower == "offer")
+            {
+                oferta = await _context.Oferty.FindAsync(dto.IdTresci);
+                if (oferta == null) return NotFound("Oferta nie istnieje");
+            }
+            else // comment
+            {
+                komentarz = await _context.Komentarze.FindAsync(dto.IdTresci);
+                if (komentarz == null) return NotFound("Komentarz nie istnieje");
+            }
+
+            // Zabezpieczenie: maks 200 znaków (walidacja w DTO, ale przytnij)
+            var powod = dto.Powod.Trim();
+            if (powod.Length > 200) powod = powod.Substring(0, 200);
+
+            // Utwórz powiadomienie typu "Zgłoszenie"
+            var powiadomienie = new Powiadomienie
+            {
+                IdUzytkownik = userId,
+                Typ = "Zgłoszenie",
+                Tresc = typLower == "comment"
+                    ? $"Komentarz#{komentarz!.IdKomentarz}: {powod}"
+                    : $"Oferta#{oferta!.IdOferta}: {powod}",
+                DataUtworzenia = DateTime.UtcNow,
+                IdKomentarz = komentarz?.IdKomentarz,
+                IdOferta = oferta?.IdOferta,
+                Przeczytane = false
+            };
+
+            _context.Powiadomienia.Add(powiadomienie);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Zgłoszenie zostało przesłane do moderacji." });
         }
 
         // PUT: api/uzytkownik/oferta/{id}

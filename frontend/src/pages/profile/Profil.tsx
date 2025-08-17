@@ -124,6 +124,38 @@ const Profil = () => {
     <div className="flex justify-center py-12 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
       <div className="w-full max-w-2xl p-8 bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30">
         <h2 className="text-3xl font-bold mb-8 text-gray-900 text-center">Profil użytkownika</h2>
+        {/* Szybkie przejście do paneli zależnie od roli */}
+        {data?.rola && (
+          <div className="mb-10">
+            <div className="flex flex-wrap justify-center gap-4">
+              {/* Panel użytkownika - zawsze */}
+              <button
+                onClick={() => navigate('/uzytkownik/panel')}
+                className="px-5 py-3 rounded-2xl bg-custom-blue text-white font-semibold shadow hover:bg-custom-blue-dark transition-all"
+              >
+                🧩 Panel użytkownika
+              </button>
+              {/* Moderator */}
+              {(data.rola === 'Moderator' || data.rola === 'Admin') && (
+                <button
+                  onClick={() => navigate('/moderator')}
+                  className="px-5 py-3 rounded-2xl bg-yellow-500 text-white font-semibold shadow hover:bg-yellow-600 transition-all"
+                >
+                  ⚖️ Panel moderatora
+                </button>
+              )}
+              {/* Admin */}
+              {data.rola === 'Admin' && (
+                <button
+                  onClick={() => navigate('/admin')}
+                  className="px-5 py-3 rounded-2xl bg-red-600 text-white font-semibold shadow hover:bg-red-700 transition-all"
+                >
+                  👑 Panel administratora
+                </button>
+              )}
+            </div>
+          </div>
+        )}
         
         <div className="space-y-4 mb-8">
           {editing ? (

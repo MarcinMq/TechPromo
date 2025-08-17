@@ -108,16 +108,40 @@ const CreateDealForm: React.FC = () => {
 
       // Edit mode: send JSON PUT
       if (editId) {
-        const payload = {
-          tytul: formData.tytul.trim(),
-          opis: formData.opis.trim(),
-          cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
-          cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
-          kod: null,
-          link: formData.sklep.trim() || null
-        };
         const role = getUserData()?.role;
-        const putUrl = role === 'Admin' ? `/api/admin/oferta/${editId}` : role === 'Moderator' ? `/api/moderator/oferta/${editId}/edytuj` : `/api/uzytkownik/oferta/${editId}`;
+        let putUrl = '';
+        let payload: any = {};
+
+        if (role === 'Admin') {
+          putUrl = `/api/admin/oferta/${editId}`;
+          payload = {
+            tytul: formData.tytul.trim(),
+            opis: formData.opis.trim(),
+            cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+            cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
+            kod: null,
+            link: formData.sklep.trim() || null
+          };
+        } else if (role === 'Moderator') {
+          // Endpoint moderatora oczekuje pól: NowyTytul, NowyOpis, Powod
+            putUrl = `/api/moderator/oferta/${editId}/edytuj`;
+            payload = {
+              nowyTytul: formData.tytul.trim(),
+              nowyOpis: formData.opis.trim(),
+              powod: 'Aktualizacja treści przez moderatora'
+            };
+        } else { // Zwykły użytkownik
+          putUrl = `/api/uzytkownik/oferta/${editId}`;
+          payload = {
+            tytul: formData.tytul.trim(),
+            opis: formData.opis.trim(),
+            cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+            cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
+            kod: null,
+            link: formData.sklep.trim() || null
+          };
+        }
+
         const res = await fetch(putUrl, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

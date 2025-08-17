@@ -45,7 +45,8 @@ namespace TechPromo.Api.Controllers
             // Filtrowanie po kategorii
             if (!string.IsNullOrEmpty(kategoria))
             {
-                query = query.Where(o => o.Kategoria != null && o.Kategoria.Nazwa == kategoria);
+                var katLower = kategoria.ToLower();
+                query = query.Where(o => o.Kategoria != null && o.Kategoria.Nazwa.ToLower() == katLower);
             }
 
             // Filtrowanie po tagu
@@ -407,22 +408,28 @@ namespace TechPromo.Api.Controllers
 
         // Metoda pomocnicza - znajdź lub utwórz kategorię
     // Szukanie lub tworzenie kategorii
-    private async Task<Kategoria> GetOrCreateCategory(string nazwaKategorii)
+        private async Task<Kategoria> GetOrCreateCategory(string nazwaKategorii)
         {
+            var raw = (nazwaKategorii ?? string.Empty).Trim();
+            if (raw.Length == 0) raw = "Inne";
+            // Normalizacja: pierwsza litera wielka, reszta jak była (prosto)
+            var normalized = char.ToUpper(raw[0]) + (raw.Length > 1 ? raw.Substring(1) : string.Empty);
+            var lower = raw.ToLower();
+
+            // Szukam case-insensitive
             var kategoria = await _context.Kategorie
-                .FirstOrDefaultAsync(k => k.Nazwa == nazwaKategorii);
-                
+                .FirstOrDefaultAsync(k => k.Nazwa.ToLower() == lower);
+
             if (kategoria == null)
             {
-                kategoria = new Kategoria 
-                { 
-                    Nazwa = nazwaKategorii,
-                    Opis = $"Kategoria {nazwaKategorii}" // Dodaję domyślny opis
+                kategoria = new Kategoria
+                {
+                    Nazwa = normalized,
+                    Opis = $"Kategoria {normalized}"
                 };
                 _context.Kategorie.Add(kategoria);
                 await _context.SaveChangesAsync();
             }
-            
             return kategoria;
         }
 

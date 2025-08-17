@@ -37,6 +37,16 @@ type Oferta = {
   typ?: string;
 };
 
+// Typ komentarza jak w panelu moderatora
+type KomentarzModeracja = {
+  idKomentarz: number;
+  tresc: string;
+  dataDodania: string;
+  autor: string;
+  ofertaTytul: string;
+  zgloszen: number;
+};
+
 const AdminPanel = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'badges' | 'assign' | 'reports' | 'comments' | 'offers'>('users');
   const [users, setUsers] = useState<Uzytkownik[]>([]);
@@ -205,11 +215,12 @@ const AdminPanel = () => {
   };
 
   // Pobieranie komentarzy
+  // Ujednolicone z panelem moderatora – korzystamy z endpointu moderatora (Admin ma uprawnienia)
   const fetchComments = async () => {
     try {
-      const res = await authorizedFetch('/admin/komentarze');
+      const res = await authorizedFetch('/moderator/komentarze');
       if (res.ok) {
-        const data = await res.json();
+        const data: KomentarzModeracja[] = await res.json();
         setComments(data);
       } else {
         setMessage('Błąd pobierania komentarzy');
@@ -251,6 +262,36 @@ const AdminPanel = () => {
     }
   };
 
+  // Usuń komentarz powiązany ze zgłoszeniem i oznacz zgłoszenie jako załatwione
+  const deleteReportedComment = async (commentId: number, reportId: number) => {
+    if (!confirm('Usunąć zgłoszony komentarz i zamknąć zgłoszenie?')) return;
+    setLoading(true);
+    try {
+      // 1. Najpierw usuń zgłoszenie (żeby nie było FK do komentarza)
+      const rep = await apiPut(`/admin/zgloszenie/${reportId}/zatwierdz`, {});
+      const repText = await rep.text();
+      if (!rep.ok) {
+        setMessage('Nie udało się usunąć zgłoszenia: ' + repText);
+        // kontynuujemy próbę usunięcia komentarza aby moderator widział efekt
+      }
+      // 2. Usuń komentarz (endpoint moderatora dostępny też dla Admin)
+      const del = await apiDelete(`/moderator/komentarz/${commentId}`);
+      const delText = await del.text();
+      if (!del.ok) {
+        setMessage(prev => (prev ? prev + ' | ' : '') + 'Błąd usuwania komentarza: ' + delText);
+      } else {
+        setMessage(prev => (prev ? prev + ' | ' : '') + 'Komentarz usunięty.');
+      }
+      // Odśwież listy
+      fetchReports();
+      fetchComments();
+    } catch {
+      setMessage('Błąd podczas usuwania zgłoszonego komentarza');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Odrzucanie zgłoszenia
   const rejectReport = async (reportId: number) => {
     setLoading(true);
@@ -268,23 +309,33 @@ const AdminPanel = () => {
     }
   };
 
-  // Usuwanie komentarza
-  const deleteComment = async (commentId: number) => {
-    if (!confirm('Czy na pewno chcesz usunąć ten komentarz?')) return;
-    
+  // Ostrzeż użytkownika za komentarz (moderator endpoint)
+  const warnComment = async (commentId: number) => {
+    const powod = prompt('Podaj powód ostrzeżenia:');
+    if (!powod) return;
     setLoading(true);
     try {
-      const res = await apiDelete(`/admin/komentarz/${commentId}`);
+      const res = await apiPost(`/moderator/komentarz/${commentId}/ostrzez`, { powod });
+      const text = await res.text();
+      setMessage(res.ok ? 'Ostrzeżenie wysłane' : text);
+      if (res.ok) fetchComments();
+    } catch {
+      setMessage('Błąd wysyłania ostrzeżenia');
+    } finally { setLoading(false); }
+  };
+
+  // Usuń komentarz (moderator endpoint)
+  const deleteComment = async (commentId: number) => {
+    if (!confirm('Czy na pewno chcesz usunąć ten komentarz?')) return;
+    setLoading(true);
+    try {
+      const res = await apiDelete(`/moderator/komentarz/${commentId}`);
       const text = await res.text();
       setMessage(text);
-      if (res.ok) {
-        fetchComments();
-      }
+      if (res.ok) fetchComments();
     } catch {
       setMessage('Błąd usuwania komentarza');
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   // Zatwierdzanie oferty
@@ -617,7 +668,19 @@ const AdminPanel = () => {
                     <p><strong>Data:</strong> {report.dataZgloszenia}</p>
                     <p><strong>Oferta:</strong> {report.oferta}</p>
                   </div>
-                  <div className="flex space-x-3 pt-3 border-t border-gray-200">
+                  <div className="flex flex-col gap-3 pt-3 border-t border-gray-200">
+                    {report.idKomentarz && (
+                      <div className="flex gap-3">
+                        <button
+                          className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
+                          onClick={() => deleteReportedComment(report.idKomentarz, report.id)}
+                          disabled={loading}
+                        >
+                          Usuń komentarz i zamknij
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex gap-3">
                     <button 
                       className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium disabled:opacity-50"
                       onClick={() => approveReport(report.id)}
@@ -633,6 +696,7 @@ const AdminPanel = () => {
                     >
                       ❌ Odrzuć
                     </button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -650,51 +714,44 @@ const AdminPanel = () => {
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
               <MessageCircle className="w-6 h-6 mr-2 text-blue-600" />
-              Moderacja Komentarzy
+              Moderacja komentarzy 
             </h2>
-            <div className="space-y-4">
-              {comments.map(comment => (
-                <div key={comment.id} className="bg-white/60 rounded-xl p-6 shadow-md hover:shadow-lg transition-all">
-                  <div className="flex justify-between items-start mb-3">
-                    <h4 className="text-lg font-bold flex items-center">
-                      <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm mr-2">#{comment.id}</span>
-                      Komentarz
-                    </h4>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      comment.status === 'Zatwierdzony' ? 'bg-green-100 text-green-800' : 
-                      comment.status === 'Oczekujący' ? 'bg-yellow-100 text-yellow-800' : 
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {comment.status}
-                    </span>
+            {comments.length === 0 ? (
+              <div className="text-center p-12 bg-white/40 rounded-xl border-2 border-dashed border-gray-300">
+                <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                <div className="text-xl font-medium text-gray-600">Brak komentarzy do moderacji</div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {comments.map((c: KomentarzModeracja) => (
+                  <div key={c.idKomentarz} className="bg-white/60 rounded-xl p-6 shadow-md hover:shadow-lg transition-all">
+                    <h4 className="text-lg font-bold mb-2 text-gray-900">{c.autor}</h4>
+                    <p className="mb-2"><strong>Treść:</strong> {c.tresc}</p>
+                    <p className="mb-2"><strong>Oferta:</strong> {c.ofertaTytul}</p>
+                    <p className="mb-2"><strong>Data:</strong> {c.dataDodania}</p>
+                    {c.zgloszen > 0 && (
+                      <p className="mb-4"><strong>Zgłoszeń:</strong> <span className="bg-red-100 text-red-700 px-2 py-1 rounded-full text-sm font-semibold">{c.zgloszen}</span></p>
+                    )}
+                    <div className="flex gap-3 pt-2">
+                      <button
+                        className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium disabled:opacity-50"
+                        onClick={() => warnComment(c.idKomentarz)}
+                        disabled={loading}
+                      >
+                        Ostrzeż
+                      </button>
+                      <button
+                        className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
+                        onClick={() => deleteComment(c.idKomentarz)}
+                        disabled={loading}
+                      >
+                        Usuń
+                      </button>
+                    </div>
                   </div>
-                  <div className="bg-white/70 p-4 rounded-lg mb-4">
-                    <p className="text-gray-800">{comment.tresc}</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
-                    <p><strong>Autor:</strong> {comment.autor}</p>
-                    <p><strong>Data:</strong> {comment.dataUtworzenia}</p>
-                    <p className="col-span-2"><strong>Oferta:</strong> {comment.oferta}</p>
-                  </div>
-                  <div className="flex justify-end">
-                    <button 
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50 flex items-center"
-                      onClick={() => deleteComment(comment.id)}
-                      disabled={loading}
-                    >
-                      <Trash2 className="w-4 h-4 mr-1" />
-                      Usuń Komentarz
-                    </button>
-                  </div>
-                </div>
-              ))}
-              {comments.length === 0 && (
-                <div className="text-center p-12 bg-white/40 rounded-xl border-2 border-dashed border-gray-300">
-                  <MessageCircle className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                  <div className="text-xl font-medium text-gray-600">Brak komentarzy do moderacji</div>
-                </div>
-              )}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

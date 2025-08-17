@@ -13,7 +13,7 @@ using TechPromo.Api.Model;
 namespace TechPromo.Api.Controllers
 {
     [ApiController]
-    [Route("admin")]
+    [Route("api/admin")]
     [Authorize(Roles = "Admin")] // Tylko administratorzy mogą używać tych endpointów
     public class AdminController : ControllerBase
     {
@@ -211,21 +211,48 @@ namespace TechPromo.Api.Controllers
         {
             // Pobierz wszystkie zgłoszenia użytkowników (oferty, komentarze, etc.)
             var zgloszenia = await _context.Powiadomienia
-                .Where(p => p.Typ == "Zgloszenie") // Tylko zgłoszenia
+                // Obsługujemy zarówno wpisy z diakrytykami jak i bez (historyczne)
+                .Where(p => p.Typ == "Zgłoszenie" || p.Typ == "Zgloszenie") // Tylko zgłoszenia
                 .Include(p => p.Uzytkownik)
                 .Include(p => p.Oferta)
+                .Include(p => p.Komentarz)
                 .OrderByDescending(p => p.DataUtworzenia)
                 .Select(p => new {
                     id = p.IdPowiadomienie,
                     tresc = p.Tresc,
                     dataZgloszenia = p.DataUtworzenia.ToString("yyyy-MM-dd HH:mm"),
                     zgloszonePrzez = p.Uzytkownik.UserName,
-                    oferta = p.Oferta != null ? p.Oferta.Nazwa : "Brak",
+                    oferta = p.Oferta != null ? p.Oferta.Nazwa : null,
+                    idOferta = p.IdOferta,
+                    idKomentarz = p.IdKomentarz,
+                    komentarzFragment = p.Komentarz != null ? p.Komentarz.Tresc.Substring(0, Math.Min(120, p.Komentarz.Tresc.Length)) : null,
                     typ = p.Typ
                 })
                 .ToListAsync();
 
             return Ok(zgloszenia);
+        }
+
+        // Tymczasowy endpoint diagnostyczny: wylistuj wszystkie powiadomienia (do debugowania zgłoszeń)
+        // UWAGA: Usuń po rozwiązaniu problemu z widocznością zgłoszeń.
+        [HttpGet("_debug/powiadomienia")]
+        public async Task<IActionResult> DebugPowiadomienia()
+        {
+            var all = await _context.Powiadomienia
+                .OrderByDescending(p => p.IdPowiadomienie)
+                .Select(p => new {
+                    p.IdPowiadomienie,
+                    p.Typ,
+                    p.Tresc,
+                    p.IdKomentarz,
+                    p.IdOferta,
+                    p.IdUzytkownik,
+                    p.Przeczytane,
+                    p.DataUtworzenia
+                })
+                .Take(200)
+                .ToListAsync();
+            return Ok(all);
         }
 
         // === ZATWIERDZANIE/ODRZUCANIE ZGŁOSZEŃ ===

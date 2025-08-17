@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom';
-import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search } from 'lucide-react';
+import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search, Flag } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth';
+import ReportOfferModal from '../components/modals/ReportOfferModal';
 
 // Typy dla prawdziwych danych z API
 interface OfertaDto {
@@ -30,7 +31,7 @@ interface OfertaDto {
 function OfferImage({ offer }: { offer: OfertaDto }) {
   const imageUrl = offer.zdjecia && offer.zdjecia.length > 0 ? `http://localhost:5023${offer.zdjecia[0]}` : null;
   return (
-    <div className="relative w-20 h-20 sm:w-24 sm:h-24 flex-shrink-0 rounded border border-gray-200 overflow-hidden group bg-gray-50">
+  <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex-shrink-0 rounded-xl border border-gray-200 overflow-hidden group bg-gray-100">
       {imageUrl && (
         <img
           src={imageUrl}
@@ -47,7 +48,7 @@ function OfferImage({ offer }: { offer: OfertaDto }) {
         />
       )}
       <div className={`absolute inset-0 flex items-center justify-center text-gray-400 ${imageUrl ? 'hidden' : 'flex'}`}>
-        <span className="text-2xl">{offer.typ === 'kupon' ? '🎫' : '🛍️'}</span>
+    <span className="text-3xl">{offer.typ === 'kupon' ? '🎫' : '🛍️'}</span>
       </div>
     </div>
   );
@@ -63,6 +64,9 @@ function HomePage() {
   const [search, setSearch] = useState('');
   const [searchDebounced, setSearchDebounced] = useState('');
   const [total, setTotal] = useState(0);
+  const [reportingOfferId, setReportingOfferId] = useState<number | null>(null);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportSuccessFlash, setReportSuccessFlash] = useState<string | null>(null);
   const pageSize = 30;
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -90,9 +94,9 @@ function HomePage() {
         cena: 'price',
         wszystkie: 'newest'
       };
-      const sortBy = sortMap[activeFilter];
-  const categoryParam = selectedCategory.toLowerCase() !== 'wszystkie' ? `&kategoria=${encodeURIComponent(selectedCategory)}` : '';
-      const response = await fetch(`/api/oferta?skip=${currentSkip}&take=${pageSize}&sortBy=${sortBy}${categoryParam}`);
+  const sortBy = sortMap[activeFilter];
+  // Zawsze pobieram pełny zestaw (bez filtrowania kategorii na backendzie) aby zachować liczniki kategorii
+  const response = await fetch(`/api/oferta?skip=${currentSkip}&take=${pageSize}&sortBy=${sortBy}`);
       if (!response.ok) throw new Error('Błąd podczas pobierania ofert');
       const data = await response.json();
       const items: OfertaDto[] = data.items || data.Items || data;
@@ -107,9 +111,18 @@ function HomePage() {
       setLoading(false);
       loadingMoreRef.current = false;
     }
-  }, [activeFilter, selectedCategory]);
+  }, [activeFilter]);
 
-  useEffect(() => { fetchOffers(true); }, [activeFilter, selectedCategory]);
+  useEffect(() => { fetchOffers(true); }, [activeFilter, fetchOffers]);
+
+  // Normalizuj selectedCategory do wersji występującej w ofertach (aby uniknąć duplikatów po case)
+  useEffect(() => {
+    if (selectedCategory.toLowerCase() === 'wszystkie') return;
+    const match = offers.map(o => o.kategoria).find(k => k.toLowerCase() === selectedCategory.toLowerCase());
+    if (match && match !== selectedCategory) {
+      setSelectedCategory(match);
+    }
+  }, [offers, selectedCategory]);
 
   // Infinite scroll observer
   useEffect(() => {
@@ -160,10 +173,33 @@ function HomePage() {
     }
   };
 
-  // Przykładowe kategorie - można będzie później pobrać z API
+  const submitOfferReport = async (powod: string) => {
+    if (reportingOfferId == null) return;
+    const token = getAuthToken();
+    if (!token) { alert('Zaloguj się aby zgłosić ofertę'); return; }
+    setReportLoading(true);
+    try {
+      const res = await fetch(`/api/uzytkownik/zgloszenie`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ typ: 'offer', idTresci: reportingOfferId, powod })
+      });
+      if (res.ok) {
+        setReportSuccessFlash('Zgłoszenie wysłane. Dziękujemy!');
+        setTimeout(() => setReportSuccessFlash(null), 4000);
+        setReportingOfferId(null);
+      } else {
+        const t = await res.text();
+        alert('Błąd zgłaszania: ' + t);
+      }
+    } finally {
+      setReportLoading(false);
+    }
+  };
+
+  // Stała lista kategorii (spójna z formularzami dodawania)
   const categories = useMemo(() => {
     const base = [
-      { name: 'Wszystkie', icon: '🔥' },
       { name: 'Telefony', icon: '📱' },
       { name: 'Laptopy', icon: '💻' },
       { name: 'Audio', icon: '🎧' },
@@ -173,9 +209,10 @@ function HomePage() {
       { name: 'Smartwatche', icon: '⌚' },
       { name: 'Tablety', icon: '📱' },
       { name: 'PC', icon: '🖥️' },
-      { name: 'Akcesoria', icon: '�' },
+      { name: 'Akcesoria', icon: '🔌' }
     ];
-    return base.map(c => ({ ...c, count: c.name === 'Wszystkie' ? offers.length : offers.filter(o => o.kategoria.toLowerCase() === c.name.toLowerCase()).length }));
+    const withCounts = base.map(c => ({ ...c, count: offers.filter(o => o.kategoria.toLowerCase() === c.name.toLowerCase()).length }));
+    return [{ name: 'Wszystkie', icon: '🔥', count: offers.length }, ...withCounts];
   }, [offers]);
 
   const filteredOffers = useMemo(() => {
@@ -342,114 +379,61 @@ function HomePage() {
                   const temperatura = offer.votes.hot - offer.votes.cold;
                   const gradient = temperatura > 100 ? 'from-red-500/10 to-orange-500/10' : temperatura > 50 ? 'from-orange-500/10 to-yellow-500/10' : temperatura > 20 ? 'from-yellow-400/10 to-amber-400/10' : temperatura < -10 ? 'from-blue-500/10 to-cyan-500/10' : 'from-gray-200/5 to-gray-100/5';
                   return (
-                  <div key={offer.id} className={`bg-white rounded border hover:shadow-md transition-shadow bg-gradient-to-r ${gradient}`}>
-                    <div className="p-3 sm:p-4">
-                      <div className="flex flex-col sm:flex-row">
-                        {/* Sekcja temperatury i zdjęcia - na mobile poziomo */}
-                        <div className="flex items-center sm:flex-col sm:items-center sm:mr-4 mb-3 sm:mb-0">
-                          {/* Temperatura */}
-                          <div className="flex flex-col items-center mr-3 sm:mr-0">
-                            <div className={`flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg border font-bold text-sm sm:text-lg ${getTemperatureColor(offer.votes.hot - offer.votes.cold)}`}>
-                              {offer.votes.hot - offer.votes.cold}°
-                            </div>
-                            <div className="flex sm:flex-col items-center mt-1 sm:mt-2 space-x-1 sm:space-x-0 sm:space-y-1">
-                              <button 
-                                onClick={() => handleVote(offer.id, 'hot')}
-                                className="flex items-center space-x-1 bg-red-50 text-red-600 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs hover:bg-red-100 transition-colors"
-                              >
-                                <Flame className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                                <span>{offer.votes.hot}</span>
-                              </button>
-                              <button 
-                                onClick={() => handleVote(offer.id, 'cold')}
-                                className="flex items-center space-x-1 bg-blue-50 text-blue-600 px-1.5 py-0.5 sm:px-2 sm:py-1 rounded text-xs hover:bg-blue-100 transition-colors"
-                              >
-                                <Snowflake className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
-                                <span>{offer.votes.cold}</span>
-                              </button>
-                            </div>
-                          </div>
-
-                          {/* Zdjęcie produktu / placeholder (zawsze rezerwuje miejsce) */}
+                    <div key={offer.id} className={`bg-white rounded-lg border hover:shadow-md transition-shadow bg-gradient-to-r ${gradient}`}>
+                      <div className="p-3 sm:p-4 flex">
+                        <div className="relative mr-4">
                           <OfferImage offer={offer} />
+                          <div className={`absolute top-2 left-2 flex items-center justify-center px-2 h-7 rounded-full text-xs font-bold border shadow ${getTemperatureColor(temperatura)}`}>{temperatura}°</div>
+                          <div className="absolute bottom-2 left-2 flex flex-col space-y-1">
+                            <button onClick={() => handleVote(offer.id, 'hot')} className="flex items-center space-x-1 bg-red-600/90 hover:bg-red-600 text-white px-2 py-1 rounded text-xs shadow">
+                              <Flame className="w-3 h-3" />
+                              <span>{offer.votes.hot}</span>
+                            </button>
+                            <button onClick={() => handleVote(offer.id, 'cold')} className="flex items-center space-x-1 bg-blue-600/90 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs shadow">
+                              <Snowflake className="w-3 h-3" />
+                              <span>{offer.votes.cold}</span>
+                            </button>
+                          </div>
                         </div>
-
-                        {/* Główne informacje */}
-                        <div className="flex-1 min-w-0">
-                          <Link 
-                            to={`/okazja/${offer.id}`}
-                            className="text-base font-bold text-gray-900 hover:text-blue-600 transition-colors block mb-2 leading-tight"
-                          >
-                            {offer.tytul}
-                          </Link>
-                          
-                          {/* Cena - duża i widoczna */}
-                          <div className="flex flex-wrap items-baseline space-x-2 mb-2">
+                        <div className="flex-1 min-w-0 flex flex-col">
+                          <Link to={`/okazja/${offer.id}`} className="text-base font-bold text-gray-900 hover:text-blue-600 transition-colors leading-snug pr-4 line-clamp-2">{offer.tytul}</Link>
+                          <div className="mt-1 mb-2">
                             {offer.typ === 'kupon' ? (
                               <div className="flex items-center flex-wrap gap-2">
-                                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-2 py-1 rounded">🎫 KUPON</span>
-                                {offer.kod && (
-                                  <span className="bg-gray-100 text-gray-800 text-sm font-mono px-2 py-1 rounded border">{offer.kod}</span>
-                                )}
-                                {offer.cena && (
-                                  <span className="text-xl font-black text-purple-600">{offer.cena} zł</span>
-                                )}
+                                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded">🎫 KUPON</span>
+                                {offer.kod && <span className="bg-gray-100 text-gray-800 text-xs font-mono px-2 py-1 rounded border">{offer.kod}</span>}
+                                {offer.cena && <span className="text-xl font-black text-purple-600">{offer.cena} zł</span>}
                                 {!offer.cena && <span className="text-sm text-gray-600">Sprawdź cenę</span>}
                               </div>
                             ) : (
-                              <>
-                                {offer.cena ? (
-                                  <div className="flex items-center flex-wrap gap-2">
-                                    {offer.cenaPoprzednia && (
-                                      <span className="text-sm line-through text-gray-400" title="Stara cena">{offer.cenaPoprzednia} zł</span>
-                                    )}
-                                    <span className="text-xl font-black text-red-600">{offer.cena} zł</span>
-                                    {offer.cenaPoprzednia && offer.cenaPoprzednia > offer.cena && (
-                                      <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-                                        -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
-                                      </span>
-                                    )}
-                                  </div>
-                                ) : (
-                                  <span className="text-lg text-gray-600">Sprawdź cenę</span>
+                              <div className="flex items-center flex-wrap gap-2">
+                                {offer.cenaPoprzednia && <span className="text-sm line-through text-gray-400" title="Stara cena">{offer.cenaPoprzednia} zł</span>}
+                                {offer.cena ? <span className="text-2xl font-black text-red-600">{offer.cena} zł</span> : <span className="text-lg text-gray-600">Sprawdź cenę</span>}
+                                {offer.cenaPoprzednia && offer.cena && offer.cenaPoprzednia > offer.cena && (
+                                  <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">-{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%</span>
                                 )}
-                              </>
+                              </div>
                             )}
                           </div>
-                          {/* Informacje: ukryty sklep (link pokazujemy tylko w przycisku na stronie szczegółowej) */}
-                          <div className="flex flex-wrap items-center space-x-3 text-sm text-gray-600 mb-3">
-                            <span>Kategoria: {offer.kategoria}</span>
-                          </div>
-
-                          {/* Dolna sekcja z użytkownikiem */}
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-                            <div className="flex items-center space-x-2">
-                              <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center">
-                                <span className="text-xs font-bold">{offer.autor[0]?.toUpperCase()}</span>
-                              </div>
-                              <span className="text-sm text-gray-600">Dodane przez {offer.autor}</span>
-                              <span className="text-sm text-gray-500">{offer.dataUtworzenia}</span>
+                          <div className="text-sm text-gray-600 line-clamp-2 mb-3">{offer.opis}</div>
+                          <div className="mt-auto flex items-center justify-between">
+                            <div className="flex items-center space-x-2 text-xs text-gray-500">
+                              <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center"><span className="text-[10px] font-bold">{offer.autor[0]?.toUpperCase()}</span></div>
+                              <span>Dodane przez {offer.autor}</span>
+                              <span>{offer.dataUtworzenia}</span>
+                              <span className="hidden sm:inline">• {offer.kategoria}</span>
                             </div>
-                            
                             <div className="flex items-center space-x-3">
-                              <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm">
-                                <MessageCircle className="w-4 h-4" />
-                                <span>{offer.komentarze}</span>
-                              </button>
-                              {/* Usunięto bezpośredni link do sklepu z listy */}
-                              <Link 
-                                to={`/okazja/${offer.id}`}
-                                className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors font-medium"
-                              >
-                                Idź do okazji
-                              </Link>
+                              <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm"><MessageCircle className="w-4 h-4" /><span>{offer.komentarze}</span></button>
+                              <Link to={`/okazja/${offer.id}`} className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors font-medium">Idź do okazji</Link>
+                              <button onClick={() => setReportingOfferId(offer.id)} className="flex items-center space-x-1 text-red-600 hover:text-red-700 text-sm font-medium" title="Zgłoś ofertę"><Flag className="w-4 h-4" /><span>Zgłoś</span></button>
                             </div>
                           </div>
                         </div>
                       </div>
-                     </div>
-                   </div>
-                 )})}
+                    </div>
+                  );
+                })}
                 {loading && (
                   <div className="space-y-3" aria-hidden>
                     {Array.from({length: 3}).map((_,i)=>(
@@ -558,6 +542,21 @@ function HomePage() {
           </div>
         </div>
       </div>
+      {reportSuccessFlash && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 text-sm">
+          {reportSuccessFlash}
+        </div>
+      )}
+
+      {reportingOfferId !== null && (
+        <ReportOfferModal
+          isVisible={reportingOfferId !== null}
+          offerId={reportingOfferId}
+          onClose={() => !reportLoading && setReportingOfferId(null)}
+          onSubmit={submitOfferReport}
+          loading={reportLoading}
+        />
+      )}
     </div>
   );
 }

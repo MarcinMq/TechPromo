@@ -74,13 +74,15 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
 
                   {/* Menu użytkownika */}
                   <div className="flex items-center space-x-1 sm:space-x-2">
-                    {/* Panel */}
-                    <button 
-                      onClick={handlePanelClick} 
-                      className="p-2 sm:p-3 rounded-xl hover:bg-gray-200 transition-all duration-300 hover:shadow-lg"
-                    >
-                      <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </button>
+                    {/* Panel - tylko Moderator/Admin */}
+                    {(userRole === 'Moderator' || userRole === 'Admin') && (
+                      <button 
+                        onClick={handlePanelClick} 
+                        className="p-2 sm:p-3 rounded-xl hover:bg-gray-200 transition-all duration-300 hover:shadow-lg"
+                      >
+                        <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                    )}
 
                     {/* Profil */}
                     <Link 
@@ -124,8 +126,8 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
         </div>
       </nav>
 
-      {/* Modal panelu */}
-      {isLoggedIn && (
+      {/* Modal panelu - tylko Moderator/Admin */}
+      {isLoggedIn && (userRole === 'Moderator' || userRole === 'Admin') && (
         <PanelSelector
           userRole={userRole || 'User'}
           isVisible={showPanelSelector}
