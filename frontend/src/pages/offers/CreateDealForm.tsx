@@ -48,6 +48,26 @@ const CreateDealForm: React.FC = () => {
     zdjecia: []
   });
 
+  interface ExistingImage { id: number; url: string; kolejnosc: number; }
+  const [existingImages, setExistingImages] = useState<ExistingImage[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const role = getUserData()?.role;
+
+  const refreshExistingImages = async (offerId:number) => {
+    try {
+      const token = getAuthToken();
+      if(!token) return;
+      let listUrl = '';
+      if(role === 'User') listUrl = `/api/uzytkownik/oferta/${offerId}/zdjecia`;
+      else if(role === 'Moderator' || role === 'Admin') listUrl = `/api/moderator/oferta/${offerId}/zdjecia`;
+      if(!listUrl) return;
+      const resp = await fetch(listUrl, { headers: { 'Authorization': `Bearer ${token}` }});
+      if(!resp.ok) return;
+      const data = await resp.json();
+      setExistingImages((data||[]).map((x:any)=>({ id: x.idOfertaZdjecie ?? x.IdOfertaZdjecie, url: x.urlZdjecia ?? x.UrlZdjecia, kolejnosc: x.kolejnosc ?? x.Kolejnosc })));
+    } catch { /* ignore */ }
+  };
+
   // Detect edit mode
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -77,6 +97,20 @@ const CreateDealForm: React.FC = () => {
             setMessage({ type: 'error', text: 'Brak uprawnień do edycji tej oferty' });
             setTimeout(()=> navigate('/uzytkownik/panel'), 1500);
           });
+        // Pobierz istniejące zdjęcia
+        const token = getAuthToken();
+        const imageFetches: Promise<any>[] = [];
+        if (role === 'User') {
+          imageFetches.push(fetch(`/api/uzytkownik/oferta/${idNum}/zdjecia`, { headers: { 'Authorization': `Bearer ${token}` }}));
+        } else if (role === 'Moderator' || role === 'Admin') {
+          imageFetches.push(fetch(`/api/moderator/oferta/${idNum}/zdjecia`, { headers: { 'Authorization': `Bearer ${token}` }}));
+        }
+        Promise.all(imageFetches)
+          .then(responses => Promise.all(responses.filter(r=>r.ok).map(r=>r.json())))
+          .then(allLists => {
+            const merged = allLists.flat();
+            setExistingImages(merged.map((x:any)=>({ id: x.idOfertaZdjecie ?? x.IdOfertaZdjecie, url: x.urlZdjecia ?? x.UrlZdjecia, kolejnosc: x.kolejnosc ?? x.Kolejnosc })));
+          }).catch(()=>{});
       }
     }
   }, []);
@@ -108,7 +142,6 @@ const CreateDealForm: React.FC = () => {
 
       // Edit mode: send JSON PUT
       if (editId) {
-        const role = getUserData()?.role;
         let putUrl = '';
         let payload: any = {};
 
@@ -123,14 +156,13 @@ const CreateDealForm: React.FC = () => {
             link: formData.sklep.trim() || null
           };
         } else if (role === 'Moderator') {
-          // Endpoint moderatora oczekuje pól: NowyTytul, NowyOpis, Powod
-            putUrl = `/api/moderator/oferta/${editId}/edytuj`;
-            payload = {
-              nowyTytul: formData.tytul.trim(),
-              nowyOpis: formData.opis.trim(),
-              powod: 'Aktualizacja treści przez moderatora'
-            };
-        } else { // Zwykły użytkownik
+          putUrl = `/api/moderator/oferta/${editId}/edytuj`;
+          payload = {
+            nowyTytul: formData.tytul.trim(),
+            nowyOpis: formData.opis.trim(),
+            powod: 'Aktualizacja treści przez moderatora'
+          };
+        } else { // User
           putUrl = `/api/uzytkownik/oferta/${editId}`;
           payload = {
             tytul: formData.tytul.trim(),
@@ -148,8 +180,27 @@ const CreateDealForm: React.FC = () => {
           body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error('Nie udało się zaktualizować oferty');
-        setMessage({ type: 'success', text: role === 'User' ? 'Oferta zaktualizowana – oczekuje ponownej moderacji.' : 'Oferta zaktualizowana.' });
-        setTimeout(() => navigate(role === 'User' ? '/uzytkownik/panel' : '/'), 1500);
+
+        // Jeśli są nowe zdjęcia dodane w polu (formData.zdjecia), wyślij je teraz
+        if(formData.zdjecia.length > 0){
+          const fd = new FormData();
+          formData.zdjecia.forEach(f => fd.append('zdjecia', f));
+          let uploadUrl = '';
+            if (role === 'User') uploadUrl = `/api/uzytkownik/oferta/${editId}/zdjecia`;
+            else if (role === 'Moderator' || role === 'Admin') uploadUrl = `/api/moderator/oferta/${editId}/zdjecia`;
+          if(uploadUrl){
+            const upRes = await fetch(uploadUrl, { method:'POST', headers:{'Authorization': `Bearer ${token}`}, body: fd });
+            if(!upRes.ok){
+              setMessage({ type:'error', text:'Oferta zaktualizowana, ale nie udało się wysłać nowych zdjęć.' });
+            } else {
+              await refreshExistingImages(editId);
+              setFormData(prev=>({...prev, zdjecia:[]}));
+            }
+          }
+        }
+
+        setMessage({ type: 'success', text: role === 'User' ? 'Oferta zaktualizowana (oczekuje na ponowną moderację). Nowe zdjęcia dodane.' : 'Oferta zaktualizowana.' });
+        // Nie przekierowujemy od razu – użytkownik może dalej edytować zdjęcia
         return;
       }
       // Przygotuj dane do wysłania jako FormData
@@ -270,6 +321,24 @@ const CreateDealForm: React.FC = () => {
     }));
   };
 
+  const handleExistingDelete = async (imgId: number) => {
+    if (!editId) return; if (!confirm('Usunąć zdjęcie?')) return;
+    const role = getUserData()?.role;
+    const base = role === 'User' ? '/api/uzytkownik' : '/api/moderator';
+    const res = await fetch(`${base}/oferta/${editId}/zdjecie/${imgId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getAuthToken()}` }});
+    if (res.ok) setExistingImages(prev => prev.filter(i => i.id !== imgId));
+  };
+  const handleReorderSave = async () => {
+    if (!editId) return;
+    const role = getUserData()?.role;
+    const base = role === 'User' ? '/api/uzytkownik' : '/api/moderator';
+    const body = { kolejnosci: existingImages.map((img, idx) => ({ idOfertaZdjecie: img.id, kolejnosc: idx+1 })) };
+    await fetch(`${base}/oferta/${editId}/zdjecia/kolejnosc`, { method: 'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify(body)});
+  };
+  const onDragStart = (idx:number) => setDragIndex(idx);
+  const onDragOver = (e:React.DragEvent<HTMLDivElement>, idx:number) => { e.preventDefault(); if (dragIndex===null||dragIndex===idx) return; setExistingImages(prev => { const arr=[...prev]; const [m]=arr.splice(dragIndex,1); arr.splice(idx,0,m); return arr; }); setDragIndex(idx); };
+  const onDragEnd = () => { setDragIndex(null); };
+
   return (
     <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
       <div className="max-w-3xl mx-auto px-4">
@@ -283,6 +352,29 @@ const CreateDealForm: React.FC = () => {
                 : 'bg-red-100/80 text-red-700 border border-red-200/50'
             }`}>
               {message.text}
+            </div>
+          )}
+
+          {editId && existingImages.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-2">Zdjęcia (przeciągnij aby zmienić kolejność – pierwsze = główne)</h2>
+              <div className="flex flex-wrap gap-4">
+                {existingImages.map((img, idx) => (
+                  <div key={img.id}
+                       draggable
+                       onDragStart={() => onDragStart(idx)}
+                       onDragOver={(e)=>onDragOver(e, idx)}
+                       onDragEnd={onDragEnd}
+                       className={`relative w-28 h-28 rounded-xl overflow-hidden border-2 ${idx===0? 'border-green-500':'border-transparent'} shadow group bg-gray-100`}> 
+                    <img src={`http://localhost:5023${img.url}`} className="w-full h-full object-cover pointer-events-none select-none" />
+                    {idx===0 && <span className="absolute bottom-0 left-0 right-0 bg-green-600/80 text-white text-[10px] text-center py-0.5">Główne</span>}
+                    <button type="button" onClick={()=>handleExistingDelete(img.id)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-xs opacity-80 hover:opacity-100">×</button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-right">
+                <button type="button" onClick={handleReorderSave} className="px-3 py-1 text-xs rounded bg-custom-blue text-white hover:bg-blue-700">Zapisz kolejność</button>
+              </div>
             </div>
           )}
 

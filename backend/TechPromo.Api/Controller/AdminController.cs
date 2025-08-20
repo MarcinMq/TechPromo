@@ -13,7 +13,8 @@ using TechPromo.Api.Model;
 namespace TechPromo.Api.Controllers
 {
     [ApiController]
-    [Route("api/admin")]
+    [Route("admin")] // dodatkowy prefix dla wywołań bez /api
+    [Route("api/admin")] // oryginalny prefix
     [Authorize(Roles = "Admin")] // Tylko administratorzy mogą używać tych endpointów
     public class AdminController : ControllerBase
     {
@@ -326,7 +327,7 @@ namespace TechPromo.Api.Controllers
         [HttpGet("oferty")]
         public async Task<IActionResult> PobierzWszystkieOferty()
         {
-            var oferty = await _context.Oferty
+        var oferty = await _context.Oferty
                 .Include(o => o.Uzytkownik)
                 .Include(o => o.Kategoria)
                 .OrderByDescending(o => o.DataDodania)
@@ -343,7 +344,9 @@ namespace TechPromo.Api.Controllers
                     aktywna = o.Aktywna, // Dodane pole z ModeratorController
                     zatwierdzona = o.Zatwierdzona, // Dodane pole z ModeratorController
                     cena = o.Cena,
+            cenaPoprzednia = o.CenaPoprzednia,
                     link = o.Link
+            ,typ = o.Typ
                 })
                 .ToListAsync();
 

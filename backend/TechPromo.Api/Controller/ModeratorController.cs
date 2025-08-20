@@ -9,7 +9,8 @@ using TechPromo.Api.DTO;
 namespace TechPromo.Api.Controllers
 {
     [ApiController]
-    [Route("moderator")]
+    [Route("moderator")] // dotychczasowy prefix
+    [Route("api/moderator")] // nowy prefix zgodny z wywołaniami z frontendu
     [Authorize(Roles = "Moderator,Admin")] // Moderator i Admin mają dostęp
     public class ModeratorController : ControllerBase
     {
@@ -220,6 +221,7 @@ namespace TechPromo.Api.Controllers
             {
                 var oferta = await _context.Oferty
                     .Include(o => o.Uzytkownik)
+                    .Include(o => o.Zdjecia)
                     .FirstOrDefaultAsync(o => o.IdOferta == id);
 
                 if (oferta == null)
@@ -229,12 +231,25 @@ namespace TechPromo.Api.Controllers
                 var oryginalnyTytul = oferta.Nazwa;
                 var oryginalnyOpis = oferta.Opis;
 
-                // Aktualizuję dane
-                if (!string.IsNullOrEmpty(edycjaDto.NowyTytul))
-                    oferta.Nazwa = edycjaDto.NowyTytul;
+                // Aktualizuję podstawowe dane
+                if (!string.IsNullOrWhiteSpace(edycjaDto.NowyTytul))
+                    oferta.Nazwa = edycjaDto.NowyTytul.Trim();
 
-                if (!string.IsNullOrEmpty(edycjaDto.NowyOpis))
-                    oferta.Opis = edycjaDto.NowyOpis;
+                if (!string.IsNullOrWhiteSpace(edycjaDto.NowyOpis))
+                    oferta.Opis = edycjaDto.NowyOpis.Trim();
+
+                if (edycjaDto.Cena.HasValue)
+                    oferta.Cena = edycjaDto.Cena.Value;
+                if (edycjaDto.CenaPoprzednia.HasValue)
+                    oferta.CenaPoprzednia = edycjaDto.CenaPoprzednia.Value;
+                if (!string.IsNullOrWhiteSpace(edycjaDto.Kod))
+                    oferta.Kod = edycjaDto.Kod.Trim();
+                if (!string.IsNullOrWhiteSpace(edycjaDto.Link))
+                    oferta.Link = edycjaDto.Link.Trim();
+                if (edycjaDto.Aktywna.HasValue)
+                    oferta.Aktywna = edycjaDto.Aktywna.Value;
+                if (edycjaDto.Zatwierdzona.HasValue)
+                    oferta.Zatwierdzona = edycjaDto.Zatwierdzona.Value;
 
                 var moderator = await _userManager.GetUserAsync(User);
                 if (moderator == null)
@@ -258,6 +273,217 @@ namespace TechPromo.Api.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { message = "Błąd podczas edycji oferty", error = ex.Message });
+            }
+        }
+
+        [HttpDelete("oferta/{id}")]
+        public async Task<IActionResult> UsunOferte(int id, [FromBody] UsuniecieDto? dto)
+        {
+            try
+            {
+                var oferta = await _context.Oferty
+                    .Include(o => o.Uzytkownik)
+                    .Include(o => o.Komentarze)
+                    .Include(o => o.Zdjecia)
+                    .FirstOrDefaultAsync(o => o.IdOferta == id);
+                if (oferta == null)
+                    return NotFound(new { message = "Oferta nie została znaleziona" });
+
+                // Usuń głosy
+                var glosy = _context.Glosy.Where(g => g.IdOferta == id);
+                _context.Glosy.RemoveRange(glosy);
+                // Usuń komentarze + powiązane powiadomienia do komentarzy
+                if (oferta.Komentarze.Any())
+                {
+                    var komentarzeIds = oferta.Komentarze.Select(k => k.IdKomentarz).ToList();
+                    var powiadomieniaKomentarzy = _context.Powiadomienia.Where(p => p.IdKomentarz != null && komentarzeIds.Contains(p.IdKomentarz.Value));
+                    _context.Powiadomienia.RemoveRange(powiadomieniaKomentarzy);
+                    _context.Komentarze.RemoveRange(oferta.Komentarze);
+                }
+                // Usuń tagi
+                var tagi = _context.OfertaTagi.Where(t => t.IdOferta == id);
+                _context.OfertaTagi.RemoveRange(tagi);
+                // Usuń powiadomienia powiązane z ofertą
+                var powiadomieniaOferty = _context.Powiadomienia.Where(p => p.IdOferta == id);
+                _context.Powiadomienia.RemoveRange(powiadomieniaOferty);
+                // Usuń zdjęcia fizyczne i rekordy
+                if (oferta.Zdjecia.Any())
+                {
+                    try
+                    {
+                        var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                        var root = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                        foreach (var z in oferta.Zdjecia)
+                        {
+                            var physical = Path.Combine(root, z.UrlZdjecia.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                            if (System.IO.File.Exists(physical))
+                            {
+                                try { System.IO.File.Delete(physical); } catch { /* ignoruj */ }
+                            }
+                        }
+                    }
+                    catch { /* brak środowiska - ignoruj */ }
+                    _context.OfertyZdjecia.RemoveRange(oferta.Zdjecia);
+                }
+
+                // Powiadom autora o usunięciu (opcjonalne)
+                if (oferta.IdUzytkownik != 0)
+                {
+                    var powod = dto?.Powod?.Trim();
+                    if (!string.IsNullOrEmpty(powod))
+                    {
+                        var moderator = await _userManager.GetUserAsync(User);
+                        if (moderator != null)
+                        {
+                            _context.Powiadomienia.Add(new Powiadomienie
+                            {
+                                IdUzytkownik = oferta.IdUzytkownik,
+                                Typ = "Usunięcie",
+                                Tresc = $"Moderator {moderator.UserName} usunął Twoją ofertę '{oferta.Nazwa}'. Powód: {powod}",
+                                DataUtworzenia = DateTime.UtcNow,
+                                Przeczytane = false
+                            });
+                        }
+                    }
+                }
+
+                _context.Oferty.Remove(oferta);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Oferta została usunięta" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas usuwania oferty", error = ex.Message });
+            }
+        }
+
+        // ===== Zarządzanie zdjęciami oferty przez moderatora/admina =====
+        [HttpPost("oferta/{id}/zdjecia")]
+        public async Task<IActionResult> DodajZdjecia(int id, [FromForm(Name = "zdjecia")] List<IFormFile> files)
+        {
+            try
+            {
+                var oferta = await _context.Oferty.Include(o => o.Zdjecia).FirstOrDefaultAsync(o => o.IdOferta == id);
+                if (oferta == null) return NotFound(new { message = "Oferta nie została znaleziona" });
+
+                // Jeśli model binder nie związał listy, spróbuj pobrać ręcznie
+                if ((files == null || files.Count == 0) && Request.Form?.Files?.Count > 0)
+                {
+                    files = Request.Form.Files.GetFiles("zdjecia").ToList();
+                    if (files.Count == 0)
+                    {
+                        // weź wszystkie pliki jeśli nazwa inna
+                        files = Request.Form.Files.ToList();
+                    }
+                }
+
+                if (files == null || files.Count == 0)
+                {
+                    return BadRequest(new { message = "Brak plików w polu 'zdjecia'", formKeys = Request.Form?.Keys });
+                }
+
+                var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                var root = env.WebRootPath;
+                if (string.IsNullOrEmpty(root))
+                {
+                    root = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                }
+                Directory.CreateDirectory(root);
+                var uploadPath = Path.Combine(root, "uploads", "oferty");
+                Directory.CreateDirectory(uploadPath);
+
+                int startOrder = oferta.Zdjecia?.Any() == true ? oferta.Zdjecia.Max(z => z.Kolejnosc) : 0;
+                int added = 0;
+                foreach (var file in files)
+                {
+                    if (file.Length <= 0) continue;
+                    var fileName = $"{id}_{DateTime.UtcNow.Ticks}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+                    var fullPath = Path.Combine(uploadPath, fileName);
+                    using (var stream = new FileStream(fullPath, FileMode.Create))
+                    {
+                        await file.CopyToAsync(stream);
+                    }
+                    _context.OfertyZdjecia.Add(new OfertaZdjecie
+                    {
+                        IdOferta = id,
+                        UrlZdjecia = $"/uploads/oferty/{fileName}",
+                        Kolejnosc = ++startOrder
+                    });
+                    added++;
+                }
+                await _context.SaveChangesAsync();
+                var urls = await _context.OfertyZdjecia
+                    .Where(z => z.IdOferta == id)
+                    .OrderBy(z => z.Kolejnosc)
+                    .Select(z => z.UrlZdjecia)
+                    .ToListAsync();
+                return Ok(new { message = $"Dodano {added} plik(ów)", zdjecia = urls });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas dodawania zdjęć", error = ex.Message });
+            }
+        }
+
+        // GET: api/moderator/oferta/{id}/zdjecia - lista zdjęć z id i kolejnością
+        [HttpGet("oferta/{id}/zdjecia")]
+        public async Task<IActionResult> PobierzZdjecia(int id)
+        {
+            var oferta = await _context.Oferty
+                .Include(o => o.Zdjecia)
+                .FirstOrDefaultAsync(o => o.IdOferta == id);
+            if (oferta == null) return NotFound(new { message = "Oferta nie została znaleziona" });
+            var list = oferta.Zdjecia
+                .OrderBy(z => z.Kolejnosc)
+                .Select(z => new { z.IdOfertaZdjecie, z.UrlZdjecia, z.Kolejnosc })
+                .ToList();
+            return Ok(list);
+        }
+
+        [HttpDelete("oferta/{id}/zdjecie/{fotoId}")]
+        public async Task<IActionResult> UsunZdjecie(int id, int fotoId)
+        {
+            try
+            {
+                var foto = await _context.OfertyZdjecia.FirstOrDefaultAsync(f => f.IdOferta == id && f.IdOfertaZdjecie == fotoId);
+                if (foto == null) return NotFound(new { message = "Zdjęcie nie znalezione" });
+                // Usuń plik fizyczny jeśli istnieje (spójność z usuwaniem przez właściciela)
+                try
+                {
+                    var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
+                    var root = env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                    var physical = Path.Combine(root, foto.UrlZdjecia.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                    if (System.IO.File.Exists(physical)) System.IO.File.Delete(physical);
+                }
+                catch { /* ignoruj błąd IO */ }
+                _context.OfertyZdjecia.Remove(foto);
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Usunięto zdjęcie" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas usuwania zdjęcia", error = ex.Message });
+            }
+        }
+
+        [HttpPut("oferta/{id}/zdjecia/kolejnosc")]
+        public async Task<IActionResult> ZmienKolejnosc(int id, [FromBody] ZmienKolejnoscZdjecDto dto)
+        {
+            try
+            {
+                if (dto?.Kolejnosci == null || dto.Kolejnosci.Count == 0) return BadRequest(new { message = "Brak danych" });
+                var fotos = await _context.OfertyZdjecia.Where(f => f.IdOferta == id).ToListAsync();
+                foreach (var k in dto.Kolejnosci)
+                {
+                    var foto = fotos.FirstOrDefault(f => f.IdOfertaZdjecie == k.IdOfertaZdjecie);
+                    if (foto != null) foto.Kolejnosc = k.Kolejnosc;
+                }
+                await _context.SaveChangesAsync();
+                return Ok(new { message = "Zmieniono kolejność" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas zmiany kolejności", error = ex.Message });
             }
         }
 

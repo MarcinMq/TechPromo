@@ -516,8 +516,18 @@ namespace TechPromo.Api.Controllers
         public async Task<ActionResult> UpdateOwnOffer(int id, [FromBody] AktualizujOferteDto dto)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var oferta = await _context.Oferty.FirstOrDefaultAsync(o => o.IdOferta == id && o.IdUzytkownik == userId);
-            if (oferta == null) return NotFound("Oferta nie znaleziona lub brak uprawnień.");
+            // Pobierz ofertę niezależnie od właściciela
+            var oferta = await _context.Oferty.FirstOrDefaultAsync(o => o.IdOferta == id);
+            if (oferta == null) return NotFound("Oferta nie znaleziona.");
+
+            var isOwner = oferta.IdUzytkownik == userId;
+            var isAdmin = User.IsInRole("Admin");
+            var isModerator = User.IsInRole("Moderator");
+
+            if (!isOwner && !isAdmin && !isModerator)
+            {
+                return Forbid();
+            }
 
             if (!string.IsNullOrWhiteSpace(dto.Tytul)) oferta.Nazwa = dto.Tytul.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Opis)) oferta.Opis = dto.Opis.Trim();
@@ -525,13 +535,162 @@ namespace TechPromo.Api.Controllers
             if (dto.CenaPoprzednia.HasValue) oferta.CenaPoprzednia = dto.CenaPoprzednia;
             if (!string.IsNullOrWhiteSpace(dto.Kod)) oferta.Kod = dto.Kod.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Link)) oferta.Link = dto.Link.Trim();
-
-            // Reset akceptacji po edycji przez zwykłego użytkownika
-            oferta.Zatwierdzona = false;
-            oferta.Aktywna = true;
+            // Jeśli edytuje właściciel (zwykły użytkownik) resetujemy akceptację.
+            // Jeśli edytuje Admin/Moderator pozostawiamy status zatwierdzenia (o ile istniał)
+            if (isOwner && !(isAdmin || isModerator))
+            {
+                oferta.Zatwierdzona = false;
+                oferta.Aktywna = true;
+            }
 
             await _context.SaveChangesAsync();
-            return Ok("Oferta zaktualizowana – oczekuje ponownej moderacji.");
+            if (isOwner && !(isAdmin || isModerator))
+            {
+                return Ok("Oferta zaktualizowana – oczekuje ponownej moderacji.");
+            }
+            return Ok("Oferta zaktualizowana przez moderatora / administratora.");
+        }
+
+        // POST: api/uzytkownik/oferta/{id}/zdjecia - dodanie zdjęć do własnej oferty (FormData: zdjecia)
+        [HttpPost("oferta/{id}/zdjecia")]
+        public async Task<ActionResult> UploadOfferImages(int id, [FromForm(Name = "zdjecia")] List<IFormFile> zdjecia)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var oferta = await _context.Oferty.Include(o => o.Zdjecia).FirstOrDefaultAsync(o => o.IdOferta == id && o.IdUzytkownik == userId);
+            if (oferta == null) return NotFound("Oferta nie istnieje lub brak uprawnień.");
+
+            if ((zdjecia == null || zdjecia.Count == 0) && Request.Form?.Files?.Count > 0)
+            {
+                zdjecia = Request.Form.Files.GetFiles("zdjecia").ToList();
+                if (zdjecia.Count == 0) zdjecia = Request.Form.Files.ToList();
+            }
+            if (zdjecia == null || zdjecia.Count == 0) return BadRequest("Brak plików w polu 'zdjecia'.");
+
+            var uploadsPath = Path.Combine(_environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "oferty");
+            Directory.CreateDirectory(uploadsPath);
+
+            int startOrder = oferta.Zdjecia?.Any() == true ? oferta.Zdjecia.Max(z => z.Kolejnosc) : 0;
+            int added = 0;
+            foreach (var file in zdjecia)
+            {
+                if (file.Length == 0) continue;
+                if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) continue;
+                if (file.Length > 5 * 1024 * 1024) return BadRequest($"Plik {file.FileName} >5MB");
+                var ext = Path.GetExtension(file.FileName);
+                var name = $"{id}_{DateTime.UtcNow.Ticks}_{Guid.NewGuid()}{ext}";
+                var path = Path.Combine(uploadsPath, name);
+                using (var s = new FileStream(path, FileMode.Create))
+                {
+                    await file.CopyToAsync(s);
+                }
+                _context.OfertyZdjecia.Add(new OfertaZdjecie
+                {
+                    IdOferta = id,
+                    UrlZdjecia = $"/uploads/oferty/{name}",
+                    Kolejnosc = ++startOrder
+                });
+                added++;
+            }
+            await _context.SaveChangesAsync();
+            var urls = await _context.OfertyZdjecia.Where(z => z.IdOferta == id).OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToListAsync();
+            return Ok(new { message = $"Dodano {added} plik(ów)", zdjecia = urls });
+        }
+
+        // DELETE: api/uzytkownik/oferta/{id} - usuń własną ofertę
+        [HttpDelete("oferta/{id}")]
+        public async Task<ActionResult> DeleteOwnOffer(int id)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var oferta = await _context.Oferty
+                .Include(o => o.Zdjecia)
+                .Include(o => o.Komentarze)
+                .FirstOrDefaultAsync(o => o.IdOferta == id && o.IdUzytkownik == userId);
+            if (oferta == null) return NotFound("Oferta nie znaleziona lub brak uprawnień.");
+
+            // Usuń powiązane głosy
+            var glosy = _context.Glosy.Where(g => g.IdOferta == id);
+            _context.Glosy.RemoveRange(glosy);
+            // Usuń komentarze
+            if (oferta.Komentarze.Any()) _context.Komentarze.RemoveRange(oferta.Komentarze);
+            // Usuń powiązania tagów
+            var tagi = _context.OfertaTagi.Where(t => t.IdOferta == id);
+            _context.OfertaTagi.RemoveRange(tagi);
+            // Usuń powiadomienia związane z ofertą (opcjonalnie)
+            var powiadomienia = _context.Powiadomienia.Where(p => p.IdOferta == id);
+            _context.Powiadomienia.RemoveRange(powiadomienia);
+            // Usuń zdjęcia z dysku
+            if (oferta.Zdjecia.Any())
+            {
+                foreach (var z in oferta.Zdjecia)
+                {
+                    // Ścieżka fizyczna
+                    var physical = Path.Combine(_environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), z.UrlZdjecia.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                    if (System.IO.File.Exists(physical))
+                    {
+                        try { System.IO.File.Delete(physical); } catch { /* ignoruj */ }
+                    }
+                }
+                _context.OfertyZdjecia.RemoveRange(oferta.Zdjecia);
+            }
+
+            _context.Oferty.Remove(oferta);
+            await _context.SaveChangesAsync();
+            return Ok("Oferta została usunięta.");
+        }
+
+        // GET: api/uzytkownik/oferta/{id}/zdjecia - lista zdjęć (id, url, kolejnosc)
+        [HttpGet("oferta/{id}/zdjecia")]
+        public async Task<ActionResult> GetOfferImages(int id)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var owns = await _context.Oferty.AnyAsync(o => o.IdOferta == id && o.IdUzytkownik == userId);
+            if (!owns) return NotFound("Oferta nie istnieje lub brak uprawnień.");
+            var list = await _context.OfertyZdjecia
+                .Where(z => z.IdOferta == id)
+                .OrderBy(z => z.Kolejnosc)
+                .Select(z => new { z.IdOfertaZdjecie, z.UrlZdjecia, z.Kolejnosc })
+                .ToListAsync();
+            return Ok(list);
+        }
+
+        // DELETE: api/uzytkownik/oferta/{id}/zdjecie/{fotoId}
+        [HttpDelete("oferta/{id}/zdjecie/{fotoId}")]
+        public async Task<ActionResult> DeleteOfferImage(int id, int fotoId)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var oferta = await _context.Oferty
+                .Include(o => o.Zdjecia)
+                .FirstOrDefaultAsync(o => o.IdOferta == id && o.IdUzytkownik == userId);
+            if (oferta == null) return NotFound("Oferta nie istnieje lub brak uprawnień.");
+            var foto = oferta.Zdjecia.FirstOrDefault(f => f.IdOfertaZdjecie == fotoId);
+            if (foto == null) return NotFound("Zdjęcie nie znalezione.");
+            var physical = Path.Combine(_environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), foto.UrlZdjecia.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            if (System.IO.File.Exists(physical))
+            {
+                try { System.IO.File.Delete(physical); } catch { }
+            }
+            _context.OfertyZdjecia.Remove(foto);
+            await _context.SaveChangesAsync();
+            return Ok("Zdjęcie usunięte.");
+        }
+
+        // PUT: api/uzytkownik/oferta/{id}/zdjecia/kolejnosc
+        [HttpPut("oferta/{id}/zdjecia/kolejnosc")]
+        public async Task<ActionResult> ReorderOfferImages(int id, [FromBody] ZmienKolejnoscZdjecDto dto)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            var oferta = await _context.Oferty.Include(o => o.Zdjecia).FirstOrDefaultAsync(o => o.IdOferta == id && o.IdUzytkownik == userId);
+            if (oferta == null) return NotFound("Oferta nie istnieje lub brak uprawnień.");
+            if (dto?.Kolejnosci == null || dto.Kolejnosci.Count == 0) return BadRequest("Brak danych.");
+            var ids = oferta.Zdjecia.Select(z => z.IdOfertaZdjecie).ToHashSet();
+            foreach (var k in dto.Kolejnosci)
+            {
+                if (!ids.Contains(k.IdOfertaZdjecie)) continue; // ignoruj obce
+                var foto = oferta.Zdjecia.First(z => z.IdOfertaZdjecie == k.IdOfertaZdjecie);
+                foto.Kolejnosc = k.Kolejnosc;
+            }
+            await _context.SaveChangesAsync();
+            return Ok("Kolejność zapisana.");
         }
     }
 }

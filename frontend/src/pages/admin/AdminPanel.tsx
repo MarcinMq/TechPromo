@@ -33,6 +33,7 @@ type Oferta = {
   aktywna: boolean;
   zatwierdzona: boolean;
   cena: number;
+  cenaPoprzednia?: number; // dodane dla wyświetlenia rabatu
   link: string;
   typ?: string;
 };
@@ -56,8 +57,7 @@ const AdminPanel = () => {
   const [offers, setOffers] = useState<Oferta[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>('');
-  // const [editingOffer, setEditingOffer] = useState<Oferta | null>(null);
-  // const [editForm, setEditForm] = useState({ tytul: '', opis: '', cena: '', cenaPoprzednia: '', kod: '', link: '' }); // legacy state (minimal)
+  
 
   // Formularz nowej odznaki
   const [newBadge, setNewBadge] = useState({ nazwa: '', opis: '', ikona: '🏆' });
@@ -372,6 +372,27 @@ const AdminPanel = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Odrzucenie oferty (z powodem) – analogicznie do moderatora
+  const rejectOffer = async (offerId: number) => {
+    const powod = prompt('Podaj powód odrzucenia oferty:');
+    if (!powod) return;
+    setLoading(true);
+    try {
+      const res = await apiPut(`/admin/oferta/${offerId}/odrzuc`, { powod });
+      const text = await res.text();
+      setMessage(text || 'Oferta odrzucona');
+      if (res.ok) fetchOffers();
+    } catch {
+      setMessage('Błąd odrzucania oferty');
+    } finally { setLoading(false); }
+  };
+
+  // Edycja oferty – przekierowanie do formularza (jak u moderatora)
+  const editOffer = (offerId: number, typ?: string) => {
+    const isKupon = typ === 'kupon';
+    window.location.href = isKupon ? `/stworz-oferte/kupon?edit=${offerId}` : `/stworz-oferte/okazja?edit=${offerId}`;
   };
 
   useEffect(() => {
@@ -779,36 +800,50 @@ const AdminPanel = () => {
                   <div className="grid grid-cols-2 gap-2 text-sm mb-4">
                     <p><strong>Autor:</strong> {offer.autor}</p>
                     <p><strong>Data:</strong> {offer.dataUtworzenia}</p>
-                    <p><strong>Cena:</strong> {offer.cena ? <span className="font-bold text-green-600">{offer.cena} PLN</span> : <span className="text-gray-500">Brak</span>}</p>
+                    <p><strong>Cena:</strong>{' '}
+                      {offer.cena ? (
+                        <span className="inline-flex items-baseline gap-2">
+                          {offer.cenaPoprzednia && offer.cenaPoprzednia > offer.cena && (
+                            <span className="text-sm line-through text-gray-400">{offer.cenaPoprzednia} PLN</span>
+                          )}
+                          <span className="font-bold text-red-600 text-lg">{offer.cena} PLN</span>
+                          {offer.cenaPoprzednia && offer.cenaPoprzednia > offer.cena && (
+                            <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded">
+                              -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
+                            </span>
+                          )}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">Brak</span>
+                      )}
+                    </p>
                   </div>
-                  <div className="flex space-x-3 pt-3 border-t border-gray-200">
+                  <div className="flex flex-wrap gap-2 pt-3 border-t border-gray-200">
                     {!offer.zatwierdzona && (
-                      <button 
-                        className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium disabled:opacity-50"
-                        onClick={() => approveOffer(offer.id)}
+                      <button
+                        className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium disabled:opacity-50"
+                        onClick={() => approveOffer(offer.idOferta ?? offer.id)}
                         disabled={loading}
                       >
-                        <Check className="w-4 h-4 inline mr-1" />
-                        Zatwierdź
+                        <Check className="w-4 h-4 inline mr-1" /> Zatwierdź
                       </button>
                     )}
                     <button
                       className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-medium disabled:opacity-50"
-                      onClick={() => {
-                        const target = offer.typ === 'kupon' ? `/stworz-oferte/kupon?edit=${offer.id}` : `/stworz-oferte/okazja?edit=${offer.id}`;
-                        window.location.href = target;
-                      }}
+                      onClick={() => editOffer(offer.idOferta ?? offer.id, offer.typ)}
                       disabled={loading}
-                    >
-                      Edytuj
-                    </button>
-                    <button 
+                    >Edytuj</button>
+                    <button
+                      className="flex-1 px-4 py-2 bg-yellow-500 text-white rounded-lg hover:bg-yellow-600 transition-colors font-medium disabled:opacity-50"
+                      onClick={() => rejectOffer(offer.idOferta ?? offer.id)}
+                      disabled={loading}
+                    >Odrzuć</button>
+                    <button
                       className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
-                      onClick={() => deleteOffer(offer.id)}
+                      onClick={() => deleteOffer(offer.idOferta ?? offer.id)}
                       disabled={loading}
                     >
-                      <Trash2 className="w-4 h-4 inline mr-1" />
-                      Usuń
+                      <Trash2 className="w-4 h-4 inline mr-1" /> Usuń
                     </button>
                   </div>
                 </div>

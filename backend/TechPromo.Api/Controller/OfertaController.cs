@@ -147,6 +147,46 @@ namespace TechPromo.Api.Controllers
 
             if (offer == null)
             {
+                // Fallback: jeśli użytkownik to właściciel / moderator / admin pokaż także niezatwierdzoną / nieaktywną ofertę
+                var bypassRoles = User.IsInRole("Admin") || User.IsInRole("Moderator");
+                if (userId != 0 || bypassRoles)
+                {
+                    var raw = await _context.Oferty
+                        .Where(o => o.IdOferta == id)
+                        .Include(o => o.Uzytkownik)
+                        .Include(o => o.Kategoria)
+                        .Include(o => o.Zdjecia)
+                        .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
+                        .Include(o => o.Glosy)
+                        .Include(o => o.Komentarze)
+                        .FirstOrDefaultAsync();
+
+                    if (raw != null && (bypassRoles || raw.IdUzytkownik == userId))
+                    {
+                        var dto = new OfertaDto
+                        {
+                            Id = raw.IdOferta,
+                            Tytul = raw.Nazwa,
+                            Opis = raw.Opis,
+                            Typ = raw.Typ,
+                            Cena = raw.Cena,
+                            CenaPoprzednia = raw.CenaPoprzednia,
+                            Kod = raw.Kod,
+                            Sklep = raw.Link,
+                            Kategoria = raw.Kategoria != null ? raw.Kategoria.Nazwa : "Inne",
+                            Tagi = raw.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
+                            Autor = raw.Uzytkownik.UserName ?? "Nieznany",
+                            DataUtworzenia = raw.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                            Votes = new VotesDto { Hot = raw.LiczbaHot, Cold = raw.LiczbaCold },
+                            Komentarze = raw.Komentarze.Count,
+                            UserVote = userId != 0 ? raw.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null,
+                            Zdjecia = raw.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+                        };
+                        // Oznacz w nagłówku że to draft (opcjonalne do debug)
+                        Response.Headers["X-Draft"] = "true";
+                        return Ok(dto);
+                    }
+                }
                 return NotFound("Oferta nie została znaleziona.");
             }
 
@@ -366,6 +406,7 @@ namespace TechPromo.Api.Controllers
                     Typ = typ,
                     Opis = request.Opis.Trim(),
                     Cena = request.Cena,
+                    CenaPoprzednia = request.CenaPoprzednia,
                     Link = !string.IsNullOrEmpty(request.Sklep) ? request.Sklep.Trim() : string.Empty,
                     IdKategoria = kategoria.IdKategoria,
                     IdUzytkownik = userId,
@@ -523,8 +564,8 @@ namespace TechPromo.Api.Controllers
                 var typ = Request.Form["typ"].ToString().Trim();
                 
                 // Opcjonalne pola
-                var cenaString = Request.Form["cena"].ToString();
-                var cenaPoprzeniaString = Request.Form["cenaPoprzednia"].ToString();
+                var cenaStringRaw = Request.Form["cena"].ToString();
+                var cenaPoprzedniaStringRaw = Request.Form["cenaPoprzednia"].ToString();
                 var kod = Request.Form["kod"].ToString().Trim();
                 var sklep = Request.Form["sklep"].ToString().Trim();
                 var tagi = Request.Form["tagi"].ToString().Trim();
@@ -549,14 +590,32 @@ namespace TechPromo.Api.Controllers
                 if (!string.IsNullOrEmpty(tagi) && tagi.Length > 200) return BadRequest("Tagi nie mogą być dłuższe niż 200 znaków.");
 
                 // 4. Parsowanie cen
-                decimal? cena = null;
-                decimal? cenaPoprzednia = null;
-                
-                if (!string.IsNullOrEmpty(cenaString) && decimal.TryParse(cenaString, out var parsedCena))
-                    cena = parsedCena;
-                    
-                if (!string.IsNullOrEmpty(cenaPoprzeniaString) && decimal.TryParse(cenaPoprzeniaString, out var parsedCenaPoprzednia))
-                    cenaPoprzednia = parsedCenaPoprzednia;
+                decimal? ParseCena(string input)
+                {
+                    if (string.IsNullOrWhiteSpace(input)) return null;
+                    // Usuń walutę i inne znaki poza cyframi, przecinkiem i kropką
+                    var cleaned = System.Text.RegularExpressions.Regex.Replace(input, "[^0-9.,]", "");
+                    if (string.IsNullOrWhiteSpace(cleaned)) return null;
+                    // Zamień przecinek na kropkę (ułatwia invariant parse)
+                    cleaned = cleaned.Replace(',', '.');
+                    // Usuń podwójne kropki
+                    while (cleaned.Contains("..")) cleaned = cleaned.Replace("..", ".");
+                    if (decimal.TryParse(cleaned, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var v))
+                        return decimal.Round(v, 2);
+                    // Próba z kulturą PL
+                    if (decimal.TryParse(input, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.GetCultureInfo("pl-PL"), out v))
+                        return decimal.Round(v, 2);
+                    return null;
+                }
+
+                var cena = ParseCena(cenaStringRaw);
+                var cenaPoprzednia = ParseCena(cenaPoprzedniaStringRaw);
+
+                // Jeśli użytkownik podał wartość, ale nie udało się sparsować – zwróć wyraźny błąd
+                if (!string.IsNullOrWhiteSpace(cenaStringRaw) && cena == null)
+                    return BadRequest("Nieprawidłowy format ceny. Użyj np. 199.99 lub 199,99");
+                if (!string.IsNullOrWhiteSpace(cenaPoprzedniaStringRaw) && cenaPoprzednia == null)
+                    return BadRequest("Nieprawidłowy format starej ceny. Użyj np. 249.99 lub 249,99");
 
                 // 5. Normalizacja typu
                 typ = !string.IsNullOrEmpty(typ) && 
@@ -702,6 +761,9 @@ namespace TechPromo.Api.Controllers
 
         [Range(0.01, 999999.99, ErrorMessage = "Cena musi być większa od 0")]
         public decimal? Cena { get; set; }
+
+    [Range(0.01, 999999.99, ErrorMessage = "Cena poprzednia musi być większa od 0")]
+    public decimal? CenaPoprzednia { get; set; }
 
         [Required(ErrorMessage = "Kategoria jest wymagana")]
         [StringLength(50, ErrorMessage = "Nazwa kategorii nie może być dłuższa niż 50 znaków")]

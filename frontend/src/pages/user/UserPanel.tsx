@@ -187,6 +187,23 @@ const UserPanel = () => {
     }
   };
 
+  const deleteOffer = async (offerId: number) => {
+    if (!confirm('Na pewno usunąć ofertę? Tej operacji nie można cofnąć.')) return;
+    setLoading(true);
+    try {
+      const res = await authorizedFetch(`${API_BASE}/api/uzytkownik/oferta/${offerId}`, { method: 'DELETE' });
+      const text = await res.text();
+      setMessage(text || (res.ok ? 'Oferta usunięta' : 'Nie udało się usunąć oferty'));
+      if (res.ok) {
+        setOffers(prev => prev.filter(o => o.id !== offerId));
+      }
+    } catch {
+      setMessage('Błąd usuwania oferty');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // === FILTRY I SORTOWANIE ===
 
   const filteredOffers = offers.filter(offer => {
@@ -394,14 +411,14 @@ const UserPanel = () => {
                     // Wyświetlanie dla okazji
                     offer.cena && (
                       <div className="flex items-baseline space-x-2 mb-2">
-                        <span className="text-xl font-bold text-green-600">{offer.cena} PLN</span>
                         {offer.cenaPoprzednia && offer.cenaPoprzednia > offer.cena && (
-                          <>
-                            <span className="text-sm line-through text-gray-400">{offer.cenaPoprzednia} PLN</span>
-                            <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
-                              -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
-                            </span>
-                          </>
+                          <span className="text-sm line-through text-gray-400">{offer.cenaPoprzednia} PLN</span>
+                        )}
+                        <span className="text-xl font-bold text-red-600">{offer.cena} PLN</span>
+                        {offer.cenaPoprzednia && offer.cenaPoprzednia > offer.cena && (
+                          <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">
+                            -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
+                          </span>
                         )}
                       </div>
                     )
@@ -478,7 +495,14 @@ const UserPanel = () => {
                 <div className="text-xs text-gray-500">
                   Dodane przez: {offer.autor} | {offer.dataUtworzenia}
                 </div>
-                <div className="mt-4 flex justify-end">
+                <div className="mt-4 flex justify-end space-x-2">
+                  <button
+                    className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors"
+                    onClick={() => deleteOffer(offer.id)}
+                    disabled={loading}
+                  >
+                    Usuń
+                  </button>
                   <button
                     className="px-4 py-2 rounded-xl bg-custom-blue text-white text-sm font-semibold hover:bg-blue-700 transition-colors"
                     onClick={() => {

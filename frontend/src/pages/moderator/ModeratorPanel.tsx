@@ -177,6 +177,18 @@ const ModeratorPanel: React.FC = () => {
         window.location.href = isKupon ? `/stworz-oferte/kupon?edit=${of.idOferta}` : `/stworz-oferte/okazja?edit=${of.idOferta}`;
     };
 
+    const handleUsunOferte = async (id: number) => {
+        if (!window.confirm('Czy na pewno chcesz usunąć tę ofertę?')) return;
+        try {
+            await api(`moderator/oferta/${id}`, { method: 'DELETE' });
+            alert('Oferta została usunięta');
+            fetchOferty();
+        } catch (error) {
+            console.error('Błąd podczas usuwania oferty:', error);
+            alert('Błąd podczas usuwania oferty');
+        }
+    };
+
     const handleRozpatrzZgloszenie = async (id: number) => {
         const odpowiedz = prompt('Twoja odpowiedź na zgłoszenie:');
         if (!odpowiedz) return;
@@ -329,6 +341,12 @@ const ModeratorPanel: React.FC = () => {
                                     onClick={() => handleOdrzucOferte(oferta.idOferta)}
                                 >
                                     Odrzuć
+                                </button>
+                                <button 
+                                    className="bg-gray-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-gray-600/80 transition-all font-semibold"
+                                    onClick={() => handleUsunOferte(oferta.idOferta)}
+                                >
+                                    Usuń
                                 </button>
                             </div>
                         </div>

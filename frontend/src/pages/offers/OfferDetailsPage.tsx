@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Flame, Snowflake, MessageCircle, Share2, Bookmark, ArrowLeft, ExternalLink } from 'lucide-react';
+import CouponCode from '../../components/CouponCode';
 import ReportCommentModal from '../../components/modals/ReportCommentModal';
 import { getAuthToken } from '../../utils/auth';
 
@@ -41,6 +42,8 @@ interface CommentNode extends CommentDto {
 export default function OfferDetailsPage() {
   const { id } = useParams();
   const [offer, setOffer] = useState<OfertaDto | null>(null);
+  const [currentImage, setCurrentImage] = useState(0); // index aktywnego zdjęcia
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [comments, setComments] = useState<CommentDto[]>([]);
   const [commentsSkip, setCommentsSkip] = useState(0);
   const [commentsTotal, setCommentsTotal] = useState(0);
@@ -79,6 +82,7 @@ export default function OfferDetailsPage() {
         if (!res.ok) throw new Error('Nie znaleziono oferty');
         const data = await res.json();
         setOffer(data);
+        setCurrentImage(0);
         await fetchComments(true);
       } catch (e: any) {
         setError(e.message);
@@ -89,6 +93,33 @@ export default function OfferDetailsPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+  // Obsługa klawiatury dla zmiany zdjęć
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (!offer?.zdjecia || offer.zdjecia.length < 2) return;
+      if (e.key === 'ArrowRight') {
+        setCurrentImage(ci => (ci + 1) % offer.zdjecia.length);
+      } else if (e.key === 'ArrowLeft') {
+        setCurrentImage(ci => (ci - 1 + offer.zdjecia.length) % offer.zdjecia.length);
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [offer?.zdjecia]);
+
+  // Lightbox klawiatura
+  useEffect(() => {
+    if (!lightboxOpen) return;
+    const kb = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setLightboxOpen(false);
+      if (!offer?.zdjecia || offer.zdjecia.length < 2) return;
+      if (e.key === 'ArrowRight') setCurrentImage(ci => (ci + 1) % offer.zdjecia.length);
+      if (e.key === 'ArrowLeft') setCurrentImage(ci => (ci - 1 + offer.zdjecia.length) % offer.zdjecia.length);
+    };
+    window.addEventListener('keydown', kb);
+    return () => window.removeEventListener('keydown', kb);
+  }, [lightboxOpen, offer?.zdjecia]);
 
   useEffect(() => {
     // reload comments on sort change
@@ -296,9 +327,7 @@ export default function OfferDetailsPage() {
   if (!offer) return <div className="p-4 text-center">Brak danych</div>;
 
   const temp = offer.votes.hot - offer.votes.cold;
-  const discount = offer.cena && offer.cenaPoprzednia && offer.cenaPoprzednia > offer.cena
-    ? Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)
-    : null;
+  // Rabat obliczany inline w renderze (usunieto zmienna discount)
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -319,16 +348,67 @@ export default function OfferDetailsPage() {
               <div className="w-full md:w-80 mb-4 md:mb-0">
                 {offer.zdjecia && offer.zdjecia.length > 0 ? (
                   <div className="space-y-3">
-                    <div className="w-full aspect-square bg-gray-100 border rounded overflow-hidden relative">
-          <img src={offer.zdjecia[0].startsWith('http') ? offer.zdjecia[0] : `http://localhost:5023${offer.zdjecia[0]}`} alt={offer.tytul} className="absolute inset-0 w-full h-full object-cover" />
-                    </div>
-                    {offer.zdjecia.length > 1 && (
-                      <div className="grid grid-cols-5 gap-2">
-                        {offer.zdjecia.slice(1, 6).map((z, i) => (
-                          <div key={i} className="aspect-square bg-gray-100 border rounded overflow-hidden relative">
-            <img src={z.startsWith('http') ? z : `http://localhost:5023${z}`} alt="miniatura" className="absolute inset-0 w-full h-full object-cover" />
+                    {/* Obraz główny / karuzela */}
+                    <div className="w-full aspect-square bg-gray-100 border rounded-xl overflow-hidden relative group cursor-zoom-in" onClick={() => setLightboxOpen(true)}>
+                      {offer.zdjecia.map((z, idx) => {
+                        const src = z.startsWith('http') ? z : `http://localhost:5023${z}`;
+                        return (
+                          <img
+                            key={idx}
+                            src={src}
+                            alt={`${offer.tytul} (${idx+1}/${offer.zdjecia.length})`}
+                            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 bg-white ${idx === currentImage ? 'opacity-100' : 'opacity-0'}`}
+                            draggable={false}
+                          />
+                        );
+                      })}
+                      {offer.zdjecia.length > 1 && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentImage(ci => (ci - 1 + offer.zdjecia.length) % offer.zdjecia.length)}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                            aria-label="Poprzednie zdjęcie"
+                          >
+                            ‹
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setCurrentImage(ci => (ci + 1) % offer.zdjecia.length)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
+                            aria-label="Następne zdjęcie"
+                          >
+                            ›
+                          </button>
+                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
+                            {offer.zdjecia.map((_, i) => (
+                              <button
+                                key={i}
+                                onClick={() => setCurrentImage(i)}
+                                aria-label={`Pokaż zdjęcie ${i+1}`}
+                                className={`w-2.5 h-2.5 rounded-full border border-white transition ${i===currentImage ? 'bg-white' : 'bg-white/40 hover:bg-white/70'}`}
+                              />
+                            ))}
                           </div>
-                        ))}
+                        </>
+                      )}
+                    </div>
+                    {/* Miniatury scrollowane */}
+                    {offer.zdjecia.length > 1 && (
+                      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin scrollbar-thumb-gray-300">
+                        {offer.zdjecia.map((z, i) => {
+                          const src = z.startsWith('http') ? z : `http://localhost:5023${z}`;
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setCurrentImage(i)}
+                              className={`relative flex-shrink-0 w-16 h-16 border rounded-lg overflow-hidden bg-white transition ring-2 ${i===currentImage ? 'ring-custom-blue' : 'ring-transparent hover:ring-gray-300'}`}
+                            >
+                              <img src={src} alt={`miniatura ${i+1}`} className="absolute inset-0 w-full h-full object-cover" />
+                            </button>
+                          );
+                        })}
                       </div>
                     )}
                   </div>
@@ -355,26 +435,25 @@ export default function OfferDetailsPage() {
                 </div>
 
                 <div className="flex items-center flex-wrap gap-3 mb-4">
-                  {offer.typ === 'kupon' ? (
+                  {offer.typ === 'kupon' && (
                     <>
                       <span className="bg-purple-600 text-white text-sm font-semibold px-2 py-1 rounded">Kupon</span>
-                      {offer.kod && <span className="bg-gray-100 font-mono text-sm px-2 py-1 rounded border">{offer.kod}</span>}
-                      {offer.cena && (
-                        <span className="text-3xl font-black text-purple-600">{offer.cena} zł</span>
-                      )}
+                      <CouponCode code={offer.kod} size="sm" />
                     </>
-                  ) : (
-                    <>
-                      {offer.cena && (
-                        <span className="text-3xl font-black text-red-600">{offer.cena} zł</span>
-                      )}
-                      {discount !== null && (
-                        <>
-                          <span className="text-lg line-through text-gray-400">{offer.cenaPoprzednia} zł</span>
-                          <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">-{discount}%</span>
-                        </>
-                      )}
-                    </>
+                  )}
+                  {/* Stara cena (jeśli występuje i > aktualnej) */}
+                  {offer.cenaPoprzednia && offer.cena && offer.cenaPoprzednia > offer.cena && (
+                    <span className="text-lg line-through text-gray-400">{offer.cenaPoprzednia} zł</span>
+                  )}
+                  {/* Nowa cena */}
+                  {offer.cena && (
+                    <span className="text-3xl font-black text-red-600">{offer.cena} zł</span>
+                  )}
+                  {/* Badge rabatu */}
+                  {offer.cenaPoprzednia && offer.cena && offer.cenaPoprzednia > offer.cena && (
+                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                      -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
+                    </span>
                   )}
                 </div>
 
@@ -446,6 +525,57 @@ export default function OfferDetailsPage() {
         onSubmit={submitReport}
         loading={reportLoading}
       />
+
+      {/* Lightbox */}
+      {lightboxOpen && offer?.zdjecia && (
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
+          <div className="flex justify-end p-4">
+            <button
+              onClick={() => setLightboxOpen(false)}
+              className="text-white/80 hover:text-white text-2xl leading-none px-3 py-1"
+              aria-label="Zamknij podgląd"
+            >×</button>
+          </div>
+          <div className="flex-1 flex items-center justify-center px-4 pb-6 relative select-none">
+            {offer.zdjecia.map((z, i) => {
+              const src = z.startsWith('http') ? z : `http://localhost:5023${z}`;
+              return (
+                <img
+                  key={i}
+                  src={src}
+                  alt={offer.tytul + ' powiększone'}
+                  className={`max-h-[80vh] max-w-[90vw] object-contain transition-opacity duration-300 ${i===currentImage?'opacity-100':'opacity-0 absolute'}`}
+                  draggable={false}
+                />
+              );
+            })}
+            {offer.zdjecia.length > 1 && (
+              <>
+                <button
+                  onClick={() => setCurrentImage(ci => (ci - 1 + offer.zdjecia.length) % offer.zdjecia.length)}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-3xl flex items-center justify-center"
+                  aria-label="Poprzednie"
+                >‹</button>
+                <button
+                  onClick={() => setCurrentImage(ci => (ci + 1) % offer.zdjecia.length)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-3xl flex items-center justify-center"
+                  aria-label="Następne"
+                >›</button>
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
+                  {offer.zdjecia.map((_, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setCurrentImage(i)}
+                      className={`w-3 h-3 rounded-full border border-white ${i===currentImage?'bg-white':'bg-white/40 hover:bg-white/70'}`}
+                      aria-label={`Zdjęcie ${i+1}`}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

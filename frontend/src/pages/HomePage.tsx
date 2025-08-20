@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import CouponCode from '../components/CouponCode';
 import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search, Flag } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth';
@@ -29,27 +30,22 @@ interface OfertaDto {
 
 // Komponent odpowiedzialny za wyświetlanie miejsca na zdjęcie (zawsze rezerwuje przestrzeń)
 function OfferImage({ offer }: { offer: OfertaDto }) {
-  const imageUrl = offer.zdjecia && offer.zdjecia.length > 0 ? `http://localhost:5023${offer.zdjecia[0]}` : null;
+  const first = offer.zdjecia && offer.zdjecia.length > 0 ? offer.zdjecia[0] : null;
+  const src = first ? (first.startsWith('http') ? first : `http://localhost:5023${first}`) : null;
   return (
-  <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex-shrink-0 rounded-xl border border-gray-200 overflow-hidden group bg-gray-100">
-      {imageUrl && (
+    <div className="relative w-40 h-40 sm:w-44 sm:h-44 flex-shrink-0 rounded-xl border border-gray-200 overflow-hidden bg-white flex items-center justify-center">
+      {src ? (
         <img
-          src={imageUrl}
+          src={src}
           alt={offer.tytul}
           loading="lazy"
-          className="w-full h-full object-cover object-center transition-transform duration-300 group-hover:scale-105 select-none"
-          onError={(e) => {
-            const target = e.target as HTMLImageElement;
-            target.style.display = 'none';
-            const fallback = target.nextElementSibling as HTMLElement;
-            if (fallback) fallback.classList.remove('hidden');
-          }}
+          className="max-w-full max-h-full object-contain select-none"
           draggable={false}
+          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
+      ) : (
+        <span className="text-3xl text-gray-400">{offer.typ === 'kupon' ? '🎫' : '🛍️'}</span>
       )}
-      <div className={`absolute inset-0 flex items-center justify-center text-gray-400 ${imageUrl ? 'hidden' : 'flex'}`}>
-    <span className="text-3xl">{offer.typ === 'kupon' ? '🎫' : '🛍️'}</span>
-      </div>
     </div>
   );
 }
@@ -401,7 +397,7 @@ function HomePage() {
                             {offer.typ === 'kupon' ? (
                               <div className="flex items-center flex-wrap gap-2">
                                 <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded">🎫 KUPON</span>
-                                {offer.kod && <span className="bg-gray-100 text-gray-800 text-xs font-mono px-2 py-1 rounded border">{offer.kod}</span>}
+                                <CouponCode code={offer.kod} size="sm" />
                                 {offer.cena && <span className="text-xl font-black text-purple-600">{offer.cena} zł</span>}
                                 {!offer.cena && <span className="text-sm text-gray-600">Sprawdź cenę</span>}
                               </div>
