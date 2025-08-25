@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Http;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using TechPromo.Api.Model;
@@ -142,6 +144,22 @@ namespace TechPromo.Api.Controllers
                 dataPrzyznania = uo.DataPrzyznania.ToString("yyyy-MM-dd")
             }).ToList();
 
+            // Wyznacz avatarUrl jeśli istnieje zapisany plik w wwwroot/uploads/profiles
+            string? avatarUrl = null;
+            try
+            {
+                var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var profilesDir = Path.Combine(webRoot, "uploads", "profiles");
+                Directory.CreateDirectory(profilesDir);
+                var existing = Directory.GetFiles(profilesDir, $"user_{user.Id}.*").FirstOrDefault();
+                if (existing != null)
+                {
+                    var fileName = Path.GetFileName(existing);
+                    avatarUrl = $"{Request.Scheme}://{Request.Host}/uploads/profiles/{fileName}";
+                }
+            }
+            catch { /* pomiń błąd wykrywania avatara */ }
+
             // Zwracam kompletny profil użytkownika
             var profilResponse = new ProfilResponseDto
             {
@@ -150,6 +168,7 @@ namespace TechPromo.Api.Controllers
                 rola = roles.FirstOrDefault() ?? "Brak",
                 punkty = user.Punkty,
                 dataRejestracji = user.DataRejestracji.ToString("yyyy-MM-dd"),
+                avatarUrl = avatarUrl,
                 odznaki = odznakaList
             };
 
@@ -209,6 +228,50 @@ namespace TechPromo.Api.Controllers
                 rola = roles.FirstOrDefault() ?? "Uzytkownik",
                 punkty = user.Punkty
             });
+        }
+
+        // POST: /konto/profil/avatar - upload avatara użytkownika (FormData: avatar)
+        [HttpPost("profil/avatar")]
+        [Authorize]
+        public async Task<IActionResult> UploadAvatar([FromForm(Name = "avatar")] IFormFile? avatar)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+
+            if (avatar == null || avatar.Length == 0)
+                return BadRequest("Brak pliku do przesłania");
+
+            // Walidacja typu pliku
+            var allowedExt = new[] { ".jpg", ".jpeg", ".png", ".webp" };
+            var ext = Path.GetExtension(avatar.FileName).ToLowerInvariant();
+            if (!allowedExt.Contains(ext))
+                return BadRequest("Nieobsługiwany format. Dozwolone: jpg, jpeg, png, webp");
+
+            // Limit rozmiaru (np. 5MB)
+            const long maxSize = 5L * 1024 * 1024;
+            if (avatar.Length > maxSize)
+                return BadRequest("Plik jest zbyt duży (max 5MB)");
+
+            var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var profilesDir = Path.Combine(webRoot, "uploads", "profiles");
+            Directory.CreateDirectory(profilesDir);
+
+            // Usuń stare avatary tego użytkownika
+            foreach (var old in Directory.GetFiles(profilesDir, $"user_{user.Id}.*"))
+            {
+                try { System.IO.File.Delete(old); } catch { }
+            }
+
+            var fileName = $"user_{user.Id}{ext}";
+            var filePath = Path.Combine(profilesDir, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await avatar.CopyToAsync(stream);
+            }
+
+            var url = $"{Request.Scheme}://{Request.Host}/uploads/profiles/{fileName}";
+            return Ok(new { avatarUrl = url });
         }
     }
 }

@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Rocket, Edit3, Settings, User, LogOut } from 'lucide-react';
+import { Rocket, Edit3, Settings, LogOut } from 'lucide-react';
 import PanelSelector from '../ui/PanelSelector';
 import OfferTypeModal from '../modals/OfferTypeModal';
 import SearchBar from '../search/SearchBar';
+import { getAuthToken, isAuthenticated } from '../../utils/auth';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -15,6 +16,7 @@ interface NavbarProps {
 const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogout }) => {
   const [showPanelSelector, setShowPanelSelector] = useState(false);
   const [showOfferTypeModal, setShowOfferTypeModal] = useState(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const handlePanelClick = () => {
@@ -32,6 +34,26 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
   const handleCloseOfferTypeModal = () => {
     setShowOfferTypeModal(false);
   };
+
+  // Fetch avatar for menubar when logged in
+  useEffect(() => {
+    let abort = false;
+    const loadAvatar = async () => {
+      try {
+        if (!isLoggedIn || !isAuthenticated()) { setAvatarUrl(null); return; }
+        const token = getAuthToken();
+        const res = await fetch('http://localhost:5023/konto/profil', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) return;
+        const json = await res.json();
+        if (!abort) setAvatarUrl(json.avatarUrl || null);
+      } catch { /* ignore */ }
+    };
+    loadAvatar();
+    // Refresh after profile changes (avatar upload etc.)
+    const handler = () => loadAvatar();
+    window.addEventListener('profileChanged', handler as EventListener);
+    return () => { abort = true; window.removeEventListener('profileChanged', handler as EventListener); };
+  }, [isLoggedIn]);
 
   return (
     <>
@@ -87,9 +109,15 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
                     {/* Profil */}
                     <Link 
                       to="/konto/profil" 
-                      className="flex items-center space-x-1 sm:space-x-2 text-gray-700 hover:text-custom-blue transition-all duration-300 font-semibold px-1 sm:px-2 lg:px-3 py-2 rounded-xl hover:bg-gray-100"
+                      className="flex items-center space-x-2 text-gray-700 hover:text-custom-blue transition-all duration-300 font-semibold px-2 lg:px-3 py-2 rounded-xl hover:bg-gray-100"
                     >
-                      <User className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <span className="relative inline-block w-7 h-7 sm:w-8 sm:h-8">
+                        {avatarUrl ? (
+                          <img src={avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover border" />
+                        ) : (
+                          <img src="/default-avatar.svg" alt="default avatar" className="w-full h-full rounded-full object-cover border" />
+                        )}
+                      </span>
                       <span className="hidden lg:inline text-sm sm:text-base">{userName || 'Profil'}</span>
                     </Link>
 

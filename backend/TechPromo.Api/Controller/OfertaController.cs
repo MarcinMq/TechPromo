@@ -6,6 +6,7 @@ using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
 using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
+using System.IO;
 
 namespace TechPromo.Api.Controllers
 {
@@ -19,6 +20,26 @@ namespace TechPromo.Api.Controllers
         public OfertaController(TechPromoDbContext context)
         {
             _context = context;
+        }
+
+        // Buduje absolutny URL avatara autora jeśli istnieje plik user_{id}.ext w wwwroot/uploads/profiles
+        private string? BuildAutorAvatarAbsoluteUrl(int autorId)
+        {
+            try
+            {
+                var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profiles");
+                if (!Directory.Exists(uploadDir)) return null;
+                var existing = Directory.GetFiles(uploadDir, $"user_{autorId}.*").FirstOrDefault();
+                if (existing == null) return null;
+                var fileName = Path.GetFileName(existing);
+                var baseUrl = $"{Request.Scheme}://{Request.Host}";
+                return baseUrl + "/uploads/profiles/" + fileName;
+            }
+            catch
+            {
+                // Ignoruj błąd – brak avatara
+                return null;
+            }
         }
 
         // GET: api/oferta
@@ -71,29 +92,38 @@ namespace TechPromo.Api.Controllers
 
             var total = await query.CountAsync();
 
-            var offers = await query
+            var offersRaw = await query
                 .Skip(skip)
                 .Take(take)
-                .Select(o => new OfertaDto
+                .Select(o => new 
                 {
-                    Id = o.IdOferta,
-                    Tytul = o.Nazwa,
-                    Opis = o.Opis,
-                    Typ = o.Typ,
-                    Cena = o.Cena,
-                    CenaPoprzednia = o.CenaPoprzednia,
-                    Kod = o.Kod,
-                    Sklep = o.Link, // Tymczasowo używamy Link jako sklep
-                    Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
-                    Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
-                    Autor = o.Uzytkownik.UserName ?? "Nieznany",
-                    DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
-                    Komentarze = o.Komentarze.Count,
-                    UserVote = userId != 0 ? o.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null,
-                    Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+                    AutorId = o.IdUzytkownik,
+                    Dto = new OfertaDto
+                    {
+                        Id = o.IdOferta,
+                        Tytul = o.Nazwa,
+                        Opis = o.Opis,
+                        Typ = o.Typ,
+                        Cena = o.Cena,
+                        CenaPoprzednia = o.CenaPoprzednia,
+                        Kod = o.Kod,
+                        Sklep = o.Link, // Tymczasowo używamy Link jako sklep
+                        Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
+                        Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
+                        Autor = o.Uzytkownik.UserName ?? "Nieznany",
+                        DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                        Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
+                        Komentarze = o.Komentarze.Count,
+                        UserVote = userId != 0 ? o.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null,
+                        Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+                    }
                 })
                 .ToListAsync();
+
+            var offers = offersRaw.Select(x => {
+                x.Dto.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(x.AutorId);
+                return x.Dto;
+            }).ToList();
 
             var result = new PagedResult<OfertaDto>
             {
@@ -116,7 +146,7 @@ namespace TechPromo.Api.Controllers
                 userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
             }
 
-            var offer = await _context.Oferty
+            var offerRaw = await _context.Oferty
                 .Where(o => o.IdOferta == id && o.Aktywna && o.Zatwierdzona)
                 .Include(o => o.Uzytkownik)
                 .Include(o => o.Kategoria)
@@ -124,26 +154,37 @@ namespace TechPromo.Api.Controllers
                 .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
                 .Include(o => o.Glosy)
                 .Include(o => o.Komentarze)
-                .Select(o => new OfertaDto
+                .Select(o => new 
                 {
-                    Id = o.IdOferta,
-                    Tytul = o.Nazwa,
-                    Opis = o.Opis,
-                    Typ = o.Typ,
-                    Cena = o.Cena,
-                    CenaPoprzednia = o.CenaPoprzednia,
-                    Kod = o.Kod,
-                    Sklep = o.Link,
-                    Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
-                    Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
-                    Autor = o.Uzytkownik.UserName ?? "Nieznany",
-                    DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
-                    Komentarze = o.Komentarze.Count,
-                    UserVote = userId != 0 ? o.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null, 
-                    Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+                    AutorId = o.IdUzytkownik,
+                    Dto = new OfertaDto
+                    {
+                        Id = o.IdOferta,
+                        Tytul = o.Nazwa,
+                        Opis = o.Opis,
+                        Typ = o.Typ,
+                        Cena = o.Cena,
+                        CenaPoprzednia = o.CenaPoprzednia,
+                        Kod = o.Kod,
+                        Sklep = o.Link,
+                        Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
+                        Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
+                        Autor = o.Uzytkownik.UserName ?? "Nieznany",
+                        DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                        Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
+                        Komentarze = o.Komentarze.Count,
+                        UserVote = userId != 0 ? o.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null, 
+                        Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+                    }
                 })
                 .FirstOrDefaultAsync();
+
+            OfertaDto? offer = null;
+            if (offerRaw != null)
+            {
+                offer = offerRaw.Dto;
+                offer.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(offerRaw.AutorId);
+            }
 
             if (offer == null)
             {
@@ -182,6 +223,7 @@ namespace TechPromo.Api.Controllers
                             UserVote = userId != 0 ? raw.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null,
                             Zdjecia = raw.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
                         };
+                        dto.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(raw.IdUzytkownik);
                         // Oznacz w nagłówku że to draft (opcjonalne do debug)
                         Response.Headers["X-Draft"] = "true";
                         return Ok(dto);
@@ -406,7 +448,6 @@ namespace TechPromo.Api.Controllers
                     Typ = typ,
                     Opis = request.Opis.Trim(),
                     Cena = request.Cena,
-                    CenaPoprzednia = request.CenaPoprzednia,
                     Link = !string.IsNullOrEmpty(request.Sklep) ? request.Sklep.Trim() : string.Empty,
                     IdKategoria = kategoria.IdKategoria,
                     IdUzytkownik = userId,
@@ -515,32 +556,41 @@ namespace TechPromo.Api.Controllers
         // Metoda pomocnicza - tworzenie odpowiedzi
         private async Task<OfertaDto?> CreateOfferResponse(int ofertaId)
         {
-            return await _context.Oferty
+            var data = await _context.Oferty
                 .Where(o => o.IdOferta == ofertaId)
                 .Include(o => o.Uzytkownik)
                 .Include(o => o.Kategoria)
                 .Include(o => o.Zdjecia)
                 .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
-                .Select(o => new OfertaDto
+                .Select(o => new
                 {
-                    Id = o.IdOferta,
-                    Tytul = o.Nazwa,
-                    Opis = o.Opis,
-                    Typ = o.Typ,
-                    Cena = o.Cena,
-                    CenaPoprzednia = o.CenaPoprzednia,
-                    Kod = o.Kod,
-                    Sklep = o.Link,
-                    Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
-                    Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
-                    Autor = o.Uzytkownik.UserName ?? "Nieznany",
-                    DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
-                    Komentarze = 0,
-                    UserVote = null,
-                    Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+                    AutorId = o.IdUzytkownik,
+                    Dto = new OfertaDto
+                    {
+                        Id = o.IdOferta,
+                        Tytul = o.Nazwa,
+                        Opis = o.Opis,
+                        Typ = o.Typ,
+                        Cena = o.Cena,
+                        CenaPoprzednia = o.CenaPoprzednia,
+                        Kod = o.Kod,
+                        Sklep = o.Link,
+                        Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
+                        Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
+                        Autor = o.Uzytkownik.UserName ?? "Nieznany",
+                        DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                        Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
+                        Komentarze = 0,
+                        UserVote = null,
+                        Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+                    }
                 })
                 .FirstOrDefaultAsync();
+
+            if (data == null) return null;
+            var dto = data.Dto;
+            dto.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(data.AutorId);
+            return dto;
         }
 
         // POST: api/oferta/upload - Endpoint z obsługą FormData i plików
@@ -564,8 +614,8 @@ namespace TechPromo.Api.Controllers
                 var typ = Request.Form["typ"].ToString().Trim();
                 
                 // Opcjonalne pola
-                var cenaStringRaw = Request.Form["cena"].ToString();
-                var cenaPoprzedniaStringRaw = Request.Form["cenaPoprzednia"].ToString();
+                var cenaString = Request.Form["cena"].ToString();
+                var cenaPoprzeniaString = Request.Form["cenaPoprzednia"].ToString();
                 var kod = Request.Form["kod"].ToString().Trim();
                 var sklep = Request.Form["sklep"].ToString().Trim();
                 var tagi = Request.Form["tagi"].ToString().Trim();
@@ -590,32 +640,14 @@ namespace TechPromo.Api.Controllers
                 if (!string.IsNullOrEmpty(tagi) && tagi.Length > 200) return BadRequest("Tagi nie mogą być dłuższe niż 200 znaków.");
 
                 // 4. Parsowanie cen
-                decimal? ParseCena(string input)
-                {
-                    if (string.IsNullOrWhiteSpace(input)) return null;
-                    // Usuń walutę i inne znaki poza cyframi, przecinkiem i kropką
-                    var cleaned = System.Text.RegularExpressions.Regex.Replace(input, "[^0-9.,]", "");
-                    if (string.IsNullOrWhiteSpace(cleaned)) return null;
-                    // Zamień przecinek na kropkę (ułatwia invariant parse)
-                    cleaned = cleaned.Replace(',', '.');
-                    // Usuń podwójne kropki
-                    while (cleaned.Contains("..")) cleaned = cleaned.Replace("..", ".");
-                    if (decimal.TryParse(cleaned, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out var v))
-                        return decimal.Round(v, 2);
-                    // Próba z kulturą PL
-                    if (decimal.TryParse(input, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.GetCultureInfo("pl-PL"), out v))
-                        return decimal.Round(v, 2);
-                    return null;
-                }
-
-                var cena = ParseCena(cenaStringRaw);
-                var cenaPoprzednia = ParseCena(cenaPoprzedniaStringRaw);
-
-                // Jeśli użytkownik podał wartość, ale nie udało się sparsować – zwróć wyraźny błąd
-                if (!string.IsNullOrWhiteSpace(cenaStringRaw) && cena == null)
-                    return BadRequest("Nieprawidłowy format ceny. Użyj np. 199.99 lub 199,99");
-                if (!string.IsNullOrWhiteSpace(cenaPoprzedniaStringRaw) && cenaPoprzednia == null)
-                    return BadRequest("Nieprawidłowy format starej ceny. Użyj np. 249.99 lub 249,99");
+                decimal? cena = null;
+                decimal? cenaPoprzednia = null;
+                
+                if (!string.IsNullOrEmpty(cenaString) && decimal.TryParse(cenaString, out var parsedCena))
+                    cena = parsedCena;
+                    
+                if (!string.IsNullOrEmpty(cenaPoprzeniaString) && decimal.TryParse(cenaPoprzeniaString, out var parsedCenaPoprzednia))
+                    cenaPoprzednia = parsedCenaPoprzednia;
 
                 // 5. Normalizacja typu
                 typ = !string.IsNullOrEmpty(typ) && 
@@ -761,9 +793,6 @@ namespace TechPromo.Api.Controllers
 
         [Range(0.01, 999999.99, ErrorMessage = "Cena musi być większa od 0")]
         public decimal? Cena { get; set; }
-
-    [Range(0.01, 999999.99, ErrorMessage = "Cena poprzednia musi być większa od 0")]
-    public decimal? CenaPoprzednia { get; set; }
 
         [Required(ErrorMessage = "Kategoria jest wymagana")]
         [StringLength(50, ErrorMessage = "Nazwa kategorii nie może być dłuższa niż 50 znaków")]

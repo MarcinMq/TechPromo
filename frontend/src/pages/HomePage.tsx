@@ -18,6 +18,7 @@ interface OfertaDto {
   kategoria: string;
   tagi: string[];
   autor: string;
+  autorAvatarUrl?: string | null;
   dataUtworzenia: string;
   votes: {
     hot: number;
@@ -67,6 +68,13 @@ function HomePage() {
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const skipRef = useRef(0);
+
+  // Top 3 ofert z największą liczbą HOT (malejąco)
+  const topHotOffers = useMemo(() => {
+    return [...offers]
+      .sort((a, b) => (b.votes.hot - a.votes.hot))
+      .slice(0, 3);
+  }, [offers]);
 
   // Debounce search input
   useEffect(() => {
@@ -414,7 +422,12 @@ function HomePage() {
                           <div className="text-sm text-gray-600 line-clamp-2 mb-3">{offer.opis}</div>
                           <div className="mt-auto flex items-center justify-between">
                             <div className="flex items-center space-x-2 text-xs text-gray-500">
-                              <div className="w-6 h-6 bg-gray-300 rounded-full flex items-center justify-center"><span className="text-[10px] font-bold">{offer.autor[0]?.toUpperCase()}</span></div>
+                              <img
+                                src={offer.autorAvatarUrl || '/default-avatar.svg'}
+                                alt={offer.autor}
+                                className="w-6 h-6 rounded-full object-cover border"
+                                onError={(e)=>{ const img=e.target as HTMLImageElement; img.onerror=null; img.src='/default-avatar.svg'; }}
+                              />
                               <span>Dodane przez {offer.autor}</span>
                               <span>{offer.dataUtworzenia}</span>
                               <span className="hidden sm:inline">• {offer.kategoria}</span>
@@ -459,7 +472,7 @@ function HomePage() {
             <div className="bg-white rounded border p-4 sticky top-32">
               <h3 className="font-bold text-gray-900 mb-3 text-sm">🔥 Najgorętsze dziś</h3>
               <div className="space-y-3">
-                {offers.slice(0, 3).map(offer => (
+                {topHotOffers.map(offer => (
                   <div key={offer.id} className="pb-3 border-b border-gray-100 last:border-0">
                     <Link to={`/okazja/${offer.id}`} className="text-sm text-gray-900 hover:text-blue-600 line-clamp-2 block mb-1">
                       {offer.tytul}

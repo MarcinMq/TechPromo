@@ -14,6 +14,7 @@ namespace TechPromo.Api.DTO
         public string Kategoria { get; set; } = string.Empty;
         public List<string> Tagi { get; set; } = new List<string>();
         public string Autor { get; set; } = string.Empty;
+    public string? AutorAvatarUrl { get; set; }
         public string DataUtworzenia { get; set; } = string.Empty;
         public VotesDto Votes { get; set; } = new VotesDto();
         public int Komentarze { get; set; }
