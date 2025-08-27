@@ -49,7 +49,7 @@ type KomentarzModeracja = {
 };
 
 const AdminPanel = () => {
-  const [activeTab, setActiveTab] = useState<'users' | 'badges' | 'assign' | 'reports' | 'comments' | 'offers'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'badges' | 'reports' | 'comments' | 'offers'>('users');
   const [users, setUsers] = useState<Uzytkownik[]>([]);
   const [badges, setBadges] = useState<Odznaka[]>([]);
   const [reports, setReports] = useState<any[]>([]);
@@ -62,8 +62,7 @@ const AdminPanel = () => {
   // Formularz nowej odznaki
   const [newBadge, setNewBadge] = useState({ nazwa: '', opis: '', ikona: '🏆' });
   
-  // Formularz przyznawania odznaki
-  const [assignForm, setAssignForm] = useState({ idUzytkownik: '', idOdznaka: '' });
+  // Przeliczanie odznak – bez ręcznego przyznawania
 
   const API_BASE = 'http://localhost:5023';
 
@@ -97,6 +96,29 @@ const AdminPanel = () => {
     }
   };
 
+  const recalcBadgesForUser = async (userId: number) => {
+    setLoading(true);
+    try {
+      const res = await apiPost(`/admin/odznaki/przelicz/${userId}`, {});
+      const text = await res.text();
+      setMessage(text || 'Odznaki przeliczone');
+    } catch {
+      setMessage('Błąd przeliczania odznak');
+    } finally { setLoading(false); }
+  };
+
+  const recalcBadgesForAll = async () => {
+    if (!confirm('Przeliczyć odznaki dla wszystkich użytkowników?')) return;
+    setLoading(true);
+    try {
+      const res = await apiPost(`/admin/odznaki/przelicz-wszystkich`, {});
+      const text = await res.text();
+      setMessage(text || 'Przeliczono odznaki wszystkim');
+    } catch {
+      setMessage('Błąd przeliczania odznak dla wszystkich');
+    } finally { setLoading(false); }
+  };
+
   const createBadge = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -116,26 +138,7 @@ const AdminPanel = () => {
     }
   };
 
-  const assignBadge = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      // apiPost obsługuje wszystko za nas
-      const res = await apiPost('/admin/przyznaj-odznake', {
-        idUzytkownik: parseInt(assignForm.idUzytkownik),
-        idOdznaka: parseInt(assignForm.idOdznaka)
-      });
-      const text = await res.text();
-      setMessage(text);
-      if (res.ok) {
-        setAssignForm({ idUzytkownik: '', idOdznaka: '' });
-      }
-    } catch {
-      setMessage('Błąd przyznawania odznaki');
-    } finally {
-      setLoading(false);
-    }
-  };
+  // usunięto ręczne przyznawanie odznak
 
   const deleteBadge = async (id: number) => {
     if (!confirm('Czy na pewno chcesz usunąć tę odznakę?')) return;
@@ -444,15 +447,11 @@ const AdminPanel = () => {
               Odznaki ({badges.length})
             </button>
             <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
-                activeTab === 'assign' 
-                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
-                  : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
-              }`}
-              onClick={() => setActiveTab('assign')}
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30`}
+              onClick={recalcBadgesForAll}
             >
               <Zap className="inline w-5 h-5 mr-2" />
-              Przyznaj Odznakę
+              Przelicz odznaki wszystkim
             </button>
             <button 
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
@@ -524,6 +523,13 @@ const AdminPanel = () => {
                         }}
                       />
                     </div>
+                    <button 
+                      className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition disabled:opacity-50"
+                      onClick={() => recalcBadgesForUser(user.id)}
+                      disabled={loading}
+                    >
+                      Przelicz odznaki dla użytkownika
+                    </button>
                     <select 
                       value={user.rola}
                       onChange={(e) => changeUserRole(user.id, e.target.value)}
@@ -611,62 +617,7 @@ const AdminPanel = () => {
           </div>
         )}
 
-        {activeTab === 'assign' && (
-          <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
-              <Zap className="w-7 h-7 mr-2" />
-              Przyznaj Odznakę Użytkownikowi
-            </h2>
-            
-            <div className="max-w-xl mx-auto bg-white/70 rounded-xl p-8 shadow-lg">
-              <form onSubmit={assignBadge} className="space-y-6">
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">Wybierz użytkownika</label>
-                  <select
-                    value={assignForm.idUzytkownik}
-                    onChange={e => setAssignForm({...assignForm, idUzytkownik: e.target.value})}
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-custom-blue focus:border-custom-blue outline-none bg-white transition-all"
-                  >
-                    <option value="">Wybierz użytkownika</option>
-                    {users.map(user => (
-                      <option key={user.id} value={user.id}>
-                        {user.nick} ({user.email})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-gray-700 font-semibold mb-2">Wybierz odznakę</label>
-                  <select
-                    value={assignForm.idOdznaka}
-                    onChange={e => setAssignForm({...assignForm, idOdznaka: e.target.value})}
-                    required
-                    className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-custom-blue focus:border-custom-blue outline-none bg-white transition-all"
-                  >
-                    <option value="">Wybierz odznakę</option>
-                    {badges.map(badge => (
-                      <option key={badge.idOdznaka} value={badge.idOdznaka}>
-                        {badge.ikona} {badge.nazwa}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="text-center">
-                  <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="px-8 py-3 bg-custom-blue text-white rounded-lg hover:bg-custom-blue-dark transition-colors font-semibold text-lg disabled:opacity-50"
-                  >
-                    {loading ? 'Przyznawanie...' : '🏆 Przyznaj Odznakę'}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+  {/* Usunięto zakładkę ręcznego przyznawania odznak */}
 
         {/* Nowe zakładki */}
         

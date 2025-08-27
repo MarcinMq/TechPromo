@@ -21,14 +21,16 @@ namespace TechPromo.Api.Controllers
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly SignInManager<Uzytkownik> _signInManager;
         private readonly TechPromoDbContext _context;
-        private readonly IJwtService _jwtService;
+    private readonly IJwtService _jwtService;
+    private readonly IBadgeService _badgeService;
 
-        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context, IJwtService jwtService)
+        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context, IJwtService jwtService, IBadgeService badgeService)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _context = context;
             _jwtService = jwtService;
+            _badgeService = badgeService;
         }
 
         [HttpPost("register")]
@@ -271,6 +273,8 @@ namespace TechPromo.Api.Controllers
             }
 
             var url = $"{Request.Scheme}://{Request.Host}/uploads/profiles/{fileName}";
+            // Oceń odznaki (avatar_set)
+            await _badgeService.EvaluateForUserAsync(user.Id);
             return Ok(new { avatarUrl = url });
         }
     }

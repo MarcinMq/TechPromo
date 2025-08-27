@@ -1,4 +1,4 @@
-import { Routes, Route, useNavigate } from 'react-router-dom';
+import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Navbar from './components/layout/Navbar';
 import Footer from './components/layout/Footer';
@@ -7,9 +7,8 @@ import SearchPage from './pages/SearchPage';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Profil from './pages/profile/Profil';
-import AdminPanel from './pages/admin/AdminPanel';
-import ModeratorPanel from './pages/moderator/ModeratorPanel';
-import UserPanel from './pages/user/UserPanel';
+// Panele przeniesione do profilu – pełne strony wyłączone
+// Usunięto UserPanel – funkcje przeniesione do Profil
 import CreateDealForm from './pages/offers/CreateDealForm';
 import CreateCouponForm from './pages/offers/CreateCouponForm';
 import OfferDetailsPage from './pages/offers/OfferDetailsPage';
@@ -110,26 +109,16 @@ function App() {
               <CreateCouponForm />
             </ProtectedRoute>
           } />
-          <Route path="/uzytkownik/panel" element={
-            <ProtectedRoute>
-              <UserPanel />
-            </ProtectedRoute>
-          } />
+          {/* Back-compat: przekierowanie na profil */}
+          <Route path="/uzytkownik/panel" element={<Profil />} />
           <Route path="/konto/profil" element={
             <ProtectedRoute>
               <Profil />
             </ProtectedRoute>
           } />
-          <Route path="/admin" element={
-            <ProtectedRoute requiredRole="Admin">
-              <AdminPanel />
-            </ProtectedRoute>
-          } />
-          <Route path="/moderator" element={
-            <ProtectedRoute requiredRole="Moderator,Admin">
-              <ModeratorPanel />
-            </ProtectedRoute>
-          } />
+          {/* Old standalone panels removed; redirect to profile */}
+          <Route path="/admin" element={<Navigate to="/konto/profil" replace />} />
+          <Route path="/moderator" element={<Navigate to="/konto/profil" replace />} />
         </Routes>
       </main>
       

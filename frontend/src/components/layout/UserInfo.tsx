@@ -49,7 +49,7 @@ const UserInfo = () => {
           Profil
         </button>
       {userData.role === 'Admin' && (
-        <button onClick={() => navigate('/admin')}>Panel Admin</button>
+  <button onClick={() => navigate('/konto/profil')}>Panel</button>
       )}
       <button onClick={handleLogout}>Wyloguj</button>
     </div>

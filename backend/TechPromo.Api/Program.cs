@@ -100,6 +100,7 @@ builder.Services.AddAuthentication(options =>
 
 // Rejestruję serwis do tworzenia tokenów JWT
 builder.Services.AddScoped<IJwtService, JwtService>();
+builder.Services.AddScoped<IBadgeService, BadgeService>();
 
 var app = builder.Build();
 

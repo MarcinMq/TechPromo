@@ -77,7 +77,7 @@ const CreateCouponForm: React.FC = () => {
           })
           .catch(() => {
             setMessage({ type: 'error', text: 'Brak uprawnień do edycji tego kuponu' });
-            setTimeout(()=> navigate('/uzytkownik/panel'), 1500);
+            setTimeout(()=> navigate('/konto/profil'), 1500);
           });
       }
     }
@@ -129,7 +129,7 @@ const CreateCouponForm: React.FC = () => {
         });
         if (!res.ok) throw new Error('Nie udało się zaktualizować kuponu');
         setMessage({ type: 'success', text: role === 'User' ? 'Kupon zaktualizowany – oczekuje ponownej moderacji.' : 'Kupon zaktualizowany.' });
-        setTimeout(() => navigate(role === 'User' ? '/uzytkownik/panel' : '/'), 1500);
+  setTimeout(() => navigate(role === 'User' ? '/konto/profil' : '/'), 1500);
         return;
       }
 
@@ -195,7 +195,7 @@ const CreateCouponForm: React.FC = () => {
 
         // Przekierowanie po 3 sekundach
         setTimeout(() => {
-          navigate('/uzytkownik/panel');
+          navigate('/konto/profil');
         }, 3000);
       } else {
         const errorData = await response.text();

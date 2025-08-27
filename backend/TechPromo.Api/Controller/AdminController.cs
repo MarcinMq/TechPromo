@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using TechPromo.Api.Data;
 using TechPromo.Api.DTO;
 using TechPromo.Api.Model;
+using TechPromo.Api.Services;
 
 namespace TechPromo.Api.Controllers
 {
@@ -20,69 +21,37 @@ namespace TechPromo.Api.Controllers
     {
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly TechPromoDbContext _context;
+    private readonly IBadgeService _badgeService;
 
-        public AdminController(UserManager<Uzytkownik> userManager, TechPromoDbContext context)
+    public AdminController(UserManager<Uzytkownik> userManager, TechPromoDbContext context, IBadgeService badgeService)
         {
             _userManager = userManager;
             _context = context;
+            _badgeService = badgeService;
         }
 
-        [HttpPost("przyznaj-odznake")]
-        public async Task<IActionResult> PrzyznajOdznakeUzytkownikowi([FromBody] PrzyznajOdznakaDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+        // Ręczne przyznawanie/odbieranie odznak zostało wyłączone – system działa automatycznie.
 
-            // Sprawdź czy użytkownik istnieje
-            var user = await _userManager.FindByIdAsync(dto.IdUzytkownik.ToString());
+        [HttpPost("odznaki/przelicz/{id}")]
+        public async Task<IActionResult> PrzeliczOdznakiUzytkownika(int id)
+        {
+            var user = await _userManager.FindByIdAsync(id.ToString());
             if (user == null)
                 return NotFound("Nie znaleziono użytkownika");
 
-            // Sprawdź czy odznaka istnieje
-            var odznaka = await _context.Odznaki.FindAsync(dto.IdOdznaka);
-            if (odznaka == null)
-                return NotFound("Nie znaleziono odznaki");
-
-            // Sprawdź czy użytkownik już ma tę odznakę
-            var juzMaOdznake = await _context.UzytkownikOdznaki
-                .AnyAsync(uo => uo.IdUzytkownik == dto.IdUzytkownik && uo.IdOdznaka == dto.IdOdznaka);
-
-            if (juzMaOdznake)
-                return BadRequest("Użytkownik już posiada tę odznakę");
-
-            // Przyznaj odznakę
-            var uzytkownikOdznaka = new UzytkownikOdznaka
-            {
-                IdUzytkownik = dto.IdUzytkownik,
-                IdOdznaka = dto.IdOdznaka,
-                DataPrzyznania = DateTime.UtcNow
-            };
-
-            _context.UzytkownikOdznaki.Add(uzytkownikOdznaka);
-            await _context.SaveChangesAsync();
-
-            return Ok($"Odznaka '{odznaka.Nazwa}' została przyznana użytkownikowi '{user.UserName}'");
+            await _badgeService.EvaluateForUserAsync(id);
+            return Ok($"Odznaki użytkownika '{user.UserName}' zostały przeliczone.");
         }
 
-        [HttpDelete("usun-odznake")]
-        public async Task<IActionResult> UsunOdznakeUzytkownikowi([FromBody] PrzyznajOdznakaDto dto)
+        [HttpPost("odznaki/przelicz-wszystkich")]
+        public async Task<IActionResult> PrzeliczOdznakiWszystkim()
         {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            // Sprawdź czy użytkownik ma tę odznakę
-            var uzytkownikOdznaka = await _context.UzytkownikOdznaki
-                .Include(uo => uo.Uzytkownik)
-                .Include(uo => uo.Odznaka)
-                .FirstOrDefaultAsync(uo => uo.IdUzytkownik == dto.IdUzytkownik && uo.IdOdznaka == dto.IdOdznaka);
-
-            if (uzytkownikOdznaka == null)
-                return NotFound("Użytkownik nie posiada tej odznaki");
-
-            _context.UzytkownikOdznaki.Remove(uzytkownikOdznaka);
-            await _context.SaveChangesAsync();
-
-            return Ok($"Odznaka '{uzytkownikOdznaka.Odznaka.Nazwa}' została odebrana użytkownikowi '{uzytkownikOdznaka.Uzytkownik.UserName}'");
+            var ids = await _context.Users.Select(u => u.Id).ToListAsync();
+            foreach (var id in ids)
+            {
+                await _badgeService.EvaluateForUserAsync(id);
+            }
+            return Ok(new { przeliczono = ids.Count });
         }
 
         [HttpGet("odznaki")]

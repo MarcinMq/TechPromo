@@ -18,19 +18,22 @@ namespace TechPromo.Api.Controllers
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly IWebHostEnvironment _environment;
 
-        public UzytkownikController(TechPromoDbContext context, UserManager<Uzytkownik> userManager, IWebHostEnvironment environment)
+        private readonly TechPromo.Api.Services.IBadgeService _badgeService;
+
+        public UzytkownikController(TechPromoDbContext context, UserManager<Uzytkownik> userManager, IWebHostEnvironment environment, TechPromo.Api.Services.IBadgeService badgeService)
         {
             _context = context;
             _userManager = userManager;
             _environment = environment;
+            _badgeService = badgeService;
         }
 
-        // GET: api/uzytkownik/aktywnosc
+        // GET: api/uzytkownik/aktywnosc (stronicowane)
         [HttpGet("aktywnosc")]
-        public async Task<ActionResult<IEnumerable<AktywnoscDto>>> GetUserActivity()
+        public async Task<ActionResult<PagedResult<AktywnoscDto>>> GetUserActivity([FromQuery] int skip = 0, [FromQuery] int take = 12)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            
+            if (take > 100) take = 100;
             var activities = new List<AktywnoscDto>();
 
             // Dodane oferty
@@ -103,7 +106,17 @@ namespace TechPromo.Api.Controllers
 
             activities.AddRange(badges);
 
-            return Ok(activities.OrderByDescending(a => DateTime.Parse(a.Data)).Take(50));
+            var ordered = activities.OrderByDescending(a => DateTime.Parse(a.Data)).ToList();
+            var total = ordered.Count;
+            var page = ordered.Skip(skip).Take(take).ToList();
+            var result = new PagedResult<AktywnoscDto>
+            {
+                Items = page,
+                Total = total,
+                Skip = skip,
+                Take = take
+            };
+            return Ok(result);
         }
 
         // GET: api/uzytkownik/odznaki
@@ -129,42 +142,58 @@ namespace TechPromo.Api.Controllers
             return Ok(badges);
         }
 
-        // GET: api/uzytkownik/komentarze
+        // GET: api/uzytkownik/komentarze (stronicowane)
         [HttpGet("komentarze")]
-        public async Task<ActionResult<IEnumerable<KomentarzDto>>> GetUserComments()
+        public async Task<ActionResult<PagedResult<KomentarzDto>>> GetUserComments([FromQuery] int skip = 0, [FromQuery] int take = 12)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            
-            var comments = await _context.Komentarze
+            if (take > 100) take = 100;
+            var baseQuery = _context.Komentarze
                 .Where(k => k.IdUzytkownik == userId)
                 .Include(k => k.Oferta)
                 .Include(k => k.Uzytkownik)
                 .OrderByDescending(k => k.DataDodania)
+                .AsQueryable();
+
+            var total = await baseQuery.CountAsync();
+            var pageItems = await baseQuery
+                .Skip(skip)
+                .Take(take)
                 .Select(k => new KomentarzDto
                 {
                     Id = k.IdKomentarz,
                     Tresc = k.Tresc,
                     Oferta = k.Oferta != null ? k.Oferta.Nazwa : string.Empty,
                     Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                        Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
-                        ParentId = k.ParentId,
-                        Up = k.LiczbaUp,
-                        Down = k.LiczbaDown,
-                        UserVote = null
+                    Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
+                    ParentId = k.ParentId,
+                    Up = k.LiczbaUp,
+                    Down = k.LiczbaDown,
+                    UserVote = null
                 })
                 .ToListAsync();
 
-            return Ok(comments);
+            var result = new PagedResult<KomentarzDto>
+            {
+                Items = pageItems,
+                Total = total,
+                Skip = skip,
+                Take = take
+            };
+            return Ok(result);
         }
 
-        // GET: api/uzytkownik/oferty
+        // GET: api/uzytkownik/oferty (stronicowane)
         [HttpGet("oferty")]
-        public async Task<ActionResult<IEnumerable<OfertaDto>>> GetUserOffers(
+        public async Task<ActionResult<PagedResult<OfertaDto>>> GetUserOffers(
             [FromQuery] string? kategoria = null,
             [FromQuery] string? tag = null,
-            [FromQuery] string? sortBy = "newest")
+            [FromQuery] string? sortBy = "newest",
+            [FromQuery] int skip = 0,
+            [FromQuery] int take = 12)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (take > 100) take = 100; // górny limit bezpieczeństwa
             
             var query = _context.Oferty
                 .Where(o => o.IdUzytkownik == userId)
@@ -199,7 +228,11 @@ namespace TechPromo.Api.Controllers
                 _ => query.OrderByDescending(o => o.DataDodania)
             };
 
+            var total = await query.CountAsync();
+
             var offers = await query
+                .Skip(skip)
+                .Take(take)
                 .Select(o => new OfertaDto
                 {
                     Id = o.IdOferta,
@@ -220,7 +253,14 @@ namespace TechPromo.Api.Controllers
                 })
                 .ToListAsync();
 
-            return Ok(offers);
+            var result = new PagedResult<OfertaDto>
+            {
+                Items = offers,
+                Total = total,
+                Skip = skip,
+                Take = take
+            };
+            return Ok(result);
         }
 
         // GET: api/uzytkownik/oferta/{id}  (pojedyncza oferta właściciela do edycji)
@@ -357,6 +397,8 @@ namespace TechPromo.Api.Controllers
                 await _userManager.UpdateAsync(user);
             }
 
+            // Odznaki (first_deal, deals_5)
+            await _badgeService.EvaluateForUserAsync(userId);
             return Ok("Oferta została dodana pomyślnie i oczekuje na moderację.");
         }
 
@@ -416,6 +458,8 @@ namespace TechPromo.Api.Controllers
             }
 
             await _context.SaveChangesAsync();
+            // Odznaki (first_vote, hot_50 może po moderacji temperatury – ale policzymy tu i tak)
+            await _badgeService.EvaluateForUserAsync(userId);
             return Ok("Głos został zapisany.");
         }
 
@@ -459,6 +503,8 @@ namespace TechPromo.Api.Controllers
             }
 
             await _context.SaveChangesAsync();
+            // Odznaki (comments_10)
+            await _badgeService.EvaluateForUserAsync(userId);
             return Ok("Komentarz został dodany.");
         }
 

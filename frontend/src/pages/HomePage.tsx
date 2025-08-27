@@ -498,24 +498,7 @@ function HomePage() {
               </div>
             </div>
 
-            {/* Najlepsze kupony - sekcja dodatkowa */}
-            <div className="bg-white rounded border p-4 mt-4">
-              <h3 className="font-bold text-gray-900 mb-3 text-sm">Najlepsze kupony</h3>
-              <div className="space-y-2">
-                <div className="flex items-center space-x-2 text-sm">
-                  <div className="w-8 h-8 bg-gray-200 rounded"></div>
-                  <span className="text-gray-700">Media Expert</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <div className="w-8 h-8 bg-gray-200 rounded"></div>
-                  <span className="text-gray-700">x-kom</span>
-                </div>
-                <div className="flex items-center space-x-2 text-sm">
-                  <div className="w-8 h-8 bg-gray-200 rounded"></div>
-                  <span className="text-gray-700">Allegro</span>
-                </div>
-              </div>
-            </div>
+            
 
             {/* Community info */}
             <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded border p-4 mt-4">

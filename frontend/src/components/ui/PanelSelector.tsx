@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Shield, Scale, Crown, BarChart } from 'lucide-react';
+import { User, Scale, Crown, BarChart } from 'lucide-react';
 
 interface PanelSelectorProps {
   userRole: string;
@@ -31,7 +31,7 @@ const PanelSelector: React.FC<PanelSelectorProps> = ({ userRole, isVisible, onSe
           {/* Panel Użytkownika - zawsze dostępny dla zalogowanych */}
           <button 
             className="w-full flex items-center p-4 bg-gradient-to-r from-blue-50 to-blue-100 hover:from-blue-100 hover:to-blue-200 rounded-xl transition-all transform hover:scale-[1.02] border border-blue-200"
-            onClick={() => handlePanelClick('/uzytkownik/panel')}
+            onClick={() => handlePanelClick('/konto/profil')}
           >
             <User className="w-8 h-8 mr-4 text-blue-600" />
             <div className="text-left">
@@ -41,10 +41,10 @@ const PanelSelector: React.FC<PanelSelectorProps> = ({ userRole, isVisible, onSe
           </button>
 
           {/* Panel Moderatora - dla moderatorów i adminów */}
-          {(userRole === 'Moderator' || userRole === 'Admin') && (
+      {(userRole === 'Moderator' || userRole === 'Admin') && (
             <button 
-              className="w-full flex items-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 hover:from-yellow-100 hover:to-yellow-200 rounded-xl transition-all transform hover:scale-[1.02] border border-yellow-200"
-              onClick={() => handlePanelClick('/moderator')}
+        className="w-full flex items-center p-4 bg-gradient-to-r from-yellow-50 to-yellow-100 hover:from-yellow-100 hover:to-yellow-200 rounded-xl transition-all transform hover:scale-[1.02] border border-yellow-200"
+        onClick={() => handlePanelClick('/konto/profil')}
             >
               <Scale className="w-8 h-8 mr-4 text-yellow-600" />
               <div className="text-left">
@@ -55,10 +55,10 @@ const PanelSelector: React.FC<PanelSelectorProps> = ({ userRole, isVisible, onSe
           )}
 
           {/* Panel Administratora - tylko dla adminów */}
-          {userRole === 'Admin' && (
+      {userRole === 'Admin' && (
             <button 
-              className="w-full flex items-center p-4 bg-gradient-to-r from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-xl transition-all transform hover:scale-[1.02] border border-red-200"
-              onClick={() => handlePanelClick('/admin')}
+        className="w-full flex items-center p-4 bg-gradient-to-r from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-xl transition-all transform hover:scale-[1.02] border border-red-200"
+        onClick={() => handlePanelClick('/konto/profil')}
             >
               <Crown className="w-8 h-8 mr-4 text-red-600" />
               <div className="text-left">

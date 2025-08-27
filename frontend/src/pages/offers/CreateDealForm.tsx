@@ -95,7 +95,7 @@ const CreateDealForm: React.FC = () => {
           })
           .catch(() => {
             setMessage({ type: 'error', text: 'Brak uprawnień do edycji tej oferty' });
-            setTimeout(()=> navigate('/uzytkownik/panel'), 1500);
+            setTimeout(()=> navigate('/konto/profil'), 1500);
           });
         // Pobierz istniejące zdjęcia
         const token = getAuthToken();
@@ -266,7 +266,7 @@ const CreateDealForm: React.FC = () => {
 
         // Przekierowanie po 3 sekundach
         setTimeout(() => {
-          navigate('/uzytkownik/panel');
+          navigate('/konto/profil');
         }, 3000);
       } else {
         const errorData = await response.text();
