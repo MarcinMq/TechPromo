@@ -1,9 +1,11 @@
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TechPromo.Api.Data;
 using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
+using TechPromo.Api.Services;
 using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
@@ -16,10 +18,14 @@ namespace TechPromo.Api.Controllers
     public class OfertaController : ControllerBase
     {
         private readonly TechPromoDbContext _context; // EF Core kontekst
+        private readonly UserManager<Uzytkownik> _userManager;
+        private readonly IBadgeService _badgeService;
 
-        public OfertaController(TechPromoDbContext context)
+        public OfertaController(TechPromoDbContext context, UserManager<Uzytkownik> userManager, IBadgeService badgeService)
         {
             _context = context;
+            _userManager = userManager;
+            _badgeService = badgeService;
         }
 
         // Buduje absolutny URL avatara autora jeśli istnieje plik user_{id}.ext w wwwroot/uploads/profiles
@@ -272,7 +278,19 @@ namespace TechPromo.Api.Controllers
             };
 
             _context.Komentarze.Add(komentarz);
+
+            // Dodaj punkty użytkownikowi za komentarz
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user != null)
+            {
+                user.Punkty += 2;
+                await _userManager.UpdateAsync(user);
+            }
+
             await _context.SaveChangesAsync();
+
+            // Automatycznie przelicz odznaki po dodaniu komentarza
+            await _badgeService.EvaluateForUserAsync(userId);
 
             // Możemy w razie potrzeby zaktualizować licznik komentarzy w ofercie (jeśli będzie kolumna cache) – pomijam.
 

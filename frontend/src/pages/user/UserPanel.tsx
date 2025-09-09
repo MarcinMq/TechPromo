@@ -92,10 +92,12 @@ const UserPanel = () => {
 
   const fetchUserActivity = async () => {
     try {
-      const res = await authorizedFetch(`${API_BASE}/uzytkownik/aktywnosc`);
+      const res = await authorizedFetch(`${API_BASE}/api/uzytkownik/aktywnosc`);
       if (res.ok) {
         const data = await res.json();
-        setUserActivity(data);
+        // Obsługa obu formatów odpowiedzi - paginowana (Items) lub zwykła tablica
+        const items = data.items || data.Items || data;
+        setUserActivity(Array.isArray(items) ? items : []);
       } else {
         setMessage('Błąd pobierania historii aktywności');
       }
@@ -106,7 +108,7 @@ const UserPanel = () => {
 
   const fetchUserBadges = async () => {
     try {
-      const res = await authorizedFetch(`${API_BASE}/uzytkownik/odznaki`);
+      const res = await authorizedFetch(`${API_BASE}/api/uzytkownik/odznaki`);
       if (res.ok) {
         const data = await res.json();
         setUserBadges(data);
@@ -120,7 +122,7 @@ const UserPanel = () => {
 
   const fetchUserComments = async () => {
     try {
-      const res = await authorizedFetch(`${API_BASE}/uzytkownik/komentarze`);
+      const res = await authorizedFetch(`${API_BASE}/api/uzytkownik/komentarze`);
       if (res.ok) {
         const data = await res.json();
         setUserComments(data);
@@ -143,6 +145,10 @@ const UserPanel = () => {
       
       if (res.ok) {
         fetchOffers();
+        // Odśwież aktywność po zagłosowaniu
+        if (activeTab === 'activity') {
+          fetchUserActivity();
+        }
       }
     } catch {
       setMessage('Błąd oddawania głosu');
@@ -162,6 +168,10 @@ const UserPanel = () => {
       
       if (res.ok) {
         fetchOffers();
+        // Odśwież aktywność po dodaniu komentarza
+        if (activeTab === 'activity') {
+          fetchUserActivity();
+        }
       }
     } catch {
       setMessage('Błąd dodawania komentarza');
@@ -196,6 +206,10 @@ const UserPanel = () => {
       setMessage(text || (res.ok ? 'Oferta usunięta' : 'Nie udało się usunąć oferty'));
       if (res.ok) {
         setOffers(prev => prev.filter(o => o.id !== offerId));
+        // Odśwież aktywność po usunięciu oferty
+        if (activeTab === 'activity') {
+          fetchUserActivity();
+        }
       }
     } catch {
       setMessage('Błąd usuwania oferty');

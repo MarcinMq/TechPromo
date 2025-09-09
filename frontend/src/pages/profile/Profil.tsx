@@ -186,7 +186,7 @@ const Profil = () => {
 
   const fetchUserActivity = async (reset: boolean = true) => {
     try {
-      const url = `${API_BASE}/uzytkownik/aktywnosc?skip=${reset ? 0 : activitySkip}&take=${pageSize}`;
+      const url = `${API_BASE}/api/uzytkownik/aktywnosc?skip=${reset ? 0 : activitySkip}&take=${pageSize}`;
       const res = await authorizedFetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -207,7 +207,7 @@ const Profil = () => {
 
   const fetchUserComments = async (reset: boolean = true) => {
     try {
-      const url = `${API_BASE}/uzytkownik/komentarze?skip=${reset ? 0 : commentsSkip}&take=${pageSize}`;
+      const url = `${API_BASE}/api/uzytkownik/komentarze?skip=${reset ? 0 : commentsSkip}&take=${pageSize}`;
       const res = await authorizedFetch(url);
       if (res.ok) {
         const data = await res.json();

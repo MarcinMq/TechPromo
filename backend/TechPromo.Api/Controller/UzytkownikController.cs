@@ -11,6 +11,7 @@ namespace TechPromo.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Route("[controller]")] // Dodatkowa ścieżka dla kompatybilności z frontendem
     [Authorize]
     public class UzytkownikController : ControllerBase
     {
@@ -33,90 +34,166 @@ namespace TechPromo.Api.Controllers
         public async Task<ActionResult<PagedResult<AktywnoscDto>>> GetUserActivity([FromQuery] int skip = 0, [FromQuery] int take = 12)
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Nieprawidłowy użytkownik");
             if (take > 100) take = 100;
+
             var activities = new List<AktywnoscDto>();
 
-            // Dodane oferty
-            var offers = await _context.Oferty
-                .Where(o => o.IdUzytkownik == userId)
-                .OrderByDescending(o => o.DataDodania)
-                .Take(20)
-                .Select(o => new AktywnoscDto
-                {
-                    Id = o.IdOferta,
-                    Typ = "oferta",
-                    Opis = $"Dodałeś ofertę: {o.Nazwa}",
-                    Data = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Punkty = 10
-                })
-                .ToListAsync();
-
-            activities.AddRange(offers);
-
-            // Komentarze
-            var comments = await _context.Komentarze
-                .Where(k => k.IdUzytkownik == userId)
-                .OrderByDescending(k => k.DataDodania)
-                .Take(20)
-                .Include(k => k.Oferta)
-                .Select(k => new AktywnoscDto
-                {
-                    Id = k.IdKomentarz,
-                    Typ = "komentarz",
-                    Opis = "Skomentowałeś ofertę: " + (k.Oferta != null ? k.Oferta.Nazwa : ""),
-                    Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Punkty = 2
-                })
-                .ToListAsync();
-
-            activities.AddRange(comments);
-
-            // Głosy
-            var votes = await _context.Glosy
-                .Where(g => g.IdUzytkownik == userId)
-                .OrderByDescending(g => g.DataGlosu)
-                .Take(20)
-                .Include(g => g.Oferta)
-                .Select(g => new AktywnoscDto
-                {
-                    Id = g.IdGlos,
-                    Typ = "glos",
-                    Opis = $"Zagłosowałeś '{g.TypGlosu}' na ofertę: {(g.Oferta != null ? g.Oferta.Nazwa : "")}",
-                    Data = g.DataGlosu.ToString("dd.MM.yyyy HH:mm"),
-                    Punkty = 1
-                })
-                .ToListAsync();
-
-            activities.AddRange(votes);
-
-            // Odznaki
-            var badges = await _context.UzytkownikOdznaki
-                .Where(uo => uo.IdUzytkownik == userId)
-                .OrderByDescending(uo => uo.DataPrzyznania)
-                .Include(uo => uo.Odznaka)
-                .Select(uo => new AktywnoscDto
-                {
-                    Id = uo.IdOdznaka,
-                    Typ = "odznaka",
-                    Opis = $"Otrzymałeś odznakę: {uo.Odznaka.Nazwa}",
-                    Data = uo.DataPrzyznania.ToString("dd.MM.yyyy HH:mm"),
-                    Punkty = 50
-                })
-                .ToListAsync();
-
-            activities.AddRange(badges);
-
-            var ordered = activities.OrderByDescending(a => DateTime.Parse(a.Data)).ToList();
-            var total = ordered.Count;
-            var page = ordered.Skip(skip).Take(take).ToList();
-            var result = new PagedResult<AktywnoscDto>
+            try 
             {
-                Items = page,
-                Total = total,
-                Skip = skip,
-                Take = take
-            };
-            return Ok(result);
+                var now = DateTime.UtcNow;
+
+                // 1. Oferty użytkownika
+                var userOffers = await _context.Oferty
+                    .Where(o => o.IdUzytkownik == userId)
+                    .OrderByDescending(o => o.DataDodania)
+                    .Select(o => new AktywnoscDto
+                    {
+                        Id = o.IdOferta,
+                        Typ = "oferta",
+                        Opis = $"Opublikował okazję",
+                        Data = FormatTimeAgo(o.DataDodania, now),
+                        Punkty = 10
+                    })
+                    .ToListAsync();
+                activities.AddRange(userOffers);
+
+                // 2. Komentarze użytkownika
+                var userComments = await _context.Komentarze
+                    .Where(k => k.IdUzytkownik == userId)
+                    .Include(k => k.Oferta)
+                    .OrderByDescending(k => k.DataDodania)
+                    .Select(k => new AktywnoscDto
+                    {
+                        Id = k.IdKomentarz,
+                        Typ = "komentarz",
+                        Opis = $"Skomentował okazję",
+                        Data = FormatTimeAgo(k.DataDodania, now),
+                        Punkty = 2
+                    })
+                    .ToListAsync();
+                activities.AddRange(userComments);
+
+                // 3. Głosy użytkownika
+                var userVotes = await _context.Glosy
+                    .Where(g => g.IdUzytkownik == userId)
+                    .Include(g => g.Oferta)
+                    .OrderByDescending(g => g.DataGlosu)
+                    .Select(g => new AktywnoscDto
+                    {
+                        Id = g.IdGlos,
+                        Typ = "glos",
+                        Opis = g.TypGlosu == "hot" ? "Polubił okazję" : "Nie polubił okazji",
+                        Data = FormatTimeAgo(g.DataGlosu, now),
+                        Punkty = 1
+                    })
+                    .ToListAsync();
+                activities.AddRange(userVotes);
+
+                // 4. Odznaki użytkownika
+                var userBadges = await _context.UzytkownikOdznaki
+                    .Where(uo => uo.IdUzytkownik == userId)
+                    .Include(uo => uo.Odznaka)
+                    .OrderByDescending(uo => uo.DataPrzyznania)
+                    .Select(uo => new AktywnoscDto
+                    {
+                        Id = uo.IdOdznaka,
+                        Typ = "odznaka",
+                        Opis = $"Otrzymał odznakę: {uo.Odznaka.Nazwa}",
+                        Data = FormatTimeAgo(uo.DataPrzyznania, now),
+                        Punkty = 50
+                    })
+                    .ToListAsync();
+                activities.AddRange(userBadges);
+
+                // Sortuj wszystkie aktywności po czasie (najnowsze pierwsze)
+                var sortedActivities = activities
+                    .OrderByDescending(a => GetDateFromFormatted(a.Data))
+                    .Skip(skip)
+                    .Take(take)
+                    .ToList();
+
+                var result = new PagedResult<AktywnoscDto>
+                {
+                    Items = sortedActivities,
+                    Total = activities.Count,
+                    Skip = skip,
+                    Take = take
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Błąd pobierania aktywności: {ex.Message}");
+            }
+        }
+
+        // Pomocnicza metoda formatująca czas jak na Pepper - "5 godzin temu"
+        private static string FormatTimeAgo(DateTime dateTime, DateTime now)
+        {
+            var timeSpan = now - dateTime;
+            
+            if (timeSpan.TotalMinutes < 1)
+                return "przed chwilą";
+            else if (timeSpan.TotalMinutes < 60)
+                return $"{(int)timeSpan.TotalMinutes} {GetMinutesSuffix((int)timeSpan.TotalMinutes)} temu";
+            else if (timeSpan.TotalHours < 24)
+                return $"{(int)timeSpan.TotalHours} {GetHoursSuffix((int)timeSpan.TotalHours)} temu";
+            else if (timeSpan.TotalDays < 30)
+                return $"{(int)timeSpan.TotalDays} {GetDaysSuffix((int)timeSpan.TotalDays)} temu";
+            else
+                return dateTime.ToString("dd.MM.yyyy");
+        }
+
+        private static string GetMinutesSuffix(int minutes)
+        {
+            if (minutes == 1) return "minutę";
+            if (minutes < 5) return "minuty";
+            return "minut";
+        }
+
+        private static string GetHoursSuffix(int hours)
+        {
+            if (hours == 1) return "godzinę";
+            if (hours < 5) return "godziny";
+            return "godzin";
+        }
+
+        private static string GetDaysSuffix(int days)
+        {
+            if (days == 1) return "dzień";
+            return "dni";
+        }
+
+        private static DateTime GetDateFromFormatted(string formattedDate)
+        {
+            // Dla sortowania - próbuj sparsować albo zwróć min value
+            if (DateTime.TryParse(formattedDate, out var date)) return date;
+            
+            // Jeśli to format "X godzin temu", zwróć przybliżoną datę
+            if (formattedDate.Contains("godzin") || formattedDate.Contains("godzinę") || formattedDate.Contains("godziny"))
+            {
+                var hoursStr = formattedDate.Split(' ')[0];
+                if (int.TryParse(hoursStr, out var hours))
+                    return DateTime.UtcNow.AddHours(-hours);
+            }
+            
+            if (formattedDate.Contains("minut") || formattedDate.Contains("minutę") || formattedDate.Contains("minuty"))
+            {
+                var minutesStr = formattedDate.Split(' ')[0];
+                if (int.TryParse(minutesStr, out var minutes))
+                    return DateTime.UtcNow.AddMinutes(-minutes);
+            }
+
+            if (formattedDate.Contains("dni") || formattedDate.Contains("dzień"))
+            {
+                var daysStr = formattedDate.Split(' ')[0];
+                if (int.TryParse(daysStr, out var days))
+                    return DateTime.UtcNow.AddDays(-days);
+            }
+            
+            return DateTime.MinValue;
         }
 
         // GET: api/uzytkownik/odznaki

@@ -335,6 +335,9 @@ namespace TechPromo.Api.Controllers
             oferta.Status = "aktywny"; // Dodatkowo ustaw status dla zgodności
             await _context.SaveChangesAsync();
 
+            // Automatycznie przelicz odznaki po zatwierdzeniu oferty
+            await _badgeService.EvaluateForUserAsync(oferta.IdUzytkownik);
+
             return Ok($"Oferta '{oferta.Nazwa}' została zatwierdzona i aktywowana");
         }
 

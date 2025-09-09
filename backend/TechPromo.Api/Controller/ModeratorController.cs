@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using TechPromo.Api.Data;
 using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
+using TechPromo.Api.Services;
 
 namespace TechPromo.Api.Controllers
 {
@@ -16,11 +17,13 @@ namespace TechPromo.Api.Controllers
     {
         private readonly TechPromoDbContext _context;
         private readonly UserManager<Uzytkownik> _userManager;
+        private readonly IBadgeService _badgeService;
 
-        public ModeratorController(TechPromoDbContext context, UserManager<Uzytkownik> userManager)
+        public ModeratorController(TechPromoDbContext context, UserManager<Uzytkownik> userManager, IBadgeService badgeService)
         {
             _context = context;
             _userManager = userManager;
+            _badgeService = badgeService;
         }
 
         #region Moderacja komentarzy
@@ -165,6 +168,9 @@ namespace TechPromo.Api.Controllers
                 oferta.Zatwierdzona = true;
                 oferta.Aktywna = true;
                 await _context.SaveChangesAsync();
+
+                // Automatycznie przelicz odznaki po zatwierdzeniu oferty
+                await _badgeService.EvaluateForUserAsync(oferta.IdUzytkownik);
 
                 return Ok(new { message = "Oferta została zatwierdzona i aktywowana" });
             }
