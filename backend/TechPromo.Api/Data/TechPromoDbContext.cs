@@ -24,6 +24,7 @@ namespace TechPromo.Api.Data
         public DbSet<Aktywnosc> Aktywnosci { get; set; }
         public DbSet<Odznaka> Odznaki { get; set; }
         public DbSet<UzytkownikOdznaka> UzytkownikOdznaki { get; set; }
+        public DbSet<ZapisanaOferta> ZapisaneOferty { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,6 +36,12 @@ namespace TechPromo.Api.Data
 
             modelBuilder.Entity<UzytkownikOdznaka>()
                 .HasKey(uo => new { uo.IdUzytkownik, uo.IdOdznaka });
+
+            modelBuilder.Entity<ZapisanaOferta>()
+                .HasKey(zo => new { zo.IdUzytkownik, zo.IdOferta });
+
+            modelBuilder.Entity<ZapisanaOferta>()
+                .HasIndex(zo => zo.DataZapisania);
         }
     }
 }

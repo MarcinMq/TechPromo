@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Rocket, Heart, Mail, Github, Twitter, Facebook, Shield, FileText, HelpCircle } from 'lucide-react';
+import { Rocket, Heart, Mail } from 'lucide-react';
 
 const Footer: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -21,32 +21,17 @@ const Footer: React.FC = () => {
               Najlepsze okazje i promocje technologiczne w jednym miejscu. 
               Odkrywaj, dziel się i oszczędzaj na swoich ulubionych gadżetach!
             </p>
-            <div className="flex space-x-4">
-              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors">
-                <Facebook className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors">
-                <Twitter className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors">
-                <Github className="w-5 h-5" />
-              </a>
-              <a href="#" className="text-gray-400 hover:text-blue-400 transition-colors">
-                <Mail className="w-5 h-5" />
-              </a>
-            </div>
           </div>
 
           {/* Kategorie */}
           <div>
-            <h3 className="text-lg font-semibold mb-4 text-blue-300">Kategorie</h3>
+            <h3 className="text-lg font-semibold mb-4 text-blue-300">Popularne kategorie</h3>
             <ul className="space-y-2 text-sm">
-              <li><Link to="/kategoria/smartwatche" className="text-gray-300 hover:text-white transition-colors">Smartwatche</Link></li>
-              <li><Link to="/kategoria/tablety" className="text-gray-300 hover:text-white transition-colors">Tablety</Link></li>
-              <li><Link to="/kategoria/pc" className="text-gray-300 hover:text-white transition-colors">Komputery PC</Link></li>
-              <li><Link to="/kategoria/akcesoria" className="text-gray-300 hover:text-white transition-colors">Akcesoria</Link></li>
-              <li><Link to="/kategoria/audio" className="text-gray-300 hover:text-white transition-colors">Audio</Link></li>
-              <li><Link to="/kategoria/gaming" className="text-gray-300 hover:text-white transition-colors">Gaming</Link></li>
+              <li><span className="text-gray-300">📱 Smartwatche</span></li>
+              <li><span className="text-gray-300">📱 Tablety</span></li>
+              <li><span className="text-gray-300">🖥️ Komputery PC</span></li>
+              <li><span className="text-gray-300">🎧 Audio</span></li>
+              <li><span className="text-gray-300">🎮 Gaming</span></li>
             </ul>
           </div>
 
@@ -57,38 +42,19 @@ const Footer: React.FC = () => {
               <li><Link to="/stworz-oferte/okazja" className="text-gray-300 hover:text-white transition-colors">Dodaj okazję</Link></li>
               <li><Link to="/stworz-oferte/kupon" className="text-gray-300 hover:text-white transition-colors">Dodaj kupon</Link></li>
               <li><Link to="/konto/profil" className="text-gray-300 hover:text-white transition-colors">Panel użytkownika</Link></li>
-              <li><Link to="/konto/profil" className="text-gray-300 hover:text-white transition-colors">Mój profil</Link></li>
               <li><Link to="/search" className="text-gray-300 hover:text-white transition-colors">Wyszukiwarka</Link></li>
             </ul>
           </div>
 
           {/* Pomoc i kontakt */}
           <div>
-            <h3 className="text-lg font-semibold mb-4 text-blue-300">Pomoc i kontakt</h3>
+            <h3 className="text-lg font-semibold mb-4 text-blue-300">Informacje</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
-                  <HelpCircle className="w-4 h-4 mr-2" />
-                  Centrum pomocy
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
+                <span className="text-gray-300 flex items-center">
                   <Mail className="w-4 h-4 mr-2" />
-                  Kontakt
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
-                  <FileText className="w-4 h-4 mr-2" />
-                  Regulamin
-                </a>
-              </li>
-              <li>
-                <a href="#" className="text-gray-300 hover:text-white transition-colors flex items-center">
-                  <Shield className="w-4 h-4 mr-2" />
-                  Polityka prywatności
-                </a>
+                  kontakt@techpromo.pl
+                </span>
               </li>
             </ul>
           </div>
@@ -111,13 +77,6 @@ const Footer: React.FC = () => {
               <span>Stworzone z</span>
               <Heart className="w-4 h-4 mx-2 text-red-400" />
               <span>dla miłośników technologii</span>
-            </div>
-
-            {/* Dodatkowe linki */}
-            <div className="flex space-x-6 text-sm">
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">Cookies</a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">RODO</a>
-              <a href="#" className="text-gray-400 hover:text-white transition-colors">API</a>
             </div>
 
           </div>

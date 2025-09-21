@@ -589,6 +589,29 @@ namespace TechPromo.Api.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
+            modelBuilder.Entity("TechPromo.Api.Model.ZapisanaOferta", b =>
+                {
+                    b.Property<int>("IdUzytkownik")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("IdOferta")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("DataZapisania")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Id")
+                        .HasColumnType("integer");
+
+                    b.HasKey("IdUzytkownik", "IdOferta");
+
+                    b.HasIndex("DataZapisania");
+
+                    b.HasIndex("IdOferta");
+
+                    b.ToTable("ZapisaneOferty");
+                });
+
             modelBuilder.Entity("UzytkownikOdznaka", b =>
                 {
                     b.Property<int>("IdUzytkownik")
@@ -798,6 +821,25 @@ namespace TechPromo.Api.Migrations
                         .IsRequired();
 
                     b.Navigation("Komentarz");
+
+                    b.Navigation("Uzytkownik");
+                });
+
+            modelBuilder.Entity("TechPromo.Api.Model.ZapisanaOferta", b =>
+                {
+                    b.HasOne("Oferta", "Oferta")
+                        .WithMany()
+                        .HasForeignKey("IdOferta")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("TechPromo.Api.Model.Uzytkownik", "Uzytkownik")
+                        .WithMany()
+                        .HasForeignKey("IdUzytkownik")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Oferta");
 
                     b.Navigation("Uzytkownik");
                 });

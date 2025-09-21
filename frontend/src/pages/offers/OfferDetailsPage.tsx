@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Flame, Snowflake, MessageCircle, Share2, Bookmark, ArrowLeft, ExternalLink } from 'lucide-react';
+import { Flame, Snowflake, ArrowLeft, ExternalLink, Share2 } from 'lucide-react';
 import CouponCode from '../../components/CouponCode';
 import ReportCommentModal from '../../components/modals/ReportCommentModal';
 import { getAuthToken } from '../../utils/auth';
@@ -57,6 +57,101 @@ export default function OfferDetailsPage() {
   const [reportingCommentId, setReportingCommentId] = useState<number | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportSuccessFlash, setReportSuccessFlash] = useState<string | null>(null);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+
+  // Funkcja udostępniania - kopiuje link do schowka
+  const handleShare = async () => {
+    try {
+      const url = window.location.href;
+      await navigator.clipboard.writeText(url);
+      alert('Link do oferty został skopiowany do schowka!');
+    } catch (err) {
+      alert('Nie udało się skopiować linku do schowka');
+      console.error('Share error:', err);
+    }
+  };
+
+  // Funkcja zapisywania oferty
+  const handleSave = async () => {
+    if (!id) return;
+    
+    try {
+      setSaveLoading(true);
+      const token = getAuthToken();
+      if (!token) {
+        alert('Musisz być zalogowany aby zapisać ofertę');
+        return;
+      }
+
+      if (isSaved) {
+        // Usuń z zapisanych
+        const response = await fetch(`/api/uzytkownik/zapisane/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          setIsSaved(false);
+          alert('Oferta została usunięta z zapisanych!');
+        } else {
+          const errorText = await response.text();
+          alert('Błąd podczas usuwania: ' + errorText);
+        }
+      } else {
+        // Dodaj do zapisanych
+        const response = await fetch(`/api/uzytkownik/zapisane/${id}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          setIsSaved(true);
+          alert('Oferta została zapisana!');
+        } else {
+          const errorText = await response.text();
+          alert('Błąd podczas zapisywania: ' + errorText);
+        }
+      }
+    } catch (error) {
+      alert('Błąd podczas zapisywania oferty');
+      console.error('Save error:', error);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  // Funkcja sprawdzania czy oferta jest zapisana
+  const checkIfSaved = async () => {
+    if (!id) return;
+    
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/uzytkownik/zapisane?take=1000', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const savedOffers = data.items || data.Items || [];
+        const isOfferSaved = savedOffers.some((savedOffer: any) => savedOffer.id === parseInt(id));
+        setIsSaved(isOfferSaved);
+      }
+    } catch (error) {
+      console.error('Error checking if saved:', error);
+    }
+  };
 
   const fetchComments = async (reset: boolean) => {
     if (!id) return;
@@ -84,6 +179,7 @@ export default function OfferDetailsPage() {
         setOffer(data);
         setCurrentImage(0);
         await fetchComments(true);
+        await checkIfSaved(); // Sprawdź czy oferta jest zapisana
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -457,6 +553,27 @@ export default function OfferDetailsPage() {
                   )}
                 </div>
 
+                {/* Duży przycisk do sklepu */}
+                {offer.sklep && offer.sklep.trim() ? (
+                  <div className="mb-4">
+                    <a
+                      href={offer.sklep.startsWith('http') ? offer.sklep : `https://${offer.sklep}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center space-x-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+                    >
+                      <ExternalLink className="w-5 h-5" />
+                      <span>Przejdź do sklepu</span>
+                    </a>
+                  </div>
+                ) : (
+                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                    <p className="text-sm text-yellow-700">
+                      <strong>Brak linku do sklepu.</strong> Ta oferta nie zawiera linku do sklepu.
+                    </p>
+                  </div>
+                )}
+
                 <div className="text-sm text-gray-600 mb-4">
                   <span className="mr-4">Kategoria: <strong>{offer.kategoria}</strong></span>
                   <span>Dodane: {offer.dataUtworzenia}</span>
@@ -466,21 +583,27 @@ export default function OfferDetailsPage() {
                   {offer.opis || 'Brak opisu.'}
                 </div>
 
+                {/* Przyciski akcji */}
                 <div className="flex items-center space-x-3 mb-6">
-                  <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm"><MessageCircle className="w-4 h-4" /> <span>{offer.komentarze}</span></button>
-                  <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm"><Share2 className="w-4 h-4" /> <span>Udostępnij</span></button>
-                  <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm"><Bookmark className="w-4 h-4" /> <span>Zapisz</span></button>
-                  {offer.sklep && offer.sklep.startsWith('http') && (
-                    <a
-                      href={offer.sklep}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-1 text-white bg-green-600 hover:bg-green-700 text-sm px-3 py-1 rounded"
-                    >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Przejdź do sklepu</span>
-                    </a>
-                  )}
+                  <button 
+                    onClick={handleShare}
+                    className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm"
+                  >
+                    <Share2 className="w-4 h-4" /> 
+                    <span>Udostępnij</span>
+                  </button>
+                  <button 
+                    onClick={handleSave}
+                    disabled={saveLoading}
+                    className={`flex items-center space-x-1 text-sm disabled:opacity-50 ${
+                      isSaved 
+                        ? 'text-yellow-600 hover:text-yellow-700' 
+                        : 'text-gray-600 hover:text-yellow-600'
+                    }`}
+                  >
+                    <span className={`text-lg ${isSaved ? 'text-yellow-500' : 'text-gray-400'}`}>⭐</span>
+                    <span>{saveLoading ? 'Zapisywanie...' : (isSaved ? 'Zapisane' : 'Zapisz')}</span>
+                  </button>
                 </div>
 
                 <div className="border-t pt-4">

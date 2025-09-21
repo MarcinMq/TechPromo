@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import CouponCode from '../components/CouponCode';
-import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search, Flag } from 'lucide-react';
+import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search, Flag, Share2, ExternalLink } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth';
 import ReportOfferModal from '../components/modals/ReportOfferModal';
@@ -25,9 +25,29 @@ interface OfertaDto {
     cold: number;
   };
   komentarze: number;
+  liczbaKomentarzy: number;
+  link: string;
   userVote?: string;
   zdjecia: string[];
 }
+
+// Funkcja formatowania daty
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+
+  if (diffHours < 1) return 'przed chwilą';
+  if (diffHours < 24) return `${diffHours}h temu`;
+  if (diffDays < 7) return `${diffDays} dni temu`;
+  
+  return date.toLocaleDateString('pl-PL', { 
+    day: 'numeric', 
+    month: 'short' 
+  });
+};
 
 // Komponent odpowiedzialny za wyświetlanie miejsca na zdjęcie (zawsze rezerwuje przestrzeń)
 function OfferImage({ offer }: { offer: OfertaDto }) {
@@ -64,6 +84,8 @@ function HomePage() {
   const [reportingOfferId, setReportingOfferId] = useState<number | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportSuccessFlash, setReportSuccessFlash] = useState<string | null>(null);
+  const [savedOffers, setSavedOffers] = useState<Set<number>>(new Set());
+  const [saveLoading, setSaveLoading] = useState<Set<number>>(new Set());
   const pageSize = 30;
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -143,6 +165,34 @@ function HomePage() {
     return () => observer.disconnect();
   }, [offers, total, loading, fetchOffers]);
 
+  // Ładowanie zapisanych ofert
+  const fetchSavedOffers = useCallback(async () => {
+    const token = getAuthToken();
+    if (!token) return;
+
+    try {
+      const response = await fetch('/api/uzytkownik/zapisane?take=1000', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const savedOfferIds = (data.items || data.Items || []).map((offer: any) => offer.id);
+        setSavedOffers(new Set(savedOfferIds));
+      }
+    } catch (error) {
+      console.error('Error fetching saved offers:', error);
+    }
+  }, []);
+
+  // Załaduj zapisane oferty przy starcie
+  useEffect(() => {
+    fetchSavedOffers();
+  }, [fetchSavedOffers]);
+
   // Funkcja głosowania
   const handleVote = async (offerId: number, voteType: 'hot' | 'cold') => {
     const token = getAuthToken();
@@ -201,6 +251,98 @@ function HomePage() {
     }
   };
 
+  // Funkcja udostępniania oferty
+  const handleShare = async (offerId: number) => {
+    const offerUrl = `${window.location.origin}/okazja/${offerId}`;
+    
+    if (navigator.clipboard && window.isSecureContext) {
+      try {
+        await navigator.clipboard.writeText(offerUrl);
+        alert('Link do oferty został skopiowany do schowka!');
+      } catch {
+        fallbackCopyTextToClipboard(offerUrl);
+      }
+    } else {
+      fallbackCopyTextToClipboard(offerUrl);
+    }
+  };
+
+  const fallbackCopyTextToClipboard = (text: string) => {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    document.body.appendChild(textArea);
+    textArea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textArea);
+    alert('Link do oferty został skopiowany do schowka!');
+  };
+
+  // Funkcja zapisywania/usuwania oferty z zapisanych
+  const handleSave = async (offerId: number) => {
+    const token = getAuthToken();
+    if (!token) {
+      alert('Musisz być zalogowany aby zapisać ofertę');
+      return;
+    }
+
+    // Dodaj do loading
+    setSaveLoading(prev => new Set([...prev, offerId]));
+    
+    try {
+      const isSaved = savedOffers.has(offerId);
+      
+      if (isSaved) {
+        // Usuń z zapisanych
+        const response = await fetch(`/api/uzytkownik/zapisane/${offerId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          setSavedOffers(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(offerId);
+            return newSet;
+          });
+          alert('Oferta została usunięta z zapisanych!');
+        } else {
+          const errorText = await response.text();
+          alert('Błąd podczas usuwania: ' + errorText);
+        }
+      } else {
+        // Dodaj do zapisanych
+        const response = await fetch(`/api/uzytkownik/zapisane/${offerId}`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (response.ok) {
+          setSavedOffers(prev => new Set([...prev, offerId]));
+          alert('Oferta została zapisana!');
+        } else {
+          const errorText = await response.text();
+          alert('Błąd podczas zapisywania: ' + errorText);
+        }
+      }
+    } catch (error) {
+      alert('Błąd podczas zapisywania oferty');
+      console.error('Save error:', error);
+    } finally {
+      // Usuń z loading
+      setSaveLoading(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(offerId);
+        return newSet;
+      });
+    }
+  };
+
   // Stała lista kategorii (spójna z formularzami dodawania)
   const categories = useMemo(() => {
     const base = [
@@ -239,10 +381,10 @@ function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50">
       {/* Top banner jak pepper.pl */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3">
-        <div className="w-full px-4 text-center">
+        <div className="px-2 text-center">
           <p className="text-sm font-medium">
             <Star className="inline w-4 h-4 mr-2" />
             Prawdziwi ludzie, prawdziwe oszczędności
@@ -251,8 +393,8 @@ function HomePage() {
       </div>
 
       {/* Main hero - jak pepper.pl */}
-      <div className="bg-white border-b">
-        <div className="w-full px-4 py-8">
+      <div className="bg-white border-b shadow-sm">
+        <div className="px-2 py-8">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-bold text-gray-900 mb-3">
               <span className="text-blue-600">Tech</span>Promo
@@ -265,20 +407,20 @@ function HomePage() {
       </div>
 
       {/* Filtry główne - jak na pepper.pl */}
-      <div className="bg-white border-b sticky top-16 z-40">
-        <div className="w-full px-4">
-          <div className="flex flex-col sm:flex-row sm:items-center py-3 border-b gap-3">
-            <div className="flex space-x-1 overflow-x-auto">
+      <div className="bg-white border-b shadow-sm sticky top-16 z-40">
+        <div className="px-2">
+          <div className="flex flex-col sm:flex-row sm:items-center py-4 gap-4">
+            <div className="flex space-x-2 overflow-x-auto pb-2 sm:pb-0">
               {[
-                { key: 'gorace', label: 'Gorące' },
-                { key: 'najnowsze', label: 'Najnowsze' },
-                { key: 'cena', label: 'Cena' },
-                { key: 'wszystkie', label: 'Wszystkie' }
+                { key: 'gorace', label: '🔥 Gorące' },
+                { key: 'najnowsze', label: '⚡ Najnowsze' },
+                { key: 'cena', label: '💰 Cena' },
+                { key: 'wszystkie', label: '📋 Wszystkie' }
               ].map(f => (
                 <button
                   key={f.key}
                   onClick={() => setActiveFilter(f.key as any)}
-                  className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeFilter === f.key ? 'bg-blue-600 text-white' : 'text-gray-700 hover:bg-gray-100'}`}
+                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${activeFilter === f.key ? 'bg-blue-600 text-white shadow-md' : 'text-gray-700 hover:bg-gray-100 border border-gray-200'}`}
                 >
                   {f.label}
                 </button>
@@ -286,39 +428,26 @@ function HomePage() {
             </div>
             
             <div className="flex-1" />
-            <div className="relative w-full sm:w-64">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div className="relative w-full sm:w-80">
+              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
                 type="text"
-                placeholder="Szukaj..."
+                placeholder="Szukaj ofert, sklepów, marek..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none"
+                className="w-full pl-10 pr-4 py-3 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none transition-all duration-200"
               />
             </div>
-          </div>
-          
-          <div className="py-2 text-lg font-bold text-gray-900">
-            {activeFilter === 'gorace' && 'Gorące'}
-            {activeFilter === 'najnowsze' && 'Najnowsze'}
-            {activeFilter === 'cena' && 'Według ceny'}
-            {activeFilter === 'wszystkie' && 'Wszystkie'}
-          </div>
-          <div className="pb-2 text-sm text-gray-600">
-            {activeFilter === 'gorace' && 'Sortowanie wg (hot - cold)'}
-            {activeFilter === 'najnowsze' && 'Najświeższe dodane oferty'}
-            {activeFilter === 'cena' && 'Rosnąco według ceny'}
-            {activeFilter === 'wszystkie' && 'Domyślnie najnowsze'}
           </div>
         </div>
       </div>
 
-      <div className="w-full px-4 py-6">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <div className="px-2 py-6">
+        <div className="flex flex-col lg:flex-row gap-4">
           {/* Sidebar lewy - kategorie na mobile jako poziome przyciski */}
-          <div className="w-full lg:w-48 flex-shrink-0">
-            <div className="bg-white rounded border p-3 lg:sticky lg:top-32">
-              <div className="text-sm font-semibold text-gray-900 mb-3 lg:block hidden">Kategorie</div>
+          <div className="w-full lg:w-72 flex-shrink-0">
+            <div className="bg-white rounded-lg shadow-sm border p-4 lg:sticky lg:top-32">
+              <div className="text-lg font-bold text-gray-900 mb-4 lg:block hidden">📂 Kategorie</div>
               
               {/* Na mobile - poziome przewijanie kategorii */}
               <div className="lg:hidden overflow-x-auto">
@@ -327,14 +456,15 @@ function HomePage() {
                     <button
                       key={category.name}
                       onClick={() => setSelectedCategory(category.name)}
-                      className={`flex-shrink-0 flex items-center space-x-1 px-3 py-2 rounded-full text-sm transition-colors ${
+                      className={`flex-shrink-0 flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
                         selectedCategory.toLowerCase() === category.name.toLowerCase()
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
                       }`}
                     >
                       <span>{category.icon}</span>
                       <span>{category.name}</span>
+                      <span className="bg-white/20 text-xs px-1.5 py-0.5 rounded-full">{category.count}</span>
                     </button>
                   ))}
                 </div>
@@ -346,17 +476,17 @@ function HomePage() {
                   <button
                     key={category.name}
                     onClick={() => setSelectedCategory(category.name)}
-                    className={`w-full flex items-center justify-between px-2 py-1.5 rounded text-left text-sm transition-colors ${
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all duration-200 ${
                       selectedCategory.toLowerCase() === category.name.toLowerCase()
-                        ? 'bg-blue-50 text-blue-700'
-                        : 'text-gray-700 hover:bg-gray-50'
+                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                        : 'text-gray-700 hover:bg-gray-50 border border-transparent'
                     }`}
                   >
-                    <div className="flex items-center space-x-2">
-                      <span>{category.icon}</span>
+                    <div className="flex items-center space-x-3">
+                      <span className="text-lg">{category.icon}</span>
                       <span>{category.name}</span>
                     </div>
-                    <span className="text-xs text-gray-500">{category.count}</span>
+                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{category.count}</span>
                   </button>
                 ))}
               </div>
@@ -378,64 +508,132 @@ function HomePage() {
                 <div className="text-lg text-gray-600">Brak ofert do wyświetlenia</div>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {filteredOffers.map(offer => {
                   const temperatura = offer.votes.hot - offer.votes.cold;
-                  const gradient = temperatura > 100 ? 'from-red-500/10 to-orange-500/10' : temperatura > 50 ? 'from-orange-500/10 to-yellow-500/10' : temperatura > 20 ? 'from-yellow-400/10 to-amber-400/10' : temperatura < -10 ? 'from-blue-500/10 to-cyan-500/10' : 'from-gray-200/5 to-gray-100/5';
+                  const gradient = temperatura > 100 ? 'from-red-500/5 to-orange-500/5' : temperatura > 50 ? 'from-orange-500/5 to-yellow-500/5' : temperatura > 20 ? 'from-yellow-400/5 to-amber-400/5' : temperatura < -10 ? 'from-blue-500/5 to-cyan-500/5' : 'from-gray-100/5 to-gray-50/5';
                   return (
-                    <div key={offer.id} className={`bg-white rounded-lg border hover:shadow-md transition-shadow bg-gradient-to-r ${gradient}`}>
-                      <div className="p-3 sm:p-4 flex">
-                        <div className="relative mr-4">
+                    <div key={offer.id} className={`bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-200 bg-gradient-to-r ${gradient} group`}>
+                      <div className="p-4 sm:p-6 flex flex-col sm:flex-row gap-4">
+                        <div className="relative flex-shrink-0 self-start">
                           <OfferImage offer={offer} />
-                          <div className={`absolute top-2 left-2 flex items-center justify-center px-2 h-7 rounded-full text-xs font-bold border shadow ${getTemperatureColor(temperatura)}`}>{temperatura}°</div>
-                          <div className="absolute bottom-2 left-2 flex flex-col space-y-1">
-                            <button onClick={() => handleVote(offer.id, 'hot')} className="flex items-center space-x-1 bg-red-600/90 hover:bg-red-600 text-white px-2 py-1 rounded text-xs shadow">
+                          <div className={`absolute -top-2 -left-2 flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold border shadow-sm ${getTemperatureColor(temperatura)}`}>
+                            {temperatura}°
+                          </div>
+                          <div className="absolute bottom-2 left-2 flex space-x-1">
+                            <button onClick={() => handleVote(offer.id, 'hot')} className="flex items-center space-x-1 bg-red-600/90 hover:bg-red-600 text-white px-2 py-1 rounded-lg text-xs shadow-sm transition-colors">
                               <Flame className="w-3 h-3" />
                               <span>{offer.votes.hot}</span>
                             </button>
-                            <button onClick={() => handleVote(offer.id, 'cold')} className="flex items-center space-x-1 bg-blue-600/90 hover:bg-blue-600 text-white px-2 py-1 rounded text-xs shadow">
+                            <button onClick={() => handleVote(offer.id, 'cold')} className="flex items-center space-x-1 bg-blue-600/90 hover:bg-blue-600 text-white px-2 py-1 rounded-lg text-xs shadow-sm transition-colors">
                               <Snowflake className="w-3 h-3" />
                               <span>{offer.votes.cold}</span>
                             </button>
                           </div>
                         </div>
+                        
                         <div className="flex-1 min-w-0 flex flex-col">
-                          <Link to={`/okazja/${offer.id}`} className="text-base font-bold text-gray-900 hover:text-blue-600 transition-colors leading-snug pr-4 line-clamp-2">{offer.tytul}</Link>
-                          <div className="mt-1 mb-2">
+                          <Link to={`/okazja/${offer.id}`} className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors leading-tight mb-2 line-clamp-2 group-hover:text-blue-600">{offer.tytul}</Link>
+                          
+                          <div className="mb-3">
                             {offer.typ === 'kupon' ? (
-                              <div className="flex items-center flex-wrap gap-2">
-                                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs font-bold px-2 py-1 rounded">🎫 KUPON</span>
+                              <div className="flex items-center flex-wrap gap-3">
+                                <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-sm">🎫 KUPON</span>
                                 <CouponCode code={offer.kod} size="sm" />
-                                {offer.cena && <span className="text-xl font-black text-purple-600">{offer.cena} zł</span>}
-                                {!offer.cena && <span className="text-sm text-gray-600">Sprawdź cenę</span>}
+                                {offer.cena && <span className="text-2xl font-black text-purple-600">{offer.cena} zł</span>}
+                                {!offer.cena && <span className="text-base text-gray-600 font-medium">Sprawdź cenę</span>}
                               </div>
                             ) : (
-                              <div className="flex items-center flex-wrap gap-2">
-                                {offer.cenaPoprzednia && <span className="text-sm line-through text-gray-400" title="Stara cena">{offer.cenaPoprzednia} zł</span>}
-                                {offer.cena ? <span className="text-2xl font-black text-red-600">{offer.cena} zł</span> : <span className="text-lg text-gray-600">Sprawdź cenę</span>}
+                              <div className="flex items-center flex-wrap gap-3">
+                                {offer.cenaPoprzednia && <span className="text-base line-through text-gray-400 font-medium" title="Stara cena">{offer.cenaPoprzednia} zł</span>}
+                                {offer.cena ? <span className="text-3xl font-black text-red-600">{offer.cena} zł</span> : <span className="text-xl text-gray-600 font-bold">Sprawdź cenę</span>}
                                 {offer.cenaPoprzednia && offer.cena && offer.cenaPoprzednia > offer.cena && (
-                                  <span className="bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded">-{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%</span>
+                                  <span className="bg-red-500 text-white text-sm font-bold px-2 py-1 rounded-lg shadow-sm">-{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%</span>
                                 )}
                               </div>
                             )}
                           </div>
-                          <div className="text-sm text-gray-600 line-clamp-2 mb-3">{offer.opis}</div>
-                          <div className="mt-auto flex items-center justify-between">
-                            <div className="flex items-center space-x-2 text-xs text-gray-500">
-                              <img
-                                src={offer.autorAvatarUrl || '/default-avatar.svg'}
-                                alt={offer.autor}
-                                className="w-6 h-6 rounded-full object-cover border"
-                                onError={(e)=>{ const img=e.target as HTMLImageElement; img.onerror=null; img.src='/default-avatar.svg'; }}
-                              />
-                              <span>Dodane przez {offer.autor}</span>
-                              <span>{offer.dataUtworzenia}</span>
-                              <span className="hidden sm:inline">• {offer.kategoria}</span>
+                          
+                          <div className="text-base text-gray-600 line-clamp-2 mb-4 leading-relaxed">{offer.opis}</div>
+                          <div className="mt-auto">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="flex items-center space-x-3 text-sm text-gray-500">
+                                <img
+                                  src={offer.autorAvatarUrl || '/default-avatar.svg'}
+                                  alt={offer.autor}
+                                  className="w-7 h-7 rounded-full object-cover border-2 border-gray-200"
+                                  onError={(e)=>{ const img=e.target as HTMLImageElement; img.onerror=null; img.src='/default-avatar.svg'; }}
+                                />
+                                <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
+                                  <span className="font-medium text-gray-700">{offer.autor}</span>
+                                  <div className="flex items-center space-x-2 text-xs">
+                                    <span className="hidden sm:inline text-gray-400">•</span>
+                                    <span>{formatDate(offer.dataUtworzenia)}</span>
+                                    <span className="text-gray-400">•</span>
+                                    <span className="text-purple-600 font-medium">{offer.kategoria}</span>
+                                  </div>
+                                </div>
+                              </div>
+                              <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 text-sm transition-colors">
+                                <MessageCircle className="w-4 h-4" />
+                                <span className="font-medium">{offer.liczbaKomentarzy}</span>
+                              </button>
                             </div>
-                            <div className="flex items-center space-x-3">
-                              <button className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm"><MessageCircle className="w-4 h-4" /><span>{offer.komentarze}</span></button>
-                              <Link to={`/okazja/${offer.id}`} className="bg-blue-600 text-white px-4 py-1.5 rounded text-sm hover:bg-blue-700 transition-colors font-medium">Idź do okazji</Link>
-                              <button onClick={() => setReportingOfferId(offer.id)} className="flex items-center space-x-1 text-red-600 hover:text-red-700 text-sm font-medium" title="Zgłoś ofertę"><Flag className="w-4 h-4" /><span>Zgłoś</span></button>
+                            
+                            {/* Przyciski akcji - responsywny layout */}
+                            <div className="flex flex-col gap-3">
+                              {/* Pierwsza linia - małe przyciski akcji */}
+                              <div className="flex items-center gap-2">
+                                <button 
+                                  onClick={() => handleShare(offer.id)}
+                                  className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-all"
+                                >
+                                  <Share2 className="w-4 h-4" />
+                                  <span className="hidden sm:inline font-medium">Udostępnij</span>
+                                </button>
+                                
+                                <button 
+                                  onClick={() => handleSave(offer.id)}
+                                  disabled={saveLoading.has(offer.id)}
+                                  className={`flex items-center space-x-1 text-sm px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 ${
+                                    savedOffers.has(offer.id) 
+                                      ? 'text-yellow-600 hover:text-yellow-700 bg-yellow-50 hover:bg-yellow-100' 
+                                      : 'text-gray-600 hover:text-yellow-600 hover:bg-yellow-50'
+                                  }`}
+                                >
+                                  <span className={`text-lg ${savedOffers.has(offer.id) ? 'text-yellow-500' : 'text-gray-400'}`}>⭐</span>
+                                  <span className="hidden sm:inline font-medium">{saveLoading.has(offer.id) ? 'Zapisywanie...' : (savedOffers.has(offer.id) ? 'Zapisane' : 'Zapisz')}</span>
+                                </button>
+                                
+                                <button 
+                                  onClick={() => setReportingOfferId(offer.id)} 
+                                  className="flex items-center space-x-1 text-gray-500 hover:text-red-600 text-sm px-3 py-1.5 rounded-lg hover:bg-red-50 transition-all" 
+                                  title="Zgłoś ofertę"
+                                >
+                                  <Flag className="w-4 h-4" />
+                                  <span className="hidden sm:inline font-medium">Zgłoś</span>
+                                </button>
+                              </div>
+                              
+                              {/* Druga linia - główne przyciski */}
+                              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                <Link 
+                                  to={`/okazja/${offer.id}`} 
+                                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center"
+                                >
+                                  Szczegóły
+                                </Link>
+                                
+                                <a
+                                  href={offer.link}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm flex items-center justify-center space-x-2"
+                                >
+                                  <ExternalLink className="w-4 h-4" />
+                                  <span>Przejdź do sklepu</span>
+                                </a>
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -468,7 +666,7 @@ function HomePage() {
           </div>
 
           {/* Prawny sidebar - najgorętsze dziś, kupony, jak to działa */}
-          <div className="hidden lg:block w-64 flex-shrink-0">
+          <div className="hidden xl:block w-72 flex-shrink-0">
             <div className="bg-white rounded border p-4 sticky top-32">
               <h3 className="font-bold text-gray-900 mb-3 text-sm">🔥 Najgorętsze dziś</h3>
               <div className="space-y-3">

@@ -456,6 +456,16 @@ namespace TechPromo.Api.Controllers
                          (request.Typ.ToLower() == "kupon" || request.Typ.ToLower() == "okazja") 
                          ? request.Typ.ToLower() : "okazja";
 
+                // 3.5. Walidacja cen
+                if (request.Cena.HasValue && request.Cena <= 0)
+                    return BadRequest("Cena musi być większa od 0.");
+                    
+                if (request.CenaPoprzednia.HasValue && request.CenaPoprzednia <= 0)
+                    return BadRequest("Cena poprzednia musi być większa od 0.");
+                    
+                if (request.Cena.HasValue && request.CenaPoprzednia.HasValue && request.Cena >= request.CenaPoprzednia)
+                    return BadRequest("Cena promocyjna powinna być niższa niż cena poprzednia.");
+
                 // 4. Obsługa kategorii (znajdź lub utwórz)
                 var kategoria = await GetOrCreateCategory(request.Kategoria);
 
@@ -466,6 +476,8 @@ namespace TechPromo.Api.Controllers
                     Typ = typ,
                     Opis = request.Opis.Trim(),
                     Cena = request.Cena,
+                    CenaPoprzednia = request.CenaPoprzednia,
+                    Kod = !string.IsNullOrEmpty(request.Kod) ? request.Kod.Trim() : null,
                     Link = !string.IsNullOrEmpty(request.Sklep) ? request.Sklep.Trim() : string.Empty,
                     IdKategoria = kategoria.IdKategoria,
                     IdUzytkownik = userId,
@@ -657,25 +669,59 @@ namespace TechPromo.Api.Controllers
                 if (!string.IsNullOrEmpty(kod) && kod.Length > 50) return BadRequest("Kod nie może być dłuższy niż 50 znaków.");
                 if (!string.IsNullOrEmpty(tagi) && tagi.Length > 200) return BadRequest("Tagi nie mogą być dłuższe niż 200 znaków.");
 
-                // 4. Parsowanie cen
+                // 4. Parsowanie cen - użycie kultury niezmiennej dla bezpiecznego parsowania
                 decimal? cena = null;
                 decimal? cenaPoprzednia = null;
                 
-                if (!string.IsNullOrEmpty(cenaString) && decimal.TryParse(cenaString, out var parsedCena))
-                    cena = parsedCena;
+                if (!string.IsNullOrEmpty(cenaString))
+                {
+                    // Próbuj z kulturą niezmienną (kropka jako separator dziesiętny)
+                    if (decimal.TryParse(cenaString, System.Globalization.NumberStyles.Number, 
+                        System.Globalization.CultureInfo.InvariantCulture, out var parsedCena))
+                    {
+                        cena = parsedCena;
+                    }
+                    // Jeśli nie, próbuj z kulturą lokalną (przecinek jako separator)
+                    else if (decimal.TryParse(cenaString, out var parsedCenaLocal))
+                    {
+                        cena = parsedCenaLocal;
+                    }
+                }
                     
-                if (!string.IsNullOrEmpty(cenaPoprzeniaString) && decimal.TryParse(cenaPoprzeniaString, out var parsedCenaPoprzednia))
-                    cenaPoprzednia = parsedCenaPoprzednia;
+                if (!string.IsNullOrEmpty(cenaPoprzeniaString))
+                {
+                    // Próbuj z kulturą niezmienną (kropka jako separator dziesiętny)
+                    if (decimal.TryParse(cenaPoprzeniaString, System.Globalization.NumberStyles.Number, 
+                        System.Globalization.CultureInfo.InvariantCulture, out var parsedCenaPoprzednia))
+                    {
+                        cenaPoprzednia = parsedCenaPoprzednia;
+                    }
+                    // Jeśli nie, próbuj z kulturą lokalną (przecinek jako separator)
+                    else if (decimal.TryParse(cenaPoprzeniaString, out var parsedCenaPoprzeniaLocal))
+                    {
+                        cenaPoprzednia = parsedCenaPoprzeniaLocal;
+                    }
+                }
 
                 // 5. Normalizacja typu
                 typ = !string.IsNullOrEmpty(typ) && 
                      (typ.ToLower() == "kupon" || typ.ToLower() == "okazja") 
                      ? typ.ToLower() : "okazja";
 
-                // 6. Obsługa kategorii
+                // 6. Walidacja cen (dodatkowa sprawdzenie logiki)
+                if (cena.HasValue && cena <= 0)
+                    return BadRequest("Cena musi być większa od 0.");
+                    
+                if (cenaPoprzednia.HasValue && cenaPoprzednia <= 0)
+                    return BadRequest("Cena poprzednia musi być większa od 0.");
+                    
+                if (cena.HasValue && cenaPoprzednia.HasValue && cena >= cenaPoprzednia)
+                    return BadRequest("Cena promocyjna powinna być niższa niż cena poprzednia.");
+
+                // 7. Obsługa kategorii
                 var kategoriaEntity = await GetOrCreateCategory(kategoria);
 
-                // 7. Tworzenie oferty
+                // 8. Tworzenie oferty
                 var oferta = new Oferta
                 {
                     Nazwa = tytul,
@@ -705,7 +751,7 @@ namespace TechPromo.Api.Controllers
                     return StatusCode(500, $"Błąd bazy danych (etap: oferta) : {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
                 }
 
-                // 8. Obsługa zdjęć (walidacja podstawowa)
+                // 9. Obsługa zdjęć (walidacja podstawowa)
                 if (zdjecia.Count > 0)
                 {
                     const int MAX_FILES = 5;
@@ -765,7 +811,7 @@ namespace TechPromo.Api.Controllers
                     }
                 }
 
-                // 9. Obsługa tagów
+                // 10. Obsługa tagów
                 if (!string.IsNullOrEmpty(tagi))
                 {
                     try
@@ -779,7 +825,7 @@ namespace TechPromo.Api.Controllers
                     }
                 }
 
-                // 10. Zwracanie wyniku
+                // 11. Zwracanie wyniku
                 var result = await CreateOfferResponse(oferta.IdOferta);
                 return result != null ? Ok(result) : BadRequest("Błąd podczas tworzenia odpowiedzi");
 
@@ -812,12 +858,18 @@ namespace TechPromo.Api.Controllers
         [Range(0.01, 999999.99, ErrorMessage = "Cena musi być większa od 0")]
         public decimal? Cena { get; set; }
 
+        [Range(0.01, 999999.99, ErrorMessage = "Cena poprzednia musi być większa od 0")]
+        public decimal? CenaPoprzednia { get; set; }
+
         [Required(ErrorMessage = "Kategoria jest wymagana")]
         [StringLength(50, ErrorMessage = "Nazwa kategorii nie może być dłuższa niż 50 znaków")]
         public string Kategoria { get; set; } = string.Empty;
 
     [StringLength(300, ErrorMessage = "Link nie może być dłuższy niż 300 znaków")]
         public string? Sklep { get; set; }
+
+        [StringLength(50, ErrorMessage = "Kod nie może być dłuższy niż 50 znaków")]
+        public string? Kod { get; set; }
 
         [StringLength(200, ErrorMessage = "Tagi nie mogą być dłuższe niż 200 znaków")]
         public string? Tagi { get; set; }

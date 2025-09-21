@@ -72,7 +72,7 @@ const Profil = () => {
   const navigate = useNavigate();
 
   // Sekcje przeniesione z Panelu Użytkownika
-  const [activeTab, setActiveTab] = useState<'offers' | 'activity' | 'comments' | 'modComments' | 'modOffers' | 'modReports' | 'adminUsers' | 'adminBadges' | 'adminOffers'>('offers');
+  const [activeTab, setActiveTab] = useState<'offers' | 'activity' | 'comments' | 'zapisane' | 'modComments' | 'modOffers' | 'modReports' | 'adminUsers' | 'adminBadges' | 'adminOffers'>('offers');
   const [offers, setOffers] = useState<Oferta[]>([]);
   const [offersSkip, setOffersSkip] = useState(0);
   const [offersHasMore, setOffersHasMore] = useState(false);
@@ -83,6 +83,9 @@ const Profil = () => {
   const [userComments, setUserComments] = useState<Komentarz[]>([]);
   const [commentsSkip, setCommentsSkip] = useState(0);
   const [commentsHasMore, setCommentsHasMore] = useState(false);
+  const [savedOffers, setSavedOffers] = useState<Oferta[]>([]);
+  const [savedOffersSkip, setSavedOffersSkip] = useState(0);
+  const [savedOffersHasMore, setSavedOffersHasMore] = useState(false);
   const [message, setMessage] = useState<string>('');
   const [loadingList, setLoadingList] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
@@ -223,6 +226,27 @@ const Profil = () => {
         }
         setCommentsHasMore(skip + items.length < total);
       } else setMessage('Błąd pobierania komentarzy');
+    } catch { setMessage('Błąd połączenia z serwerem'); }
+  };
+
+  const fetchSavedOffers = async (reset: boolean = true) => {
+    try {
+      const url = `${API_BASE}/api/uzytkownik/zapisane?skip=${reset ? 0 : savedOffersSkip}&take=${pageSize}`;
+      const res = await authorizedFetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        const items: Oferta[] = data.items ?? data.Items ?? [];
+        const total: number = data.total ?? data.Total ?? 0;
+        const skip: number = data.skip ?? data.Skip ?? 0;
+        if (reset) {
+          setSavedOffers(items);
+          setSavedOffersSkip(skip + items.length);
+        } else {
+          setSavedOffers(prev => [...prev, ...items]);
+          setSavedOffersSkip(skip + items.length);
+        }
+        setSavedOffersHasMore(skip + items.length < total);
+      } else setMessage('Błąd pobierania zapisanych ofert');
     } catch { setMessage('Błąd połączenia z serwerem'); }
   };
 
@@ -692,6 +716,12 @@ const Profil = () => {
             >
               <MessageCircle className="w-5 h-5 inline mr-1" /> Komentarze ({userComments.length})
             </button>
+            <button 
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all ${activeTab === 'zapisane' ? 'bg-custom-blue text-white' : 'bg-white/60 text-gray-700 border'}`}
+              onClick={() => { setActiveTab('zapisane'); fetchSavedOffers(); }}
+            >
+              <Check className="w-5 h-5 inline mr-1" /> Zapisane ({savedOffers.length})
+            </button>
           </div>
 
           {(data?.rola === 'Moderator' || data?.rola === 'Admin') && (
@@ -845,6 +875,101 @@ const Profil = () => {
                 ) : (
                   <div className="text-sm text-gray-500">To już wszystko</div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === 'zapisane' && (
+            <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {savedOffers.map(offer => (
+                  <div key={offer.id} className="bg-white/60 rounded-2xl p-6 shadow border">
+                    <div className="mb-2 flex justify-between items-start">
+                      <h4 className="text-lg font-bold text-gray-900">{offer.tytul}</h4>
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">{offer.kategoria}</span>
+                    </div>
+                    <p className="text-gray-700 mb-3 line-clamp-3">{offer.opis}</p>
+                    
+                    {offer.cena && (
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="text-xl font-bold text-green-600">{offer.cena}zł</span>
+                        {offer.cenaPoprzednia && (
+                          <span className="text-sm line-through text-gray-500">{offer.cenaPoprzednia}zł</span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mb-3">
+                      {offer.zdjecia?.length ? (
+                        <div className="flex gap-2">
+                          {offer.zdjecia.slice(0,3).map((img,i)=>(
+                            <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center">{offer.typ==='kupon'?'🎫':'🛍️'}</div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex gap-2">
+                        <span className="px-3 py-1 rounded-full text-sm bg-red-100 text-red-700"><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</span>
+                        <span className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700"><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</span>
+                      </div>
+                      <span className="text-sm text-gray-600 flex items-center"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
+                    </div>
+
+                    <div className="text-xs text-gray-500 mb-3">Autor: {offer.autor} • {offer.dataUtworzenia}</div>
+                    
+                    <div className="mt-3 flex justify-between gap-2">
+                      <button 
+                        className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm flex-1"
+                        onClick={() => {
+                          const link = offer.sklep;
+                          const url = link.startsWith('http') ? link : `https://${link}`;
+                          window.open(url, '_blank');
+                        }}
+                      >
+                        Przejdź do sklepu
+                      </button>
+                      <button 
+                        className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm"
+                        onClick={async () => {
+                          try {
+                            const res = await authorizedFetch(`${API_BASE}/api/uzytkownik/zapisane/${offer.id}`, {
+                              method: 'DELETE'
+                            });
+                            if (res.ok) {
+                              setSavedOffers(prev => prev.filter(o => o.id !== offer.id));
+                            } else {
+                              setMessage('Błąd podczas usuwania z zapisanych');
+                            }
+                          } catch {
+                            setMessage('Błąd połączenia z serwerem');
+                          }
+                        }}
+                      >
+                        Usuń
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {savedOffers.length === 0 && (
+                <div className="text-center text-gray-600 py-8">
+                  <Check className="w-16 h-16 mx-auto mb-4 text-gray-400" />
+                  <h3 className="text-lg font-semibold mb-2">Brak zapisanych ofert</h3>
+                  <p className="text-sm">Zapisane oferty będą wyświetlane tutaj</p>
+                </div>
+              )}
+
+              <div className="mt-6 flex justify-center">
+                {savedOffersHasMore ? (
+                  <button onClick={() => fetchSavedOffers(false)} disabled={loadingList} className="px-5 py-2 rounded-2xl bg-white/70 border shadow">Załaduj kolejne</button>
+                ) : savedOffers.length > 0 ? (
+                  <div className="text-sm text-gray-500">To już wszystkie zapisane oferty</div>
+                ) : null}
               </div>
             </div>
           )}

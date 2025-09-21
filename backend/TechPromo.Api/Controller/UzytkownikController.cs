@@ -129,7 +129,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        // Pomocnicza metoda formatująca czas jak na Pepper - "5 godzin temu"
+        // Pomocnicza metoda formatująca czas  - "5 godzin temu"
         private static string FormatTimeAgo(DateTime dateTime, DateTime now)
         {
             var timeSpan = now - dateTime;
@@ -652,6 +652,17 @@ namespace TechPromo.Api.Controllers
                 return Forbid();
             }
 
+            // Walidacja cen przed aktualizacją
+            if (dto.Cena.HasValue && dto.Cena <= 0)
+                return BadRequest("Cena musi być większa od 0.");
+                
+            if (dto.CenaPoprzednia.HasValue && dto.CenaPoprzednia <= 0)
+                return BadRequest("Cena poprzednia musi być większa od 0.");
+                
+            if (dto.Cena.HasValue && dto.CenaPoprzednia.HasValue && dto.Cena >= dto.CenaPoprzednia)
+                return BadRequest("Cena promocyjna powinna być niższa niż cena poprzednia.");
+
+            // Aktualizacja pól
             if (!string.IsNullOrWhiteSpace(dto.Tytul)) oferta.Nazwa = dto.Tytul.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Opis)) oferta.Opis = dto.Opis.Trim();
             if (dto.Cena.HasValue) oferta.Cena = dto.Cena;
@@ -814,6 +825,112 @@ namespace TechPromo.Api.Controllers
             }
             await _context.SaveChangesAsync();
             return Ok("Kolejność zapisana.");
+        }
+
+        // POST: api/uzytkownik/zapisane/{id} - Zapisz ofertę
+        [HttpPost("zapisane/{id}")]
+        public async Task<ActionResult> SaveOffer(int id)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Nieprawidłowy użytkownik");
+
+            // Sprawdź czy oferta istnieje
+            var oferta = await _context.Oferty.FindAsync(id);
+            if (oferta == null) return NotFound("Oferta nie została znaleziona");
+
+            // Sprawdź czy już nie jest zapisana
+            var exists = await _context.ZapisaneOferty
+                .AnyAsync(zo => zo.IdUzytkownik == userId && zo.IdOferta == id);
+            
+            if (exists) return BadRequest("Oferta już jest zapisana");
+
+            // Zapisz ofertę
+            _context.ZapisaneOferty.Add(new ZapisanaOferta
+            {
+                IdUzytkownik = userId,
+                IdOferta = id,
+                DataZapisania = DateTime.UtcNow
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok("Oferta została zapisana");
+        }
+
+        // DELETE: api/uzytkownik/zapisane/{id} - Usuń z zapisanych
+        [HttpDelete("zapisane/{id}")]
+        public async Task<ActionResult> UnsaveOffer(int id)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Nieprawidłowy użytkownik");
+
+            var zapisana = await _context.ZapisaneOferty
+                .FirstOrDefaultAsync(zo => zo.IdUzytkownik == userId && zo.IdOferta == id);
+            
+            if (zapisana == null) return NotFound("Oferta nie była zapisana");
+
+            _context.ZapisaneOferty.Remove(zapisana);
+            await _context.SaveChangesAsync();
+            return Ok("Oferta została usunięta z zapisanych");
+        }
+
+        // GET: api/uzytkownik/zapisane - Lista zapisanych ofert
+        [HttpGet("zapisane")]
+        public async Task<ActionResult<PagedResult<OfertaDto>>> GetSavedOffers(
+            [FromQuery] int skip = 0,
+            [FromQuery] int take = 12)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Nieprawidłowy użytkownik");
+            if (take > 100) take = 100;
+
+            var query = _context.ZapisaneOferty
+                .Where(zo => zo.IdUzytkownik == userId)
+                .Include(zo => zo.Oferta)
+                    .ThenInclude(o => o.Uzytkownik)
+                .Include(zo => zo.Oferta)
+                    .ThenInclude(o => o.Kategoria)
+                .Include(zo => zo.Oferta)
+                    .ThenInclude(o => o.Zdjecia)
+                .Include(zo => zo.Oferta)
+                    .ThenInclude(o => o.OfertaTagi)
+                        .ThenInclude(ot => ot.Tag)
+                .Include(zo => zo.Oferta)
+                    .ThenInclude(o => o.Glosy)
+                .Include(zo => zo.Oferta)
+                    .ThenInclude(o => o.Komentarze)
+                .OrderByDescending(zo => zo.DataZapisania);
+
+            var total = await query.CountAsync();
+            var items = await query
+                .Skip(skip)
+                .Take(take)
+                .Select(zo => new OfertaDto
+                {
+                    Id = zo.Oferta.IdOferta,
+                    Tytul = zo.Oferta.Nazwa,
+                    Opis = zo.Oferta.Opis,
+                    Typ = zo.Oferta.Typ,
+                    Cena = zo.Oferta.Cena,
+                    CenaPoprzednia = zo.Oferta.CenaPoprzednia,
+                    Kod = zo.Oferta.Kod,
+                    Sklep = zo.Oferta.Link,
+                    Kategoria = zo.Oferta.Kategoria != null ? zo.Oferta.Kategoria.Nazwa : "Inne",
+                    Tagi = zo.Oferta.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
+                    Autor = zo.Oferta.Uzytkownik.UserName ?? "Nieznany",
+                    DataUtworzenia = zo.Oferta.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                    Votes = new VotesDto { Hot = zo.Oferta.LiczbaHot, Cold = zo.Oferta.LiczbaCold },
+                    Komentarze = zo.Oferta.Komentarze.Count,
+                    Zdjecia = zo.Oferta.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
+                })
+                .ToListAsync();
+
+            return Ok(new PagedResult<OfertaDto>
+            {
+                Items = items,
+                Total = total,
+                Skip = skip,
+                Take = take
+            });
         }
     }
 }
