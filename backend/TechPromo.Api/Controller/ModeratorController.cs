@@ -9,10 +9,13 @@ using TechPromo.Api.Services;
 
 namespace TechPromo.Api.Controllers
 {
+    /// <summary>
+    /// Kontroler moderatora - zarządzanie treściami, moderacja komentarzy i ofert
+    /// </summary>
     [ApiController]
-    [Route("moderator")] // dotychczasowy prefix
-    [Route("api/moderator")] // nowy prefix zgodny z wywołaniami z frontendu
-    [Authorize(Roles = "Moderator,Admin")] // Moderator i Admin mają dostęp
+    [Route("moderator")]
+    [Route("api/moderator")]
+    [Authorize(Roles = "Moderator,Admin")]
     public class ModeratorController : ControllerBase
     {
         private readonly TechPromoDbContext _context;
@@ -28,6 +31,9 @@ namespace TechPromo.Api.Controllers
 
         #region Moderacja komentarzy
 
+        /// <summary>
+        /// Pobiera wszystkie komentarze z systemem zgłoszeń dla moderacji
+        /// </summary>
         [HttpGet("komentarze")]
         public async Task<IActionResult> PobierzKomentarze()
         {
@@ -56,6 +62,10 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Usuwa komentarz wraz z powiązanymi powiadomieniami
+        /// </summary>
+        /// <param name="id">Identyfikator komentarza do usunięcia</param>
         [HttpDelete("komentarz/{id}")]
         public async Task<IActionResult> UsunKomentarz(int id)
         {
@@ -65,7 +75,7 @@ namespace TechPromo.Api.Controllers
                 if (komentarz == null)
                     return NotFound(new { message = "Komentarz nie został znaleziony" });
 
-                // Usuń powiązane powiadomienia (zgłoszenia, ostrzeżenia, itd.) odnoszące się do tego komentarza
+                // Usuń powiązane powiadomienia odnoszące się do tego komentarza
                 var powiadomieniaKomentarza = await _context.Powiadomienia
                     .Where(p => p.IdKomentarz == id)
                     .ToListAsync();
@@ -85,6 +95,11 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Wysyła ostrzeżenie do użytkownika za nieodpowiedni komentarz
+        /// </summary>
+        /// <param name="id">Identyfikator komentarza</param>
+        /// <param name="ostrzezenieDto">Dane ostrzeżenia z powodem</param>
         [HttpPost("komentarz/{id}/ostrzez")]
         public async Task<IActionResult> OstrzezUzytkownika(int id, [FromBody] OstrzezenieDto ostrzezenieDto)
         {
@@ -101,7 +116,7 @@ namespace TechPromo.Api.Controllers
                 if (moderator == null)
                     return Unauthorized(new { message = "Nie znaleziono moderatora" });
 
-                // Tworzę powiadomienie z ostrzeżeniem
+                // Utworzenie powiadomienia z ostrzeżeniem
                 var powiadomienie = new Powiadomienie
                 {
                     IdUzytkownik = komentarz.IdUzytkownik,
@@ -125,6 +140,9 @@ namespace TechPromo.Api.Controllers
 
         #region Moderacja ofert
 
+        /// <summary>
+        /// Pobiera wszystkie oferty do moderacji z informacjami o autorach i kategoriach
+        /// </summary>
         [HttpGet("oferty")]
         public async Task<IActionResult> PobierzOferty()
         {
@@ -156,6 +174,10 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Zatwierdza ofertę do publikacji
+        /// </summary>
+        /// <param name="id">Identyfikator oferty do zatwierdzenia</param>
         [HttpPut("oferta/{id}/zatwierdz")]
         public async Task<IActionResult> ZatwierdzOferte(int id)
         {
@@ -169,7 +191,7 @@ namespace TechPromo.Api.Controllers
                 oferta.Aktywna = true;
                 await _context.SaveChangesAsync();
 
-                // Automatycznie przelicz odznaki po zatwierdzeniu oferty
+                // Automatyczne przeliczenie odznak po zatwierdzeniu oferty
                 await _badgeService.EvaluateForUserAsync(oferta.IdUzytkownik);
 
                 return Ok(new { message = "Oferta została zatwierdzona i aktywowana" });
@@ -180,6 +202,11 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Odrzuca ofertę z podaniem powodu i powiadamianiem autora
+        /// </summary>
+        /// <param name="id">Identyfikator oferty do odrzucenia</param>
+        /// <param name="odrzucenieDto">Dane z powodem odrzucenia</param>
         [HttpPut("oferta/{id}/odrzuc")]
         public async Task<IActionResult> OdrzucOferte(int id, [FromBody] OdrzucenieDto odrzucenieDto)
         {
@@ -220,6 +247,11 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Edytuje ofertę przez moderatora z powiadamianiem autora
+        /// </summary>
+        /// <param name="id">Identyfikator oferty do edycji</param>
+        /// <param name="edycjaDto">Dane do aktualizacji oferty</param>
         [HttpPut("oferta/{id}/edytuj")]
         public async Task<IActionResult> EdytujOferte(int id, [FromBody] EdycjaOfertaDto edycjaDto)
         {
@@ -233,11 +265,11 @@ namespace TechPromo.Api.Controllers
                 if (oferta == null)
                     return NotFound(new { message = "Oferta nie została znaleziona" });
 
-                // Zapisuję oryginalne wartości
+                // Zapisanie oryginalnych wartości do powiadomienia
                 var oryginalnyTytul = oferta.Nazwa;
                 var oryginalnyOpis = oferta.Opis;
 
-                // Aktualizuję podstawowe dane
+                // Aktualizacja podstawowych danych oferty
                 if (!string.IsNullOrWhiteSpace(edycjaDto.NowyTytul))
                     oferta.Nazwa = edycjaDto.NowyTytul.Trim();
 
@@ -248,10 +280,15 @@ namespace TechPromo.Api.Controllers
                     oferta.Cena = edycjaDto.Cena.Value;
                 if (edycjaDto.CenaPoprzednia.HasValue)
                     oferta.CenaPoprzednia = edycjaDto.CenaPoprzednia.Value;
-                if (!string.IsNullOrWhiteSpace(edycjaDto.Kod))
-                    oferta.Kod = edycjaDto.Kod.Trim();
-                if (!string.IsNullOrWhiteSpace(edycjaDto.Link))
-                    oferta.Link = edycjaDto.Link.Trim();
+                
+                // Obsługa opcjonalnych pól - pozwala na usuwanie wartości
+                if (edycjaDto.Kod != null)
+                    oferta.Kod = string.IsNullOrWhiteSpace(edycjaDto.Kod) ? string.Empty : edycjaDto.Kod.Trim();
+                
+                // Pozwala na usuwanie wartości w polach opcjonalnych
+                if (edycjaDto.Link != null)
+                    oferta.Link = string.IsNullOrWhiteSpace(edycjaDto.Link) ? string.Empty : edycjaDto.Link.Trim();
+                    
                 if (edycjaDto.Aktywna.HasValue)
                     oferta.Aktywna = edycjaDto.Aktywna.Value;
                 if (edycjaDto.Zatwierdzona.HasValue)
@@ -282,6 +319,11 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Usuwa ofertę wraz z wszystkimi powiązanymi danymi
+        /// </summary>
+        /// <param name="id">Identyfikator oferty do usunięcia</param>
+        /// <param name="dto">Opcjonalne dane z powodem usunięcia</param>
         [HttpDelete("oferta/{id}")]
         public async Task<IActionResult> UsunOferte(int id, [FromBody] UsuniecieDto? dto)
         {
@@ -295,10 +337,11 @@ namespace TechPromo.Api.Controllers
                 if (oferta == null)
                     return NotFound(new { message = "Oferta nie została znaleziona" });
 
-                // Usuń głosy
+                // Usuwanie powiązanych danych w kolejności zależności
                 var glosy = _context.Glosy.Where(g => g.IdOferta == id);
                 _context.Glosy.RemoveRange(glosy);
-                // Usuń komentarze + powiązane powiadomienia do komentarzy
+                
+                // Usuwanie komentarzy z powiadomieniami
                 if (oferta.Komentarze.Any())
                 {
                     var komentarzeIds = oferta.Komentarze.Select(k => k.IdKomentarz).ToList();
@@ -306,13 +349,15 @@ namespace TechPromo.Api.Controllers
                     _context.Powiadomienia.RemoveRange(powiadomieniaKomentarzy);
                     _context.Komentarze.RemoveRange(oferta.Komentarze);
                 }
-                // Usuń tagi
+                
+                // Usuwanie tagów i pozostałych powiązań
                 var tagi = _context.OfertaTagi.Where(t => t.IdOferta == id);
                 _context.OfertaTagi.RemoveRange(tagi);
-                // Usuń powiadomienia powiązane z ofertą
+                
+                // Usuwanie powiadomień związanych z ofertą
                 var powiadomieniaOferty = _context.Powiadomienia.Where(p => p.IdOferta == id);
                 _context.Powiadomienia.RemoveRange(powiadomieniaOferty);
-                // Usuń zdjęcia fizyczne i rekordy
+                // Usuwanie zdjęć fizycznych i rekordów
                 if (oferta.Zdjecia.Any())
                 {
                     try
@@ -332,7 +377,7 @@ namespace TechPromo.Api.Controllers
                     _context.OfertyZdjecia.RemoveRange(oferta.Zdjecia);
                 }
 
-                // Powiadom autora o usunięciu (opcjonalne)
+                // Powiadomienie autora o usunięciu oferty
                 if (oferta.IdUzytkownik != 0)
                 {
                     var powod = dto?.Powod?.Trim();
@@ -363,7 +408,15 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        // ===== Zarządzanie zdjęciami oferty przez moderatora/admina =====
+        #endregion
+
+        #region Zarządzanie zdjęciami oferty
+
+        /// <summary>
+        /// Dodaje zdjęcia do oferty przez moderatora
+        /// </summary>
+        /// <param name="id">Identyfikator oferty</param>
+        /// <param name="files">Lista plików graficznych do dodania</param>
         [HttpPost("oferta/{id}/zdjecia")]
         public async Task<IActionResult> DodajZdjecia(int id, [FromForm(Name = "zdjecia")] List<IFormFile> files)
         {
@@ -372,13 +425,13 @@ namespace TechPromo.Api.Controllers
                 var oferta = await _context.Oferty.Include(o => o.Zdjecia).FirstOrDefaultAsync(o => o.IdOferta == id);
                 if (oferta == null) return NotFound(new { message = "Oferta nie została znaleziona" });
 
-                // Jeśli model binder nie związał listy, spróbuj pobrać ręcznie
+                // Alternatywne pobranie plików w przypadku problemów z model binderem
                 if ((files == null || files.Count == 0) && Request.Form?.Files?.Count > 0)
                 {
                     files = Request.Form.Files.GetFiles("zdjecia").ToList();
                     if (files.Count == 0)
                     {
-                        // weź wszystkie pliki jeśli nazwa inna
+                        // Pobranie wszystkich plików w przypadku różnej nazwy pola
                         files = Request.Form.Files.ToList();
                     }
                 }
@@ -431,7 +484,10 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        // GET: api/moderator/oferta/{id}/zdjecia - lista zdjęć z id i kolejnością
+        /// <summary>
+        /// Pobiera listę zdjęć oferty z identyfikatorami i kolejnością
+        /// </summary>
+        /// <param name="id">Identyfikator oferty</param>
         [HttpGet("oferta/{id}/zdjecia")]
         public async Task<IActionResult> PobierzZdjecia(int id)
         {
@@ -446,6 +502,11 @@ namespace TechPromo.Api.Controllers
             return Ok(list);
         }
 
+        /// <summary>
+        /// Usuwa zdjęcie z oferty wraz z plikiem fizycznym
+        /// </summary>
+        /// <param name="id">Identyfikator oferty</param>
+        /// <param name="fotoId">Identyfikator zdjęcia do usunięcia</param>
         [HttpDelete("oferta/{id}/zdjecie/{fotoId}")]
         public async Task<IActionResult> UsunZdjecie(int id, int fotoId)
         {
@@ -453,7 +514,7 @@ namespace TechPromo.Api.Controllers
             {
                 var foto = await _context.OfertyZdjecia.FirstOrDefaultAsync(f => f.IdOferta == id && f.IdOfertaZdjecie == fotoId);
                 if (foto == null) return NotFound(new { message = "Zdjęcie nie znalezione" });
-                // Usuń plik fizyczny jeśli istnieje (spójność z usuwaniem przez właściciela)
+                // Usuwanie pliku fizycznego z dysku
                 try
                 {
                     var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
@@ -461,7 +522,7 @@ namespace TechPromo.Api.Controllers
                     var physical = Path.Combine(root, foto.UrlZdjecia.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
                     if (System.IO.File.Exists(physical)) System.IO.File.Delete(physical);
                 }
-                catch { /* ignoruj błąd IO */ }
+                catch { /* ignorowanie błędów dostępu do plików */ }
                 _context.OfertyZdjecia.Remove(foto);
                 await _context.SaveChangesAsync();
                 return Ok(new { message = "Usunięto zdjęcie" });
@@ -472,6 +533,11 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Zmienia kolejność zdjęć w ofercie
+        /// </summary>
+        /// <param name="id">Identyfikator oferty</param>
+        /// <param name="dto">Dane z nową kolejnością zdjęć</param>
         [HttpPut("oferta/{id}/zdjecia/kolejnosc")]
         public async Task<IActionResult> ZmienKolejnosc(int id, [FromBody] ZmienKolejnoscZdjecDto dto)
         {
@@ -497,13 +563,16 @@ namespace TechPromo.Api.Controllers
 
         #region Obsługa zgłoszeń
 
+        /// <summary>
+        /// Pobiera wszystkie zgłoszenia do moderacji
+        /// </summary>
         [HttpGet("zgloszenia")]
         public async Task<IActionResult> PobierzZgloszenia()
         {
             try
             {
                 var zgloszenia = await _context.Powiadomienia
-                    // Akceptuj również historyczne wpisy bez ogonka
+                    // Zgłoszenia z różnymi wariantami pisowni
                     .Where(p => p.Typ == "Zgłoszenie" || p.Typ == "Zgloszenie")
                     .Include(p => p.Uzytkownik)
                     .Include(p => p.Komentarz)
@@ -532,6 +601,11 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Rozpatruje zgłoszenie i wysyła odpowiedź do zgłaszającego
+        /// </summary>
+        /// <param name="id">Identyfikator zgłoszenia</param>
+        /// <param name="rozpatrzenieDto">Dane z odpowiedzią moderatora</param>
         [HttpPut("zgloszenie/{id}/rozpatrz")]
         public async Task<IActionResult> RozpatrzZgloszenie(int id, [FromBody] RozpatrzenieDto rozpatrzenieDto)
         {
@@ -568,6 +642,11 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        /// <summary>
+        /// Przekazuje zgłoszenie do administratorów do dalszego rozpatrzenia
+        /// </summary>
+        /// <param name="id">Identyfikator zgłoszenia</param>
+        /// <param name="przekazanieDto">Dane z komentarzem moderatora</param>
         [HttpPost("zgloszenie/{id}/przekaz-adminowi")]
         public async Task<IActionResult> PrzekazAdminowi(int id, [FromBody] PrzekazanieDto przekazanieDto)
         {
@@ -584,10 +663,10 @@ namespace TechPromo.Api.Controllers
                 if (moderator == null)
                     return Unauthorized(new { message = "Nie znaleziono moderatora" });
 
-                // Znajduję wszystkich adminów
+                // Wyszukanie wszystkich administratorów w systemie
                 var adminowie = await _userManager.GetUsersInRoleAsync("Admin");
                 
-                // Tworzę powiadomienie dla każdego admina
+                // Utworzenie powiadomień eskalacyjnych dla administratorów
                 foreach (var admin in adminowie)
                 {
                     var powiadomienie = new Powiadomienie
@@ -602,7 +681,7 @@ namespace TechPromo.Api.Controllers
                     _context.Powiadomienia.Add(powiadomienie);
                 }
 
-                // Oznaczam oryginalne zgłoszenie jako rozpatrzone
+                // Oznaczenie oryginalnego zgłoszenia jako rozpatrzone
                 zgloszenie.Przeczytane = true;
                 await _context.SaveChangesAsync();
 
@@ -616,8 +695,11 @@ namespace TechPromo.Api.Controllers
 
         #endregion
 
-        #region Pomocnicze metody
+        #region Metody pomocnicze
 
+        /// <summary>
+        /// Pobiera podstawowe statystyki dla panelu moderatora
+        /// </summary>
         [HttpGet("statystyki")]
         public async Task<IActionResult> PobierzStatystyki()
         {

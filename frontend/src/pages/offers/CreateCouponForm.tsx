@@ -118,10 +118,13 @@ const CreateCouponForm: React.FC = () => {
           cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
           cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
           kod: formData.kod.trim(),
-          link: formData.sklep.trim() || null
+          // Wysyłamy pusty string jeśli pole puste, aby można było wyczyścić link
+          link: formData.sklep !== undefined ? formData.sklep.trim() : ''
         };
         const role = getUserData()?.role;
-        const putUrl = role === 'Admin' ? `/api/admin/oferta/${editId}` : role === 'Moderator' ? `/api/moderator/oferta/${editId}/edytuj` : `/api/uzytkownik/oferta/${editId}`;
+        const putUrl = (role === 'Admin' || role === 'Moderator')
+          ? `/api/admin/oferta/${editId}`
+          : `/api/uzytkownik/oferta/${editId}`;
         const res = await fetch(putUrl, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },

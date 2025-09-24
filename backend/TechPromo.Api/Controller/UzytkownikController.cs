@@ -9,9 +9,12 @@ using System.Security.Claims;
 
 namespace TechPromo.Api.Controllers
 {
+    /// <summary>
+    /// Kontroler użytkownika - zarządzanie profilami, ofertami i powiadomieniami
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
-    [Route("[controller]")] // Dodatkowa ścieżka dla kompatybilności z frontendem
+    [Route("[controller]")]
     [Authorize]
     public class UzytkownikController : ControllerBase
     {
@@ -669,16 +672,27 @@ namespace TechPromo.Api.Controllers
             if (dto.CenaPoprzednia.HasValue) oferta.CenaPoprzednia = dto.CenaPoprzednia;
             if (!string.IsNullOrWhiteSpace(dto.Kod)) oferta.Kod = dto.Kod.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Link)) oferta.Link = dto.Link.Trim();
-            // Jeśli edytuje właściciel (zwykły użytkownik) resetujemy akceptację.
-            // Jeśli edytuje Admin/Moderator pozostawiamy status zatwierdzenia (o ile istniał)
-            if (isOwner && !(isAdmin || isModerator))
+            
+            // Logika zatwierdzenia:
+            // - Jeśli zwykły użytkownik edytuje swoją ofertę -> wymaga ponownej moderacji
+            // - Jeśli moderator/admin edytuje jakąkolwiek ofertę -> nie wymaga zatwierdzenia
+            
+            if (isOwner && !isModerator && !isAdmin)
             {
+                // Zwykły użytkownik edytuje swoją ofertę - wymaga ponownej moderacji
                 oferta.Zatwierdzona = false;
+                oferta.Aktywna = true;
+            }
+            else
+            {
+                // Moderator/Admin edytuje ofertę - nie wymaga zatwierdzenia
+                oferta.Zatwierdzona = true;
                 oferta.Aktywna = true;
             }
 
             await _context.SaveChangesAsync();
-            if (isOwner && !(isAdmin || isModerator))
+            
+            if (isOwner && !isModerator && !isAdmin)
             {
                 return Ok("Oferta zaktualizowana – oczekuje ponownej moderacji.");
             }

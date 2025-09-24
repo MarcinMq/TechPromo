@@ -12,12 +12,15 @@ using System.IO;
 
 namespace TechPromo.Api.Controllers
 {
-    // Oferty: listowanie, szczegóły, tworzenie, komentarze, głosy.
+    /// <summary>
+    /// Kontroler obsługujący operacje na ofertach - wyświetlanie, tworzenie, edycja
+    /// </summary>
     [ApiController]
     [Route("api/[controller]")]
+    [Route("[controller]")]
     public class OfertaController : ControllerBase
     {
-        private readonly TechPromoDbContext _context; // EF Core kontekst
+        private readonly TechPromoDbContext _context;
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly IBadgeService _badgeService;
 
@@ -28,7 +31,20 @@ namespace TechPromo.Api.Controllers
             _badgeService = badgeService;
         }
 
-        // Buduje absolutny URL avatara autora jeśli istnieje plik user_{id}.ext w wwwroot/uploads/profiles
+        #region Metody pomocnicze
+
+        /// <summary>
+        /// Pobiera ID aktualnie zalogowanego użytkownika
+        /// </summary>
+        private int GetCurrentUserId()
+        {
+            if (User.Identity?.IsAuthenticated != true) return 0;
+            return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        }
+
+        /// <summary>
+        /// Buduje pełny URL do awatara użytkownika
+        /// </summary>
         private string? BuildAutorAvatarAbsoluteUrl(int autorId)
         {
             try
@@ -43,492 +59,96 @@ namespace TechPromo.Api.Controllers
             }
             catch
             {
-                // Ignoruj błąd – brak avatara
                 return null;
             }
         }
 
-        // GET: api/oferta
-        [HttpGet]
-    // Lista ofert z filtrem kategorii / tagu, sortem i paginacją
-    public async Task<ActionResult<PagedResult<OfertaDto>>> GetOffers(
-            [FromQuery] string? kategoria = null,
-            [FromQuery] string? tag = null,
-            [FromQuery] string? sortBy = "newest",
-            [FromQuery] int skip = 0,
-            [FromQuery] int take = 30)
+        private static (decimal? cena, decimal? cenaPoprzednia) ParsePrices(string? cenaString, string? cenaPoprzeniaString)
         {
-            if (take > 100) take = 100; // limit bezpieczeństwa
-            var query = _context.Oferty
-                .Where(o => o.Aktywna && o.Zatwierdzona)
-                .Include(o => o.Uzytkownik)
-                .Include(o => o.Kategoria)
-                .Include(o => o.Zdjecia)
-                .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
-                .Include(o => o.Glosy)
-                .Include(o => o.Komentarze)
-                .AsQueryable();
+            decimal? cena = null;
+            decimal? cenaPoprzednia = null;
 
-            // Filtrowanie po kategorii
-            if (!string.IsNullOrEmpty(kategoria))
+            if (!string.IsNullOrEmpty(cenaString))
             {
-                var katLower = kategoria.ToLower();
-                query = query.Where(o => o.Kategoria != null && o.Kategoria.Nazwa.ToLower() == katLower);
-            }
-
-            // Filtrowanie po tagu
-            if (!string.IsNullOrEmpty(tag))
-            {
-                query = query.Where(o => o.OfertaTagi.Any(ot => ot.Tag.Nazwa.Contains(tag)));
-            }
-
-            // Sortowanie
-            query = sortBy switch
-            {
-                "hot" => query.OrderByDescending(o => o.LiczbaHot - o.LiczbaCold),
-                "price" => query.OrderBy(o => o.Cena ?? decimal.MaxValue),
-                "newest" or _ => query.OrderByDescending(o => o.DataDodania)
-            };
-
-            var userId = 0;
-            if (User.Identity?.IsAuthenticated == true)
-            {
-                userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            }
-
-            var total = await query.CountAsync();
-
-            var offersRaw = await query
-                .Skip(skip)
-                .Take(take)
-                .Select(o => new 
+                if (decimal.TryParse(cenaString, System.Globalization.NumberStyles.Number, 
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsedCena))
                 {
-                    AutorId = o.IdUzytkownik,
-                    Dto = new OfertaDto
-                    {
-                        Id = o.IdOferta,
-                        Tytul = o.Nazwa,
-                        Opis = o.Opis,
-                        Typ = o.Typ,
-                        Cena = o.Cena,
-                        CenaPoprzednia = o.CenaPoprzednia,
-                        Kod = o.Kod,
-                        Sklep = o.Link, // Tymczasowo używamy Link jako sklep
-                        Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
-                        Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
-                        Autor = o.Uzytkownik.UserName ?? "Nieznany",
-                        DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                        Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
-                        Komentarze = o.Komentarze.Count,
-                        UserVote = userId != 0 ? o.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null,
-                        Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
-                    }
-                })
-                .ToListAsync();
-
-            var offers = offersRaw.Select(x => {
-                x.Dto.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(x.AutorId);
-                return x.Dto;
-            }).ToList();
-
-            var result = new PagedResult<OfertaDto>
-            {
-                Items = offers,
-                Total = total,
-                Skip = skip,
-                Take = take
-            };
-            return Ok(result);
-        }
-
-        // GET: api/oferta/{id}
-        [HttpGet("{id}")]
-    // Szczegóły jednej oferty
-    public async Task<ActionResult<OfertaDto>> GetOffer(int id)
-        {
-            var userId = 0;
-            if (User.Identity?.IsAuthenticated == true)
-            {
-                userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            }
-
-            var offerRaw = await _context.Oferty
-                .Where(o => o.IdOferta == id && o.Aktywna && o.Zatwierdzona)
-                .Include(o => o.Uzytkownik)
-                .Include(o => o.Kategoria)
-                .Include(o => o.Zdjecia)
-                .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
-                .Include(o => o.Glosy)
-                .Include(o => o.Komentarze)
-                .Select(o => new 
-                {
-                    AutorId = o.IdUzytkownik,
-                    Dto = new OfertaDto
-                    {
-                        Id = o.IdOferta,
-                        Tytul = o.Nazwa,
-                        Opis = o.Opis,
-                        Typ = o.Typ,
-                        Cena = o.Cena,
-                        CenaPoprzednia = o.CenaPoprzednia,
-                        Kod = o.Kod,
-                        Sklep = o.Link,
-                        Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "Inne",
-                        Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
-                        Autor = o.Uzytkownik.UserName ?? "Nieznany",
-                        DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                        Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
-                        Komentarze = o.Komentarze.Count,
-                        UserVote = userId != 0 ? o.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null, 
-                        Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
-                    }
-                })
-                .FirstOrDefaultAsync();
-
-            OfertaDto? offer = null;
-            if (offerRaw != null)
-            {
-                offer = offerRaw.Dto;
-                offer.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(offerRaw.AutorId);
-            }
-
-            if (offer == null)
-            {
-                // Fallback: jeśli użytkownik to właściciel / moderator / admin pokaż także niezatwierdzoną / nieaktywną ofertę
-                var bypassRoles = User.IsInRole("Admin") || User.IsInRole("Moderator");
-                if (userId != 0 || bypassRoles)
-                {
-                    var raw = await _context.Oferty
-                        .Where(o => o.IdOferta == id)
-                        .Include(o => o.Uzytkownik)
-                        .Include(o => o.Kategoria)
-                        .Include(o => o.Zdjecia)
-                        .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
-                        .Include(o => o.Glosy)
-                        .Include(o => o.Komentarze)
-                        .FirstOrDefaultAsync();
-
-                    if (raw != null && (bypassRoles || raw.IdUzytkownik == userId))
-                    {
-                        var dto = new OfertaDto
-                        {
-                            Id = raw.IdOferta,
-                            Tytul = raw.Nazwa,
-                            Opis = raw.Opis,
-                            Typ = raw.Typ,
-                            Cena = raw.Cena,
-                            CenaPoprzednia = raw.CenaPoprzednia,
-                            Kod = raw.Kod,
-                            Sklep = raw.Link,
-                            Kategoria = raw.Kategoria != null ? raw.Kategoria.Nazwa : "Inne",
-                            Tagi = raw.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
-                            Autor = raw.Uzytkownik.UserName ?? "Nieznany",
-                            DataUtworzenia = raw.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                            Votes = new VotesDto { Hot = raw.LiczbaHot, Cold = raw.LiczbaCold },
-                            Komentarze = raw.Komentarze.Count,
-                            UserVote = userId != 0 ? raw.Glosy.Where(g => g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null,
-                            Zdjecia = raw.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
-                        };
-                        dto.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(raw.IdUzytkownik);
-                        // Oznacz w nagłówku że to draft (opcjonalne do debug)
-                        Response.Headers["X-Draft"] = "true";
-                        return Ok(dto);
-                    }
+                    cena = parsedCena;
                 }
-                return NotFound("Oferta nie została znaleziona.");
-            }
-
-            return Ok(offer);
-        }
-
-        // POST: api/oferta/{id}/komentarze - dodanie komentarza do oferty
-        [HttpPost("{id}/komentarze")]
-        [Authorize]
-        // Dodanie komentarza lub odpowiedzi
-    public async Task<ActionResult<KomentarzDto>> AddComment(int id, [FromBody] CreateCommentRequest request)
-        {
-            if (string.IsNullOrWhiteSpace(request.Tresc))
-                return BadRequest("Treść komentarza jest wymagana.");
-
-            var oferta = await _context.Oferty.FirstOrDefaultAsync(o => o.IdOferta == id && o.Aktywna && o.Zatwierdzona);
-            if (oferta == null)
-                return NotFound("Oferta nie istnieje lub nie została zatwierdzona.");
-
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            if (userId == 0)
-                return Unauthorized();
-
-            // walidacja rodzica (opcjonalna)
-            Komentarz? parent = null;
-            if (request.ParentId.HasValue)
-            {
-                parent = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == request.ParentId.Value);
-                if (parent == null || parent.IdOferta != oferta.IdOferta)
-                    return BadRequest("Nieprawidłowy parentId.");
-            }
-
-            var komentarz = new Komentarz
-            {
-                IdOferta = oferta.IdOferta,
-                IdUzytkownik = userId,
-                Tresc = request.Tresc.Trim(),
-                DataDodania = DateTime.UtcNow,
-                Status = "aktywny",
-                ParentId = request.ParentId
-            };
-
-            _context.Komentarze.Add(komentarz);
-
-            // Dodaj punkty użytkownikowi za komentarz
-            var user = await _userManager.FindByIdAsync(userId.ToString());
-            if (user != null)
-            {
-                user.Punkty += 2;
-                await _userManager.UpdateAsync(user);
-            }
-
-            await _context.SaveChangesAsync();
-
-            // Automatycznie przelicz odznaki po dodaniu komentarza
-            await _badgeService.EvaluateForUserAsync(userId);
-
-            // Możemy w razie potrzeby zaktualizować licznik komentarzy w ofercie (jeśli będzie kolumna cache) – pomijam.
-
-            var result = await _context.Komentarze
-                .Where(k => k.IdKomentarz == komentarz.IdKomentarz)
-                .Include(k => k.Uzytkownik)
-                .Select(k => new KomentarzDto
+                else if (decimal.TryParse(cenaString, out var parsedCenaLocal))
                 {
-                    Id = k.IdKomentarz,
-                    Tresc = k.Tresc,
-                    Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
-                    Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Oferta = string.Empty,
-                    ParentId = k.ParentId,
-                    Up = k.LiczbaUp,
-                    Down = k.LiczbaDown,
-                    UserVote = null
-                }).FirstOrDefaultAsync();
-
-            return Created($"/api/oferta/{id}/komentarze/{komentarz.IdKomentarz}", result);
-        }
-
-        // GET: api/oferta/kategorie
-        [HttpGet("kategorie")]
-    // Lista nazw kategorii
-    public async Task<ActionResult<IEnumerable<string>>> GetCategories()
-        {
-            var categories = await _context.Kategorie
-                .Select(k => k.Nazwa)
-                .OrderBy(n => n)
-                .ToListAsync();
-
-            return Ok(categories);
-        }
-
-        // GET: api/oferta/tagi
-        [HttpGet("tagi")]
-    // Lista tagów (max 50)
-    public async Task<ActionResult<IEnumerable<string>>> GetTags()
-        {
-            var tags = await _context.Tagi
-                .Select(t => t.Nazwa)
-                .OrderBy(n => n)
-                .Take(50) // Ograniczenie do 50 najpopularniejszych tagów
-                .ToListAsync();
-
-            return Ok(tags);
-        }
-
-        // GET: api/oferta/{id}/komentarze
-        [HttpGet("{id}/komentarze")]
-    // Komentarze z paginacją i sortowaniem
-    public async Task<ActionResult<PagedResult<KomentarzDto>>> GetOfferComments(
-            int id,
-            [FromQuery] int skip = 0,
-            [FromQuery] int take = 20,
-            [FromQuery] string sort = "newest")
-        {
-            if (take > 100) take = 100;
-            var baseQuery = _context.Komentarze.Where(k => k.IdOferta == id);
-            var total = await baseQuery.CountAsync();
-
-            var userId = 0;
-            if (User.Identity?.IsAuthenticated == true)
-            {
-                userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            }
-
-            IQueryable<Komentarz> query = baseQuery.Include(k => k.Uzytkownik);
-            query = sort switch
-            {
-                "oldest" => query.OrderBy(k => k.DataDodania),
-                "helpful" => query.OrderByDescending(k => (k.LiczbaUp - k.LiczbaDown)).ThenByDescending(k => k.DataDodania),
-                "best" => query.OrderByDescending(k => k.LiczbaUp).ThenByDescending(k => (k.LiczbaUp - k.LiczbaDown)).ThenByDescending(k => k.DataDodania),
-                _ => query.OrderByDescending(k => k.DataDodania)
-            };
-
-            var items = await query
-                .Skip(skip)
-                .Take(take)
-                .Select(k => new KomentarzDto
-                {
-                    Id = k.IdKomentarz,
-                    Tresc = k.Tresc,
-                    Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
-                    Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
-                    Oferta = "",
-                    ParentId = k.ParentId,
-                    Up = k.LiczbaUp,
-                    Down = k.LiczbaDown,
-                    UserVote = userId != 0 ? _context.KomentarzGlosy.Where(g => g.IdKomentarz == k.IdKomentarz && g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null
-                })
-                .ToListAsync();
-
-            var result = new PagedResult<KomentarzDto>
-            {
-                Items = items,
-                Total = total,
-                Skip = skip,
-                Take = take
-            };
-            return Ok(result);
-        }
-
-        [HttpPost("komentarz/{id}/glos")]
-        [Authorize]
-    // Głosowanie na komentarz (toggle)
-    public async Task<ActionResult> VoteComment(int id, [FromBody] CommentVoteRequest request)
-        {
-            if (request == null || (request.Typ != "up" && request.Typ != "down"))
-                return BadRequest("Nieprawidłowy typ głosu.");
-
-            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-            var komentarz = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == id);
-            if (komentarz == null) return NotFound("Komentarz nie znaleziony.");
-
-            var existing = await _context.KomentarzGlosy.FirstOrDefaultAsync(g => g.IdKomentarz == id && g.IdUzytkownik == userId);
-            if (existing != null)
-            {
-                if (existing.TypGlosu == "up") komentarz.LiczbaUp--; else komentarz.LiczbaDown--;
-                _context.KomentarzGlosy.Remove(existing);
-                if (existing.TypGlosu == request.Typ)
-                {
-                    await _context.SaveChangesAsync();
-                    return Ok(new { komentarz.IdKomentarz, komentarz.LiczbaUp, komentarz.LiczbaDown, userVote = (string?)null });
+                    cena = parsedCenaLocal;
                 }
             }
 
-            var vote = new KomentarzGlos { IdKomentarz = id, IdUzytkownik = userId, TypGlosu = request.Typ, DataGlosu = DateTime.UtcNow };
-            _context.KomentarzGlosy.Add(vote);
-            if (request.Typ == "up") komentarz.LiczbaUp++; else komentarz.LiczbaDown++;
-            await _context.SaveChangesAsync();
-            return Ok(new { komentarz.IdKomentarz, komentarz.LiczbaUp, komentarz.LiczbaDown, userVote = request.Typ });
+            if (!string.IsNullOrEmpty(cenaPoprzeniaString))
+            {
+                if (decimal.TryParse(cenaPoprzeniaString, System.Globalization.NumberStyles.Number, 
+                    System.Globalization.CultureInfo.InvariantCulture, out var parsedCenaPoprzednia))
+                {
+                    cenaPoprzednia = parsedCenaPoprzednia;
+                }
+                else if (decimal.TryParse(cenaPoprzeniaString, out var parsedCenaPoprzeniaLocal))
+                {
+                    cenaPoprzednia = parsedCenaPoprzeniaLocal;
+                }
+            }
+
+            return (cena, cenaPoprzednia);
         }
 
-        // POST: api/oferta - Główny endpoint do tworzenia ofert
-        [HttpPost]
-        [Authorize]
-    // Tworzenie nowej oferty
-    public async Task<ActionResult<OfertaDto>> CreateOffer([FromBody] CreateOfferRequest request)
+        private static string ValidatePrices(decimal? cena, decimal? cenaPoprzednia)
         {
-            try
-            {
-                // 1. Walidacja użytkownika
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
-                if (userId == 0)
-                {
-                    return Unauthorized("Użytkownik nie jest zalogowany.");
-                }
-
-                // 2. Walidacja danych wejściowych
-                if (string.IsNullOrWhiteSpace(request.Tytul))
-                    return BadRequest("Tytuł jest wymagany.");
+            if (cena.HasValue && cena <= 0)
+                return "Cena musi być większa od 0.";
                 
-                if (string.IsNullOrWhiteSpace(request.Opis))
-                    return BadRequest("Opis jest wymagany.");
-                    
-                if (string.IsNullOrWhiteSpace(request.Kategoria))
-                    return BadRequest("Kategoria jest wymagana.");
+            if (cenaPoprzednia.HasValue && cenaPoprzednia <= 0)
+                return "Cena poprzednia musi być większa od 0.";
+                
+            if (cena.HasValue && cenaPoprzednia.HasValue && cena >= cenaPoprzednia)
+                return "Cena promocyjna powinna być niższa niż cena poprzednia.";
 
-                // 3. Normalizacja typu oferty
-                var typ = !string.IsNullOrEmpty(request.Typ) && 
-                         (request.Typ.ToLower() == "kupon" || request.Typ.ToLower() == "okazja") 
-                         ? request.Typ.ToLower() : "okazja";
-
-                // 3.5. Walidacja cen
-                if (request.Cena.HasValue && request.Cena <= 0)
-                    return BadRequest("Cena musi być większa od 0.");
-                    
-                if (request.CenaPoprzednia.HasValue && request.CenaPoprzednia <= 0)
-                    return BadRequest("Cena poprzednia musi być większa od 0.");
-                    
-                if (request.Cena.HasValue && request.CenaPoprzednia.HasValue && request.Cena >= request.CenaPoprzednia)
-                    return BadRequest("Cena promocyjna powinna być niższa niż cena poprzednia.");
-
-                // 4. Obsługa kategorii (znajdź lub utwórz)
-                var kategoria = await GetOrCreateCategory(request.Kategoria);
-
-                // 5. Tworzenie oferty
-                var oferta = new Oferta
-                {
-                    Nazwa = request.Tytul.Trim(),
-                    Typ = typ,
-                    Opis = request.Opis.Trim(),
-                    Cena = request.Cena,
-                    CenaPoprzednia = request.CenaPoprzednia,
-                    Kod = !string.IsNullOrEmpty(request.Kod) ? request.Kod.Trim() : null,
-                    Link = !string.IsNullOrEmpty(request.Sklep) ? request.Sklep.Trim() : string.Empty,
-                    IdKategoria = kategoria.IdKategoria,
-                    IdUzytkownik = userId,
-                    DataDodania = DateTime.UtcNow,
-                    Aktywna = true,
-                    Zatwierdzona = false, // Wymaga moderacji
-                    LiczbaHot = 0,
-                    LiczbaCold = 0
-                };
-
-                _context.Oferty.Add(oferta);
-                await _context.SaveChangesAsync();
-
-                // 6. Obsługa tagów
-                if (!string.IsNullOrWhiteSpace(request.Tagi))
-                {
-                    await AddTagsToOffer(oferta.IdOferta, request.Tagi);
-                }
-
-                // 7. Zwracanie odpowiedzi
-                var result = await CreateOfferResponse(oferta.IdOferta);
-                return CreatedAtAction(nameof(GetOffer), new { id = oferta.IdOferta }, result);
-            }
-            catch (Exception ex)
-            {
-                // Log błędu w produkcji
-                return BadRequest($"Wystąpił błąd podczas tworzenia oferty: {ex.Message}");
-            }
+            return string.Empty;
         }
 
-        // POST: api/oferta/kupon - Alias dla kuponów
-        [HttpPost("kupon")]
-        [Authorize]
-    // Tworzenie kuponu (alias)
-    public async Task<ActionResult<OfertaDto>> CreateCoupon([FromBody] CreateOfferRequest request)
+        private static string NormalizeOfferType(string? typ)
         {
-            request.Typ = "kupon";
-            return await CreateOffer(request);
+            return !string.IsNullOrEmpty(typ) && 
+                   (typ.ToLower() == "kupon" || typ.ToLower() == "okazja") 
+                   ? typ.ToLower() : "okazja";
         }
 
-        // Metoda pomocnicza - znajdź lub utwórz kategorię
-    // Szukanie lub tworzenie kategorii
+        private OfertaDto CreateOfertaDto(Oferta oferta, int currentUserId)
+        {
+            return new OfertaDto
+            {
+                Id = oferta.IdOferta,
+                Tytul = oferta.Nazwa,
+                Opis = oferta.Opis,
+                Typ = oferta.Typ,
+                Cena = oferta.Cena,
+                CenaPoprzednia = oferta.CenaPoprzednia,
+                Kod = oferta.Kod,
+                Sklep = oferta.Link,
+                Kategoria = oferta.Kategoria?.Nazwa ?? "Inne",
+                Tagi = oferta.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
+                Autor = oferta.Uzytkownik.UserName ?? "Nieznany",
+                DataUtworzenia = oferta.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                Votes = new VotesDto { Hot = oferta.LiczbaHot, Cold = oferta.LiczbaCold },
+                Komentarze = oferta.Komentarze.Count,
+                UserVote = currentUserId != 0 ? oferta.Glosy.Where(g => g.IdUzytkownik == currentUserId).Select(g => g.TypGlosu).FirstOrDefault() : null,
+                Zdjecia = oferta.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList(),
+                AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(oferta.IdUzytkownik)
+            };
+        }
+
         private async Task<Kategoria> GetOrCreateCategory(string nazwaKategorii)
         {
             var raw = (nazwaKategorii ?? string.Empty).Trim();
             if (raw.Length == 0) raw = "Inne";
-            // Normalizacja: pierwsza litera wielka, reszta jak była (prosto)
             var normalized = char.ToUpper(raw[0]) + (raw.Length > 1 ? raw.Substring(1) : string.Empty);
             var lower = raw.ToLower();
 
-            // Szukam case-insensitive
             var kategoria = await _context.Kategorie
                 .FirstOrDefaultAsync(k => k.Nazwa.ToLower() == lower);
 
@@ -545,14 +165,11 @@ namespace TechPromo.Api.Controllers
             return kategoria;
         }
 
-        // Metoda pomocnicza - dodawanie tagów
-    // Dodawanie tagów do oferty
-    private async Task AddTagsToOffer(int ofertaId, string tagiString)
+        private async Task AddTagsToOffer(int ofertaId, string tagiString)
         {
             var tagNames = tagiString.Split(',', StringSplitOptions.RemoveEmptyEntries)
                 .Select(t => t.Trim())
-                .Where(t => !string.IsNullOrEmpty(t))
-                .Where(t => t.Length <= 50)
+                .Where(t => !string.IsNullOrEmpty(t) && t.Length <= 50)
                 .Distinct()
                 .ToList();
 
@@ -566,24 +183,17 @@ namespace TechPromo.Api.Controllers
                     await _context.SaveChangesAsync();
                 }
 
-                // Sprawdź czy powiązanie już istnieje
                 var existingConnection = await _context.OfertaTagi
                     .FirstOrDefaultAsync(ot => ot.IdOferta == ofertaId && ot.IdTag == tag.IdTag);
                     
                 if (existingConnection == null)
                 {
-                    var ofertaTag = new OfertaTag
-                    {
-                        IdOferta = ofertaId,
-                        IdTag = tag.IdTag
-                    };
-                    _context.OfertaTagi.Add(ofertaTag);
+                    _context.OfertaTagi.Add(new OfertaTag { IdOferta = ofertaId, IdTag = tag.IdTag });
                 }
             }
             await _context.SaveChangesAsync();
         }
 
-        // Metoda pomocnicza - tworzenie odpowiedzi
         private async Task<OfertaDto?> CreateOfferResponse(int ofertaId)
         {
             var data = await _context.Oferty
@@ -623,221 +233,607 @@ namespace TechPromo.Api.Controllers
             return dto;
         }
 
-        // POST: api/oferta/upload - Endpoint z obsługą FormData i plików
+        private FormDataModel ExtractFormData()
+        {
+            return new FormDataModel
+            {
+                Tytul = Request.Form["tytul"].ToString().Trim(),
+                Opis = Request.Form["opis"].ToString().Trim(),
+                Kategoria = Request.Form["kategoria"].ToString().Trim(),
+                Typ = Request.Form["typ"].ToString().Trim(),
+                CenaString = Request.Form["cena"].ToString(),
+                CenaPoprzeniaString = Request.Form["cenaPoprzednia"].ToString(),
+                Kod = Request.Form["kod"].ToString().Trim(),
+                Sklep = Request.Form["sklep"].ToString().Trim(),
+                Tagi = Request.Form["tagi"].ToString().Trim(),
+                Zdjecia = Request.Form.Files.GetFiles("zdjecia").ToList()
+            };
+        }
+
+        private static string ValidateFormData(FormDataModel data)
+        {
+            if (string.IsNullOrEmpty(data.Tytul))
+                return "Tytuł jest wymagany.";
+            if (string.IsNullOrEmpty(data.Opis))
+                return "Opis jest wymagany.";
+            if (string.IsNullOrEmpty(data.Kategoria))
+                return "Kategoria jest wymagana.";
+
+            if (data.Tytul.Length > 100) return "Tytuł nie może być dłuższy niż 100 znaków.";
+            if (data.Opis.Length > 2000) return "Opis nie może być dłuższy niż 2000 znaków.";
+            if (data.Kategoria.Length > 50) return "Kategoria nie może być dłuższa niż 50 znaków.";
+            if (!string.IsNullOrEmpty(data.Sklep) && data.Sklep.Length > 300) return "Link nie może być dłuższy niż 300 znaków.";
+            if (!string.IsNullOrEmpty(data.Kod) && data.Kod.Length > 50) return "Kod nie może być dłuższy niż 50 znaków.";
+            if (!string.IsNullOrEmpty(data.Tagi) && data.Tagi.Length > 200) return "Tagi nie mogą być dłuższe niż 200 znaków.";
+
+            return string.Empty;
+        }
+
+        private async Task<string> ProcessImageUploads(int ofertaId, List<IFormFile> zdjecia)
+        {
+            const int MAX_FILES = 5;
+            const long MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
+            var allowedExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+
+            if (zdjecia.Count > MAX_FILES)
+                return $"Maksymalnie {MAX_FILES} zdjęć.";
+
+            var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "oferty");
+            if (!Directory.Exists(uploadDir))
+                Directory.CreateDirectory(uploadDir);
+
+            int kolejnosc = 1;
+            foreach (var file in zdjecia)
+            {
+                if (file.Length == 0) continue;
+                if (file.Length > MAX_FILE_BYTES)
+                    return $"Plik {file.FileName} jest za duży (limit 5MB).";
+
+                var ext = Path.GetExtension(file.FileName);
+                if (string.IsNullOrEmpty(ext) || !allowedExt.Contains(ext))
+                    return $"Niedozwolony format pliku: {file.FileName}.";
+
+                if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                    return $"Plik {file.FileName} nie jest obrazem.";
+
+                var baseName = Path.GetFileNameWithoutExtension(file.FileName);
+                var safeBase = new string(baseName.Where(char.IsLetterOrDigit).ToArray());
+                if (string.IsNullOrWhiteSpace(safeBase)) safeBase = "img";
+                var fileName = $"{Guid.NewGuid()}_{safeBase}{ext.ToLowerInvariant()}";
+                var filePath = Path.Combine(uploadDir, fileName);
+
+                using var stream = new FileStream(filePath, FileMode.Create);
+                await file.CopyToAsync(stream);
+
+                _context.OfertyZdjecia.Add(new OfertaZdjecie
+                {
+                    IdOferta = ofertaId,
+                    UrlZdjecia = $"/uploads/oferty/{fileName}",
+                    Kolejnosc = kolejnosc++
+                });
+            }
+            
+            await _context.SaveChangesAsync();
+            return string.Empty;
+        }
+
+        #endregion
+
+        #region Endpointy API
+
+        /// <summary>
+        /// Pobiera listę aktywnych ofert z możliwością filtrowania i sortowania
+        /// </summary>
+        [HttpGet]
+        public async Task<ActionResult<PagedResult<OfertaDto>>> GetOffers(
+            [FromQuery] string? kategoria = null,
+            [FromQuery] string? tag = null,
+            [FromQuery] string? sortBy = "newest",
+            [FromQuery] int skip = 0,
+            [FromQuery] int take = 30)
+        {
+            if (take > 100) take = 100;
+            
+            var query = _context.Oferty
+                .Where(o => o.Aktywna && o.Zatwierdzona)
+                .Include(o => o.Uzytkownik)
+                .Include(o => o.Kategoria)
+                .Include(o => o.Zdjecia)
+                .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
+                .Include(o => o.Glosy)
+                .Include(o => o.Komentarze)
+                .AsQueryable();
+
+            // Filtrowanie
+            if (!string.IsNullOrEmpty(kategoria))
+            {
+                var katLower = kategoria.ToLower();
+                query = query.Where(o => o.Kategoria != null && o.Kategoria.Nazwa.ToLower() == katLower);
+            }
+
+            if (!string.IsNullOrEmpty(tag))
+            {
+                query = query.Where(o => o.OfertaTagi.Any(ot => ot.Tag.Nazwa.Contains(tag)));
+            }
+
+            // Sortowanie
+            query = sortBy switch
+            {
+                "hot" => query.OrderByDescending(o => o.LiczbaHot - o.LiczbaCold),
+                "price" => query.OrderBy(o => o.Cena ?? decimal.MaxValue),
+                _ => query.OrderByDescending(o => o.DataDodania)
+            };
+
+            var userId = GetCurrentUserId();
+            var total = await query.CountAsync();
+
+            var offers = await query
+                .Skip(skip)
+                .Take(take)
+                .ToListAsync();
+
+            var result = new PagedResult<OfertaDto>
+            {
+                Items = offers.Select(o => CreateOfertaDto(o, userId)).ToList(),
+                Total = total,
+                Skip = skip,
+                Take = take
+            };
+
+            return Ok(result);
+        }
+
+        /// <summary>
+        /// Pobiera szczegóły pojedynczej oferty
+        /// </summary>
+        [HttpGet("{id}")]
+        public async Task<ActionResult<OfertaDto>> GetOffer(int id)
+        {
+            var userId = GetCurrentUserId();
+            var bypassRoles = User.IsInRole("Admin") || User.IsInRole("Moderator");
+
+            var oferta = await _context.Oferty
+                .Where(o => o.IdOferta == id && (o.Aktywna && o.Zatwierdzona || bypassRoles || o.IdUzytkownik == userId))
+                .Include(o => o.Uzytkownik)
+                .Include(o => o.Kategoria)
+                .Include(o => o.Zdjecia)
+                .Include(o => o.OfertaTagi).ThenInclude(ot => ot.Tag)
+                .Include(o => o.Glosy)
+                .Include(o => o.Komentarze)
+                .FirstOrDefaultAsync();
+
+            if (oferta == null)
+                return NotFound("Oferta nie została znaleziona.");
+
+            var dto = CreateOfertaDto(oferta, userId);
+            
+            // Dodaj informację o statusie do nagłówka odpowiedzi
+            if (!oferta.Zatwierdzona)
+                Response.Headers["X-Draft"] = "true";
+
+            return Ok(dto);
+        }
+
+        /// <summary>
+        /// Dodaje nowy komentarz do oferty
+        /// </summary>
+        [HttpPost("{id}/komentarze")]
+        [Authorize]
+        public async Task<ActionResult<KomentarzDto>> AddComment(int id, [FromBody] CreateCommentRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Tresc))
+                return BadRequest("Treść komentarza jest wymagana.");
+
+            var userId = GetCurrentUserId();
+            if (userId == 0) return Unauthorized();
+
+            var oferta = await _context.Oferty.FirstOrDefaultAsync(o => o.IdOferta == id && o.Aktywna && o.Zatwierdzona);
+            if (oferta == null)
+                return NotFound("Oferta nie istnieje lub nie została zatwierdzona.");
+
+            // Walidacja rodzica (opcjonalna)
+            if (request.ParentId.HasValue)
+            {
+                var parent = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == request.ParentId.Value);
+                if (parent == null || parent.IdOferta != oferta.IdOferta)
+                    return BadRequest("Nieprawidłowy parentId.");
+            }
+
+            var komentarz = new Komentarz
+            {
+                IdOferta = oferta.IdOferta,
+                IdUzytkownik = userId,
+                Tresc = request.Tresc.Trim(),
+                DataDodania = DateTime.UtcNow,
+                Status = "aktywny",
+                ParentId = request.ParentId
+            };
+
+            _context.Komentarze.Add(komentarz);
+
+            // Dodaj punkty użytkownikowi
+            var user = await _userManager.FindByIdAsync(userId.ToString());
+            if (user != null)
+            {
+                user.Punkty += 2;
+                await _userManager.UpdateAsync(user);
+            }
+
+            await _context.SaveChangesAsync();
+            await _badgeService.EvaluateForUserAsync(userId);
+
+            var result = await _context.Komentarze
+                .Where(k => k.IdKomentarz == komentarz.IdKomentarz)
+                .Include(k => k.Uzytkownik)
+                .Select(k => new KomentarzDto
+                {
+                    Id = k.IdKomentarz,
+                    Tresc = k.Tresc,
+                    Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
+                    Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                    Oferta = string.Empty,
+                    ParentId = k.ParentId,
+                    Up = k.LiczbaUp,
+                    Down = k.LiczbaDown,
+                    UserVote = null
+                }).FirstOrDefaultAsync();
+
+            return Created($"/api/oferta/{id}/komentarze/{komentarz.IdKomentarz}", result);
+        }
+
+        // GET: api/oferta/kategorie
+        [HttpGet("kategorie")]
+        public async Task<ActionResult<IEnumerable<string>>> GetCategories()
+        {
+            var categories = await _context.Kategorie
+                .Select(k => k.Nazwa)
+                .OrderBy(n => n)
+                .ToListAsync();
+
+            return Ok(categories);
+        }
+
+        // GET: api/oferta/tagi
+        [HttpGet("tagi")]
+        public async Task<ActionResult<IEnumerable<string>>> GetTags()
+        {
+            var tags = await _context.Tagi
+                .Select(t => t.Nazwa)
+                .OrderBy(n => n)
+                .Take(50)
+                .ToListAsync();
+
+            return Ok(tags);
+        }
+
+        // GET: api/oferta/{id}/komentarze
+        [HttpGet("{id}/komentarze")]
+        public async Task<ActionResult<PagedResult<KomentarzDto>>> GetOfferComments(
+            int id,
+            [FromQuery] int skip = 0,
+            [FromQuery] int take = 20,
+            [FromQuery] string sort = "newest")
+        {
+            if (take > 100) take = 100;
+            
+            var baseQuery = _context.Komentarze.Where(k => k.IdOferta == id);
+            var total = await baseQuery.CountAsync();
+            var userId = GetCurrentUserId();
+
+            IQueryable<Komentarz> query = baseQuery.Include(k => k.Uzytkownik);
+            query = sort switch
+            {
+                "oldest" => query.OrderBy(k => k.DataDodania),
+                "helpful" => query.OrderByDescending(k => (k.LiczbaUp - k.LiczbaDown)).ThenByDescending(k => k.DataDodania),
+                "best" => query.OrderByDescending(k => k.LiczbaUp).ThenByDescending(k => (k.LiczbaUp - k.LiczbaDown)).ThenByDescending(k => k.DataDodania),
+                _ => query.OrderByDescending(k => k.DataDodania)
+            };
+
+            var items = await query
+                .Skip(skip)
+                .Take(take)
+                .Select(k => new KomentarzDto
+                {
+                    Id = k.IdKomentarz,
+                    Tresc = k.Tresc,
+                    Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
+                    Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                    Oferta = "",
+                    ParentId = k.ParentId,
+                    Up = k.LiczbaUp,
+                    Down = k.LiczbaDown,
+                    UserVote = userId != 0 ? _context.KomentarzGlosy.Where(g => g.IdKomentarz == k.IdKomentarz && g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null
+                })
+                .ToListAsync();
+
+            return Ok(new PagedResult<KomentarzDto>
+            {
+                Items = items,
+                Total = total,
+                Skip = skip,
+                Take = take
+            });
+        }
+
+        [HttpPost("komentarz/{id}/glos")]
+        [Authorize]
+        public async Task<ActionResult> VoteComment(int id, [FromBody] CommentVoteRequest request)
+        {
+            if (request == null || (request.Typ != "up" && request.Typ != "down"))
+                return BadRequest("Nieprawidłowy typ głosu.");
+
+            var userId = GetCurrentUserId();
+            var komentarz = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == id);
+            if (komentarz == null) return NotFound("Komentarz nie znaleziony.");
+
+            var existing = await _context.KomentarzGlosy.FirstOrDefaultAsync(g => g.IdKomentarz == id && g.IdUzytkownik == userId);
+            if (existing != null)
+            {
+                if (existing.TypGlosu == "up") komentarz.LiczbaUp--; else komentarz.LiczbaDown--;
+                _context.KomentarzGlosy.Remove(existing);
+                if (existing.TypGlosu == request.Typ)
+                {
+                    await _context.SaveChangesAsync();
+                    return Ok(new { komentarz.IdKomentarz, komentarz.LiczbaUp, komentarz.LiczbaDown, userVote = (string?)null });
+                }
+            }
+
+            var vote = new KomentarzGlos { IdKomentarz = id, IdUzytkownik = userId, TypGlosu = request.Typ, DataGlosu = DateTime.UtcNow };
+            _context.KomentarzGlosy.Add(vote);
+            if (request.Typ == "up") komentarz.LiczbaUp++; else komentarz.LiczbaDown++;
+            await _context.SaveChangesAsync();
+            return Ok(new { komentarz.IdKomentarz, komentarz.LiczbaUp, komentarz.LiczbaDown, userVote = request.Typ });
+        }
+
+        #endregion
+
+        // POST: api/oferta
+        [HttpPost]
+        [Authorize]
+        public async Task<ActionResult<OfertaDto>> CreateOffer([FromBody] CreateOfferRequest request)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == 0)
+                    return Unauthorized("Użytkownik nie jest zalogowany.");
+
+                // Walidacja podstawowa
+                if (string.IsNullOrWhiteSpace(request.Tytul))
+                    return BadRequest("Tytuł jest wymagany.");
+                if (string.IsNullOrWhiteSpace(request.Opis))
+                    return BadRequest("Opis jest wymagany.");
+                if (string.IsNullOrWhiteSpace(request.Kategoria))
+                    return BadRequest("Kategoria jest wymagana.");
+
+                // Walidacja cen
+                var priceValidation = ValidatePrices(request.Cena, request.CenaPoprzednia);
+                if (!string.IsNullOrEmpty(priceValidation))
+                    return BadRequest(priceValidation);
+
+                var typ = NormalizeOfferType(request.Typ);
+                var kategoria = await GetOrCreateCategory(request.Kategoria);
+
+                // Sprawdź czy użytkownik jest moderatorem/adminem
+                var isModerator = User.IsInRole("Moderator");
+                var isAdmin = User.IsInRole("Admin");
+
+                var oferta = new Oferta
+                {
+                    Nazwa = request.Tytul.Trim(),
+                    Typ = typ,
+                    Opis = request.Opis.Trim(),
+                    Cena = request.Cena,
+                    CenaPoprzednia = request.CenaPoprzednia,
+                    Kod = !string.IsNullOrEmpty(request.Kod) ? request.Kod.Trim() : null,
+                    Link = !string.IsNullOrEmpty(request.Sklep) ? request.Sklep.Trim() : string.Empty,
+                    IdKategoria = kategoria.IdKategoria,
+                    IdUzytkownik = userId,
+                    DataDodania = DateTime.UtcNow,
+                    Aktywna = true,
+                    Zatwierdzona = isModerator || isAdmin, // Moderatorzy i admini mają auto-zatwierdzenie
+                    LiczbaHot = 0,
+                    LiczbaCold = 0
+                };
+
+                _context.Oferty.Add(oferta);
+                await _context.SaveChangesAsync();
+
+                if (!string.IsNullOrWhiteSpace(request.Tagi))
+                {
+                    await AddTagsToOffer(oferta.IdOferta, request.Tagi);
+                }
+
+                var result = await CreateOfferResponse(oferta.IdOferta);
+                return CreatedAtAction(nameof(GetOffer), new { id = oferta.IdOferta }, result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"Wystąpił błąd podczas tworzenia oferty: {ex.Message}");
+            }
+        }
+
+        // POST: api/oferta/kupon - Alias dla kuponów
+        [HttpPost("kupon")]
+        [Authorize]
+        public async Task<ActionResult<OfertaDto>> CreateCoupon([FromBody] CreateOfferRequest request)
+        {
+            request.Typ = "kupon";
+            return await CreateOffer(request);
+        }
+
+        // POST: api/oferta/upload
         [HttpPost("upload")]
         [Authorize]
         public async Task<ActionResult<OfertaDto>> CreateOfferWithFiles()
         {
             try
             {
-                // 1. Walidacja użytkownika
-                var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+                var userId = GetCurrentUserId();
                 if (userId == 0)
-                {
                     return Unauthorized("Użytkownik nie jest zalogowany.");
-                }
 
-                // 2. Pobranie danych z FormData
-                var tytul = Request.Form["tytul"].ToString().Trim();
-                var opis = Request.Form["opis"].ToString().Trim();
-                var kategoria = Request.Form["kategoria"].ToString().Trim();
-                var typ = Request.Form["typ"].ToString().Trim();
+                // Pobranie danych z FormData
+                var formData = ExtractFormData();
                 
-                // Opcjonalne pola
-                var cenaString = Request.Form["cena"].ToString();
-                var cenaPoprzeniaString = Request.Form["cenaPoprzednia"].ToString();
-                var kod = Request.Form["kod"].ToString().Trim();
-                var sklep = Request.Form["sklep"].ToString().Trim();
-                var tagi = Request.Form["tagi"].ToString().Trim();
-                var zdjecia = Request.Form.Files.GetFiles("zdjecia");
+                // Walidacja podstawowa
+                var validation = ValidateFormData(formData);
+                if (!string.IsNullOrEmpty(validation))
+                    return BadRequest(validation);
 
-                // 3. Walidacja podstawowa
-                if (string.IsNullOrEmpty(tytul))
-                    return BadRequest("Tytuł jest wymagany.");
-                
-                if (string.IsNullOrEmpty(opis))
-                    return BadRequest("Opis jest wymagany.");
-                    
-                if (string.IsNullOrEmpty(kategoria))
-                    return BadRequest("Kategoria jest wymagana.");
+                // Parsowanie i walidacja cen
+                var (cena, cenaPoprzednia) = ParsePrices(formData.CenaString, formData.CenaPoprzeniaString);
+                var priceValidation = ValidatePrices(cena, cenaPoprzednia);
+                if (!string.IsNullOrEmpty(priceValidation))
+                    return BadRequest(priceValidation);
 
-                // Dodatkowa walidacja długości (symetria z CreateOfferRequest)
-                if (tytul.Length > 100) return BadRequest("Tytuł nie może być dłuższy niż 100 znaków.");
-                if (opis.Length > 2000) return BadRequest("Opis nie może być dłuższy niż 2000 znaków.");
-                if (kategoria.Length > 50) return BadRequest("Kategoria nie może być dłuższa niż 50 znaków.");
-                if (!string.IsNullOrEmpty(sklep) && sklep.Length > 300) return BadRequest("Link nie może być dłuższy niż 300 znaków.");
-                if (!string.IsNullOrEmpty(kod) && kod.Length > 50) return BadRequest("Kod nie może być dłuższy niż 50 znaków.");
-                if (!string.IsNullOrEmpty(tagi) && tagi.Length > 200) return BadRequest("Tagi nie mogą być dłuższe niż 200 znaków.");
+                var typ = NormalizeOfferType(formData.Typ);
+                var kategoriaEntity = await GetOrCreateCategory(formData.Kategoria);
 
-                // 4. Parsowanie cen - użycie kultury niezmiennej dla bezpiecznego parsowania
-                decimal? cena = null;
-                decimal? cenaPoprzednia = null;
-                
-                if (!string.IsNullOrEmpty(cenaString))
-                {
-                    // Próbuj z kulturą niezmienną (kropka jako separator dziesiętny)
-                    if (decimal.TryParse(cenaString, System.Globalization.NumberStyles.Number, 
-                        System.Globalization.CultureInfo.InvariantCulture, out var parsedCena))
-                    {
-                        cena = parsedCena;
-                    }
-                    // Jeśli nie, próbuj z kulturą lokalną (przecinek jako separator)
-                    else if (decimal.TryParse(cenaString, out var parsedCenaLocal))
-                    {
-                        cena = parsedCenaLocal;
-                    }
-                }
-                    
-                if (!string.IsNullOrEmpty(cenaPoprzeniaString))
-                {
-                    // Próbuj z kulturą niezmienną (kropka jako separator dziesiętny)
-                    if (decimal.TryParse(cenaPoprzeniaString, System.Globalization.NumberStyles.Number, 
-                        System.Globalization.CultureInfo.InvariantCulture, out var parsedCenaPoprzednia))
-                    {
-                        cenaPoprzednia = parsedCenaPoprzednia;
-                    }
-                    // Jeśli nie, próbuj z kulturą lokalną (przecinek jako separator)
-                    else if (decimal.TryParse(cenaPoprzeniaString, out var parsedCenaPoprzeniaLocal))
-                    {
-                        cenaPoprzednia = parsedCenaPoprzeniaLocal;
-                    }
-                }
+                // Sprawdź czy użytkownik jest moderatorem/adminem
+                var isModerator = User.IsInRole("Moderator");
+                var isAdmin = User.IsInRole("Admin");
 
-                // 5. Normalizacja typu
-                typ = !string.IsNullOrEmpty(typ) && 
-                     (typ.ToLower() == "kupon" || typ.ToLower() == "okazja") 
-                     ? typ.ToLower() : "okazja";
-
-                // 6. Walidacja cen (dodatkowa sprawdzenie logiki)
-                if (cena.HasValue && cena <= 0)
-                    return BadRequest("Cena musi być większa od 0.");
-                    
-                if (cenaPoprzednia.HasValue && cenaPoprzednia <= 0)
-                    return BadRequest("Cena poprzednia musi być większa od 0.");
-                    
-                if (cena.HasValue && cenaPoprzednia.HasValue && cena >= cenaPoprzednia)
-                    return BadRequest("Cena promocyjna powinna być niższa niż cena poprzednia.");
-
-                // 7. Obsługa kategorii
-                var kategoriaEntity = await GetOrCreateCategory(kategoria);
-
-                // 8. Tworzenie oferty
                 var oferta = new Oferta
                 {
-                    Nazwa = tytul,
-                    Opis = opis,
+                    Nazwa = formData.Tytul,
+                    Opis = formData.Opis,
                     Typ = typ,
                     Cena = cena,
                     CenaPoprzednia = cenaPoprzednia,
-                    Kod = !string.IsNullOrEmpty(kod) ? kod : null,
-                    Link = !string.IsNullOrEmpty(sklep) ? sklep : string.Empty,
+                    Kod = !string.IsNullOrEmpty(formData.Kod) ? formData.Kod : null,
+                    Link = !string.IsNullOrEmpty(formData.Sklep) ? formData.Sklep : string.Empty,
                     IdKategoria = kategoriaEntity.IdKategoria,
                     IdUzytkownik = userId,
                     DataDodania = DateTime.UtcNow,
                     LiczbaHot = 0,
                     LiczbaCold = 0,
                     Aktywna = true,
-                    Zatwierdzona = false
+                    Zatwierdzona = isModerator || isAdmin // Moderatorzy i admini mają auto-zatwierdzenie
                 };
 
                 _context.Oferty.Add(oferta);
-                try
+                await _context.SaveChangesAsync();
+
+                // Obsługa zdjęć
+                if (formData.Zdjecia.Count > 0)
                 {
-                    await _context.SaveChangesAsync();
-                }
-                catch (DbUpdateException dbEx)
-                {
-                    var inner = dbEx.InnerException?.Message;
-                    return StatusCode(500, $"Błąd bazy danych (etap: oferta) : {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
-                }
-
-                // 9. Obsługa zdjęć (walidacja podstawowa)
-                if (zdjecia.Count > 0)
-                {
-                    const int MAX_FILES = 5;
-                    const long MAX_FILE_BYTES = 5 * 1024 * 1024; // 5 MB
-                    var allowedExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
-
-                    if (zdjecia.Count > MAX_FILES)
-                        return BadRequest($"Maksymalnie {MAX_FILES} zdjęć.");
-
-                    var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "oferty");
-                    if (!Directory.Exists(uploadDir))
-                        Directory.CreateDirectory(uploadDir);
-
-                    int kolejnosc = 1;
-                    foreach (var file in zdjecia)
-                    {
-                        if (file.Length == 0) continue;
-                        if (file.Length > MAX_FILE_BYTES)
-                            return BadRequest($"Plik {file.FileName} jest za duży (limit 5MB).");
-
-                        var ext = Path.GetExtension(file.FileName);
-                        if (string.IsNullOrEmpty(ext) || !allowedExt.Contains(ext))
-                            return BadRequest($"Niedozwolony format pliku: {file.FileName}.");
-
-                        // Opcjonalne sprawdzenie MIME (najprostsza weryfikacja)
-                        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
-                            return BadRequest($"Plik {file.FileName} nie jest obrazem.");
-
-                        var baseName = Path.GetFileNameWithoutExtension(file.FileName);
-                        // Sanitizacja – tylko litery/cyfry
-                        var safeBase = new string(baseName.Where(char.IsLetterOrDigit).ToArray());
-                        if (string.IsNullOrWhiteSpace(safeBase)) safeBase = "img";
-                        var fileName = $"{Guid.NewGuid()}_{safeBase}{ext.ToLowerInvariant()}";
-                        var filePath = Path.Combine(uploadDir, fileName);
-
-                        using (var stream = new FileStream(filePath, FileMode.Create))
-                        {
-                            await file.CopyToAsync(stream);
-                        }
-
-                        var zdjecie = new OfertaZdjecie
-                        {
-                            IdOferta = oferta.IdOferta,
-                            UrlZdjecia = $"/uploads/oferty/{fileName}",
-                            Kolejnosc = kolejnosc++
-                        };
-                        _context.OfertyZdjecia.Add(zdjecie);
-                    }
-                    try
-                    {
-                        await _context.SaveChangesAsync();
-                    }
-                    catch (DbUpdateException dbEx)
-                    {
-                        var inner = dbEx.InnerException?.Message;
-                        return StatusCode(500, $"Błąd bazy danych (etap: zdjęcia) : {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
-                    }
+                    var uploadResult = await ProcessImageUploads(oferta.IdOferta, formData.Zdjecia);
+                    if (!string.IsNullOrEmpty(uploadResult))
+                        return BadRequest(uploadResult);
                 }
 
-                // 10. Obsługa tagów
-                if (!string.IsNullOrEmpty(tagi))
+                // Obsługa tagów
+                if (!string.IsNullOrEmpty(formData.Tagi))
                 {
-                    try
-                    {
-                        await AddTagsToOffer(oferta.IdOferta, tagi);
-                    }
-                    catch (DbUpdateException dbEx)
-                    {
-                        var inner = dbEx.InnerException?.Message;
-                        return StatusCode(500, $"Błąd bazy danych (etap: tagi) : {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
-                    }
+                    await AddTagsToOffer(oferta.IdOferta, formData.Tagi);
                 }
 
-                // 11. Zwracanie wyniku
                 var result = await CreateOfferResponse(oferta.IdOferta);
                 return result != null ? Ok(result) : BadRequest("Błąd podczas tworzenia odpowiedzi");
 
             }
-            catch (DbUpdateException dbEx)
+            catch (Exception ex)
             {
-                var inner = dbEx.InnerException?.Message;
-                return StatusCode(500, $"Błąd bazy danych: {dbEx.Message}{(inner != null ? " | Szczegóły: " + inner : string.Empty)}");
+                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+            }
+        }
+
+        // PUT: api/oferta/{id}/upload - Edycja oferty z plikami
+        [HttpPut("{id}/upload")]
+        [Authorize]
+        public async Task<ActionResult<OfertaDto>> UpdateOfferWithFiles(int id)
+        {
+            try
+            {
+                var userId = GetCurrentUserId();
+                if (userId == 0)
+                    return Unauthorized("Użytkownik nie jest zalogowany.");
+
+                // Sprawdź czy oferta istnieje
+                var oferta = await _context.Oferty.FindAsync(id);
+                if (oferta == null)
+                    return NotFound("Oferta nie została znaleziona.");
+
+                // Sprawdź uprawnienia
+                var isOwner = oferta.IdUzytkownik == userId;
+                var isModerator = User.IsInRole("Moderator");
+                var isAdmin = User.IsInRole("Admin");
+
+                if (!isOwner && !isModerator && !isAdmin)
+                    return Forbid("Brak uprawnień do edycji tej oferty.");
+
+                // Pobranie danych z FormData
+                var formData = ExtractFormData();
+                
+                // Walidacja podstawowa
+                var validation = ValidateFormData(formData);
+                if (!string.IsNullOrEmpty(validation))
+                    return BadRequest(validation);
+
+                // Parsowanie i walidacja cen
+                var (cena, cenaPoprzednia) = ParsePrices(formData.CenaString, formData.CenaPoprzeniaString);
+                var priceValidation = ValidatePrices(cena, cenaPoprzednia);
+                if (!string.IsNullOrEmpty(priceValidation))
+                    return BadRequest(priceValidation);
+
+                // Sprawdź czy kategoria istnieje lub utwórz nową
+                var typ = NormalizeOfferType(formData.Typ);
+                var kategoriaEntity = await GetOrCreateCategory(formData.Kategoria);
+
+                // Aktualizuj ofertę
+                oferta.Nazwa = formData.Tytul;
+                oferta.Opis = formData.Opis;
+                oferta.Typ = typ;
+                oferta.Cena = cena;
+                oferta.CenaPoprzednia = cenaPoprzednia;
+                oferta.Kod = !string.IsNullOrEmpty(formData.Kod) ? formData.Kod : null;
+                oferta.Link = !string.IsNullOrEmpty(formData.Sklep) ? formData.Sklep : string.Empty;
+                oferta.IdKategoria = kategoriaEntity.IdKategoria;
+
+                // Logika zatwierdzenia:
+                // - Jeśli zwykły użytkownik edytuje swoją ofertę -> wymaga ponownej moderacji
+                // - Jeśli moderator/admin edytuje jakąkolwiek ofertę -> nie wymaga zatwierdzenia
+                if (isOwner && !isModerator && !isAdmin)
+                {
+                    // Zwykły użytkownik edytuje swoją ofertę - wymaga ponownej moderacji
+                    oferta.Zatwierdzona = false;
+                    oferta.Aktywna = true;
+                }
+                else
+                {
+                    // Moderator/Admin edytuje ofertę - nie wymaga zatwierdzenia
+                    oferta.Zatwierdzona = true;
+                    oferta.Aktywna = true;
+                }
+
+                await _context.SaveChangesAsync();
+
+                // Obsługa zdjęć
+                if (formData.Zdjecia.Count > 0)
+                {
+                    await ProcessImageUploads(oferta.IdOferta, formData.Zdjecia);
+                }
+
+                // Obsługa tagów
+                if (!string.IsNullOrEmpty(formData.Tagi))
+                {
+                    // Usuń stare tagi
+                    var stareTagi = await _context.OfertaTagi.Where(to => to.IdOferta == oferta.IdOferta).ToListAsync();
+                    _context.OfertaTagi.RemoveRange(stareTagi);
+                    await _context.SaveChangesAsync();
+
+                    // Dodaj nowe tagi
+                    await AddTagsToOffer(oferta.IdOferta, formData.Tagi);
+                }
+
+                var result = await CreateOfferResponse(oferta.IdOferta);
+                return result != null ? Ok(result) : BadRequest("Błąd podczas tworzenia odpowiedzi");
+
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}{(ex.InnerException != null ? " | Szczegóły: " + ex.InnerException.Message : string.Empty)}");
+                return StatusCode(500, $"Błąd serwera: {ex.Message}");
             }
         }
     }
@@ -891,5 +887,19 @@ namespace TechPromo.Api.Controllers
         [Required]
         [RegularExpression("^(up|down)$", ErrorMessage = "Typ musi być 'up' lub 'down'")]
         public string Typ { get; set; } = "up";
+    }
+
+    public class FormDataModel
+    {
+        public string Tytul { get; set; } = string.Empty;
+        public string Opis { get; set; } = string.Empty;
+        public string Kategoria { get; set; } = string.Empty;
+        public string Typ { get; set; } = string.Empty;
+        public string CenaString { get; set; } = string.Empty;
+        public string CenaPoprzeniaString { get; set; } = string.Empty;
+        public string Kod { get; set; } = string.Empty;
+        public string Sklep { get; set; } = string.Empty;
+        public string Tagi { get; set; } = string.Empty;
+        public List<IFormFile> Zdjecia { get; set; } = new();
     }
 }

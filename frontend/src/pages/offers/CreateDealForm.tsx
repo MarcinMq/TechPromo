@@ -145,7 +145,8 @@ const CreateDealForm: React.FC = () => {
         let putUrl = '';
         let payload: any = {};
 
-        if (role === 'Admin') {
+        if (role === 'Admin' || role === 'Moderator') {
+          // Ujednolicamy ścieżkę edycji – Moderator używa tego samego endpointu co Admin
           putUrl = `/api/admin/oferta/${editId}`;
           payload = {
             tytul: formData.tytul.trim(),
@@ -153,14 +154,8 @@ const CreateDealForm: React.FC = () => {
             cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
             cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
             kod: null,
-            link: formData.sklep.trim() || null
-          };
-        } else if (role === 'Moderator') {
-          putUrl = `/api/moderator/oferta/${editId}/edytuj`;
-          payload = {
-            nowyTytul: formData.tytul.trim(),
-            nowyOpis: formData.opis.trim(),
-            powod: 'Aktualizacja treści przez moderatora'
+            // Wysyłamy pusty string, jeśli pole jest puste – pozwala to wyczyścić link w backendzie
+            link: formData.sklep !== undefined ? formData.sklep.trim() : ''
           };
         } else { // User
           putUrl = `/api/uzytkownik/oferta/${editId}`;
@@ -170,6 +165,7 @@ const CreateDealForm: React.FC = () => {
             cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
             cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
             kod: null,
+            // Dla użytkownika pozostawiamy dotychczasowe zachowanie
             link: formData.sklep.trim() || null
           };
         }

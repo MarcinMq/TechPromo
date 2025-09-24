@@ -40,7 +40,7 @@ namespace TechPromo.Api.Services
             // Pobieram role użytkownika (Admin, Uzytkownik, etc.)
             var roles = await _userManager.GetRolesAsync(user);
             
-            // Claims = dane które będą w tokenie (jak dowód osobisty)
+            // Claims = dane które będą w tokenie 
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // ID użytkownika

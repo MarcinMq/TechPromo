@@ -22,12 +22,11 @@ interface Props {
   onSaved: () => void;
   uploadOnCreate?: boolean; // create with files
   offerId?: number; // when edit
-  admin?: boolean; // if admin uses JSON update endpoint
 }
 
 const categories = ['Telefony','Laptopy','Audio','TV','Gaming','Foto','Smartwatche','Tablety','PC','Akcesoria'];
 
-const FullOfferForm: React.FC<Props> = ({ initial, onClose, onSaved, uploadOnCreate = true, offerId, admin }) => {
+const FullOfferForm: React.FC<Props> = ({ initial, onClose, onSaved, uploadOnCreate = true, offerId }) => {
   const [form, setForm] = useState(initial);
   const [files, setFiles] = useState<File[]>([]);
   const [drag, setDrag] = useState(false);
@@ -81,7 +80,8 @@ const FullOfferForm: React.FC<Props> = ({ initial, onClose, onSaved, uploadOnCre
         if(form.typ==='kupon' && form.kod) payload.kod = form.kod.trim();
         if(form.sklep.trim()) { let url=form.sklep.trim(); if(!/^https?:\/\//i.test(url)) url='https://'+url; payload.link=url; }
         if(form.tagi.trim()) payload.tagi = form.tagi.trim();
-        const target = admin ? `/api/admin/oferta/${offerId}` : `/api/moderator/oferta/${offerId}/edytuj`;
+        // Moderator używa takiego samego endpointu jak Admin, aby zachować ten sam kontrakt DTO
+        const target = `/api/admin/oferta/${offerId}`;
         const res = await fetch(target,{method:'PUT', headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`}, body: JSON.stringify(payload)});
         if(!res.ok) throw new Error('Błąd zapisu');
       }

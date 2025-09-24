@@ -1,4 +1,3 @@
-// Admin: zarządzanie użytkownikami i ofertami
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -13,15 +12,18 @@ using TechPromo.Api.Services;
 
 namespace TechPromo.Api.Controllers
 {
+    /// <summary>
+    /// Kontroler administratora - zarządzanie użytkownikami, ofertami i systemem odznak
+    /// </summary>
     [ApiController]
-    [Route("admin")] // dodatkowy prefix dla wywołań bez /api
-    [Route("api/admin")] // oryginalny prefix
-    [Authorize(Roles = "Admin")] // Tylko administratorzy mogą używać tych endpointów
+    [Route("admin")]
+    [Route("api/admin")]
+    [Authorize(Roles = "Admin,Moderator")]
     public class AdminController : ControllerBase
     {
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly TechPromoDbContext _context;
-    private readonly IBadgeService _badgeService;
+        private readonly IBadgeService _badgeService;
 
     public AdminController(UserManager<Uzytkownik> userManager, TechPromoDbContext context, IBadgeService badgeService)
         {
@@ -30,8 +32,9 @@ namespace TechPromo.Api.Controllers
             _badgeService = badgeService;
         }
 
-        // Ręczne przyznawanie/odbieranie odznak zostało wyłączone – system działa automatycznie.
-
+        /// <summary>
+        /// Przelicza odznaki dla konkretnego użytkownika
+        /// </summary>
         [HttpPost("odznaki/przelicz/{id}")]
         public async Task<IActionResult> PrzeliczOdznakiUzytkownika(int id)
         {
@@ -99,6 +102,7 @@ namespace TechPromo.Api.Controllers
         }
 
         [HttpGet("uzytkownicy")]
+        [Authorize(Roles = "Admin")] // Tylko Admin może przeglądać wszystkich użytkowników
         public async Task<IActionResult> PobierzWszystkichUzytkownikow()
         {
             var uzytkownicy = await _context.Users.ToListAsync();
@@ -147,7 +151,7 @@ namespace TechPromo.Api.Controllers
             if (odznaka == null)
                 return NotFound("Nie znaleziono odznaki");
 
-            // Usuń wszystkie przyznane odznaki tego typu
+            
             var uzytkownikOdznaki = await _context.UzytkownikOdznaki
                 .Where(uo => uo.IdOdznaka == id)
                 .ToListAsync();
@@ -160,6 +164,7 @@ namespace TechPromo.Api.Controllers
         }
 
         [HttpPut("uzytkownik/{id}/punkty")]
+        [Authorize(Roles = "Admin")] // Tylko Admin może zmieniać punkty użytkowników
         public async Task<IActionResult> AktualizujPunktyUzytkownika(int id, [FromBody] AktualizujPunktyDto dto)
         {
             if (!ModelState.IsValid)
@@ -181,7 +186,7 @@ namespace TechPromo.Api.Controllers
         {
             // Pobierz wszystkie zgłoszenia użytkowników (oferty, komentarze, etc.)
             var zgloszenia = await _context.Powiadomienia
-                // Obsługujemy zarówno wpisy z diakrytykami jak i bez (historyczne)
+                
                 .Where(p => p.Typ == "Zgłoszenie" || p.Typ == "Zgloszenie") // Tylko zgłoszenia
                 .Include(p => p.Uzytkownik)
                 .Include(p => p.Oferta)
@@ -201,28 +206,6 @@ namespace TechPromo.Api.Controllers
                 .ToListAsync();
 
             return Ok(zgloszenia);
-        }
-
-        // Tymczasowy endpoint diagnostyczny: wylistuj wszystkie powiadomienia (do debugowania zgłoszeń)
-        // UWAGA: Usuń po rozwiązaniu problemu z widocznością zgłoszeń.
-        [HttpGet("_debug/powiadomienia")]
-        public async Task<IActionResult> DebugPowiadomienia()
-        {
-            var all = await _context.Powiadomienia
-                .OrderByDescending(p => p.IdPowiadomienie)
-                .Select(p => new {
-                    p.IdPowiadomienie,
-                    p.Typ,
-                    p.Tresc,
-                    p.IdKomentarz,
-                    p.IdOferta,
-                    p.IdUzytkownik,
-                    p.Przeczytane,
-                    p.DataUtworzenia
-                })
-                .Take(200)
-                .ToListAsync();
-            return Ok(all);
         }
 
         // === ZATWIERDZANIE/ODRZUCANIE ZGŁOSZEŃ ===
@@ -388,6 +371,7 @@ namespace TechPromo.Api.Controllers
         }
 
         [HttpPut("oferta/{id}")]
+        [Authorize(Roles = "Admin,Moderator")] // Pozwól też moderatorom edytować
         public async Task<IActionResult> AktualizujOferte(int id, [FromBody] UpdateOfertaDto dto)
         {
             try
@@ -498,6 +482,7 @@ namespace TechPromo.Api.Controllers
     // Usunięto duplikat endpointu EdytujOferte - używaj AktualizujOferte
 
         [HttpPut("uzytkownik/{id}/rola")]
+        [Authorize(Roles = "Admin")] // Tylko Admin może zmieniać role użytkowników
         public async Task<IActionResult> ZmienRoleUzytkownika(int id, [FromBody] ZmienRoleDto dto)
         {
             if (!ModelState.IsValid)
