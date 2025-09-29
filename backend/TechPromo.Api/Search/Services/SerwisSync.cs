@@ -5,9 +5,7 @@ using TechPromo.Api.Model;
 
 namespace TechPromo.Api.Search.Services
 {
-    /// <summary>
-    /// Serwis w tle do automatycznej synchronizacji ofert z Azure AI Search
-    /// </summary>
+    // Serwis synchronizacji z Azure AI Search
     public class SearchSyncService : BackgroundService
     {
         private readonly IServiceProvider _serviceProvider;
@@ -109,38 +107,20 @@ namespace TechPromo.Api.Search.Services
         }
     }
 
-    /// <summary>
-    /// Serwis do ręcznej synchronizacji ofert (używany przez kontrolery)
-    /// </summary>
+    // Interface ręcznej synchronizacji ofert
     public interface ISearchSyncManager
     {
-        /// <summary>
-        /// Synchronizuj konkretną ofertę z indeksem
-        /// </summary>
-        /// <param name="ofertaId">ID oferty</param>
-        /// <param name="cancellationToken">Token anulowania</param>
-        /// <returns>Wynik operacji</returns>
+        // Synchronizuj konkretną ofertę
         Task<bool> SyncOfertaAsync(int ofertaId, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Usuń ofertę z indeksu
-        /// </summary>
-        /// <param name="ofertaId">ID oferty</param>
-        /// <param name="cancellationToken">Token anulowania</param>
-        /// <returns>Wynik operacji</returns>
+        // Usuń ofertę z indeksu
         Task<bool> RemoveOfertaAsync(int ofertaId, CancellationToken cancellationToken = default);
 
-        /// <summary>
-        /// Pełna synchronizacja wszystkich ofert
-        /// </summary>
-        /// <param name="cancellationToken">Token anulowania</param>
-        /// <returns>Wynik operacji</returns>
+        // Pełna synchronizacja wszystkich ofert
         Task<bool> FullSyncAsync(CancellationToken cancellationToken = default);
     }
 
-    /// <summary>
-    /// Implementacja managera synchronizacji
-    /// </summary>
+    // Manager synchronizacji
     public class SearchSyncManager : ISearchSyncManager
     {
         private readonly ISerwisWyszukiwania _searchService;

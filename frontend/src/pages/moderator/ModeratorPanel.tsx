@@ -26,11 +26,15 @@ interface Oferta {
 
 interface Zgloszenie {
     idZgloszenie: number;
-    tytul: string;
+    typ: string;
     tresc: string;
     dataDodania: string;
     zgloszonePrzez: string;
     status: string;
+    idKomentarz?: number;
+    fragmentKomentarza?: string;
+    idOferta?: number;
+    tytulOferty?: string;
 }
 
 interface Statystyki {
@@ -223,6 +227,21 @@ const ModeratorPanel: React.FC = () => {
         }
     };
 
+    const handleUsunZgloszenie = async (id: number) => {
+        if (!window.confirm('Czy na pewno chcesz usunąć to zgłoszenie?')) return;
+
+        try {
+            await api(`moderator/zgloszenie/${id}`, {
+                method: 'DELETE'
+            });
+            alert('Zgłoszenie zostało usunięte');
+            fetchZgloszenia();
+        } catch (error) {
+            console.error('Błąd podczas usuwania zgłoszenia:', error);
+            alert('Błąd podczas usuwania zgłoszenia');
+        }
+    };
+
     const renderStatystyki = () => {
         if (!statystyki) return <div className="text-center text-gray-600">Brak danych statystycznych</div>;
 
@@ -368,8 +387,19 @@ const ModeratorPanel: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {zgloszenia.map((zgloszenie) => (
                         <div key={zgloszenie.idZgloszenie} className="bg-white/60 backdrop-blur-sm rounded-2xl p-6 shadow-xl border border-white/30">
-                            <h4 className="text-lg font-bold mb-3 text-gray-900">{zgloszenie.tytul}</h4>
+                            <h4 className="text-lg font-bold mb-3 text-gray-900">
+                                {zgloszenie.typ} #{zgloszenie.idZgloszenie}
+                                {zgloszenie.fragmentKomentarza && <span className="text-sm text-gray-600 ml-2">(Komentarz)</span>}
+                                {zgloszenie.tytulOferty && <span className="text-sm text-gray-600 ml-2">(Oferta: {zgloszenie.tytulOferty})</span>}
+                            </h4>
                             <p className="mb-2"><strong>Treść:</strong> {zgloszenie.tresc}</p>
+                            {zgloszenie.fragmentKomentarza && (
+                                <p className="mb-2"><strong>Fragment komentarza:</strong> 
+                                    <span className="bg-yellow-50 text-gray-800 p-2 rounded ml-2 text-sm">
+                                        "{zgloszenie.fragmentKomentarza}..."
+                                    </span>
+                                </p>
+                            )}
                             <p className="mb-2"><strong>Zgłoszone przez:</strong> {zgloszenie.zgloszonePrzez}</p>
                             <p className="mb-2"><strong>Data:</strong> {zgloszenie.dataDodania}</p>
                             <p className="mb-4"><strong>Status:</strong> 
@@ -381,22 +411,30 @@ const ModeratorPanel: React.FC = () => {
                                     {zgloszenie.status}
                                 </span>
                             </p>
-                            {zgloszenie.status === 'Oczekujące' && (
-                                <div className="flex space-x-3">
-                                    <button 
-                                        className="bg-blue-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-blue-600/80 transition-all font-semibold"
-                                        onClick={() => handleRozpatrzZgloszenie(zgloszenie.idZgloszenie)}
-                                    >
-                                        Rozpatrz
-                                    </button>
-                                    <button 
-                                        className="bg-purple-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-purple-600/80 transition-all font-semibold"
-                                        onClick={() => handlePrzekazAdminowi(zgloszenie.idZgloszenie)}
-                                    >
-                                        Przekaż adminowi
-                                    </button>
-                                </div>
-                            )}
+                            <div className="flex space-x-3">
+                                {zgloszenie.status === 'Oczekujące' && (
+                                    <>
+                                        <button 
+                                            className="bg-blue-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-blue-600/80 transition-all font-semibold"
+                                            onClick={() => handleRozpatrzZgloszenie(zgloszenie.idZgloszenie)}
+                                        >
+                                            Rozpatrz
+                                        </button>
+                                        <button 
+                                            className="bg-purple-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-purple-600/80 transition-all font-semibold"
+                                            onClick={() => handlePrzekazAdminowi(zgloszenie.idZgloszenie)}
+                                        >
+                                            Przekaż adminowi
+                                        </button>
+                                    </>
+                                )}
+                                <button 
+                                    className="bg-red-500/80 backdrop-blur-sm text-white px-4 py-2 rounded-xl hover:bg-red-600/80 transition-all font-semibold"
+                                    onClick={() => handleUsunZgloszenie(zgloszenie.idZgloszenie)}
+                                >
+                                    Usuń
+                                </button>
+                            </div>
                         </div>
                     ))}
                 </div>

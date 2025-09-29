@@ -9,9 +9,7 @@ using TechPromo.Api.Search.Models;
 
 namespace TechPromo.Api.Search.Services
 {
-    /// <summary>
-    /// Implementacja serwisu Azure AI Search
-    /// </summary>
+    // Serwis Azure Search
     public class SerwisWyszukiwania : ISerwisWyszukiwania
     {
         private readonly SearchClient _searchClient;
@@ -26,10 +24,22 @@ namespace TechPromo.Api.Search.Services
             var searchEndpoint = configuration["AzureSearch:Endpoint"] 
                 ?? throw new InvalidOperationException("AzureSearch:Endpoint not configured");
 
-            var credential = new DefaultAzureCredential();
+            var apiKey = configuration["AzureSearch:ApiKey"];
             
-            _searchClient = new SearchClient(new Uri(searchEndpoint), IndexName, credential);
-            _indexClient = new SearchIndexClient(new Uri(searchEndpoint), credential);
+            if (!string.IsNullOrEmpty(apiKey))
+            {
+                // Klucz API użyty
+                var credential = new AzureKeyCredential(apiKey);
+                _searchClient = new SearchClient(new Uri(searchEndpoint), IndexName, credential);
+                _indexClient = new SearchIndexClient(new Uri(searchEndpoint), credential);
+            }
+            else
+            {
+                // Fallback na DefaultCred
+                var credential = new DefaultAzureCredential();
+                _searchClient = new SearchClient(new Uri(searchEndpoint), IndexName, credential);
+                _indexClient = new SearchIndexClient(new Uri(searchEndpoint), credential);
+            }
         }
 
         public async Task<WynikWyszukiwania<ModelWyszukiwaniaOferty>> SearchOfertAsync(ZapytanieWyszukiwania query, CancellationToken cancellationToken = default)
@@ -40,26 +50,26 @@ namespace TechPromo.Api.Search.Services
 
                 var searchOptions = new SearchOptions
                 {
-                    Size = Math.Min(query.PageSize, 50), // Maksymalnie 50 wyników na stronę
+                    Size = Math.Min(query.PageSize, 50), // Max 50
                     Skip = query.Page * query.PageSize,
                     SearchMode = query.SearchMode,
                     QueryType = query.QueryType,
                     IncludeTotalCount = true
                 };
 
-                // Dodaj filtry
+                // Filtr
                 if (!string.IsNullOrWhiteSpace(query.Filter))
                 {
                     searchOptions.Filter = query.Filter;
                 }
 
-                // Dodaj sortowanie
+                // Sortowanie
                 if (!string.IsNullOrWhiteSpace(query.OrderBy))
                 {
                     searchOptions.OrderBy.Add(query.OrderBy);
                 }
 
-                // Dodaj facets
+                // Facets
                 if (query.Facets?.Any() == true)
                 {
                     foreach (var facet in query.Facets)
@@ -68,7 +78,7 @@ namespace TechPromo.Api.Search.Services
                     }
                 }
 
-                // Dodaj podkreślenia
+                // Podkreślenia
                 if (query.HighlightFields?.Any() == true)
                 {
                     foreach (var field in query.HighlightFields)
@@ -149,7 +159,7 @@ namespace TechPromo.Api.Search.Services
                     ExecutionTimeMs = stopwatch.Elapsed.TotalMilliseconds
                 };
 
-                // Dodaj błędy jeśli wystąpiły
+                // Błędy listuj
                 foreach (var error in response.Value.Results.Where(r => !r.Succeeded))
                 {
                     result.Errors.Add($"Document {error.Key}: {error.ErrorMessage}");
@@ -225,7 +235,7 @@ namespace TechPromo.Api.Search.Services
             {
                 var stopwatch = Stopwatch.StartNew();
                 
-                // Pobierz wszystkie dokumenty (tylko ID)
+                // Pobierz ID
                 var searchOptions = new SearchOptions
                 {
                     Size = 1000,
@@ -245,7 +255,7 @@ namespace TechPromo.Api.Search.Services
                     return new WynikIndeksu { Success = true, ExecutionTimeMs = stopwatch.Elapsed.TotalMilliseconds };
                 }
 
-                // Usuń wszystkie dokumenty
+                // Usuń wszystkie
                 var batch = IndexDocumentsBatch.Delete("id", allDocuments);
                 var deleteResponse = await _searchClient.IndexDocumentsAsync(batch, cancellationToken: cancellationToken);
 
@@ -299,6 +309,9 @@ namespace TechPromo.Api.Search.Services
                     Fields = new FieldBuilder().Build(typeof(ModelWyszukiwaniaOferty))
                 };
 
+                // Suggester do autocomp
+                index.Suggesters.Add(new SearchSuggester("sg-ofertas", "nazwa", "opis", "kategoria", "sklep", "tagi"));
+
                 await _indexClient.CreateIndexAsync(index, cancellationToken);
                 _logger.LogInformation("Created index {IndexName}", IndexName);
                 return true;
@@ -332,6 +345,43 @@ namespace TechPromo.Api.Search.Services
             {
                 _logger.LogError(ex, "Failed to get index statistics: {ErrorCode} - {ErrorMessage}", ex.ErrorCode, ex.Message);
                 throw;
+            }
+        }
+
+    // Sugestie autocomplet
+        public async Task<List<string>> GetSuggestionsAsync(string partialQuery, int maxSuggestions = 5, CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(partialQuery))
+                    return new List<string>();
+
+                var suggestOptions = new SuggestOptions
+                {
+                    Size = Math.Min(maxSuggestions, 20), // Max 20
+                    UseFuzzyMatching = true, // Fuzzy
+                    Filter = "aktywna eq true and zatwierdzona eq true" // Tylko aktywne
+                };
+
+                // Suggester sg-ofertas
+                var result = await _searchClient.SuggestAsync<ModelWyszukiwaniaOferty>(
+                    partialQuery, "sg-ofertas", suggestOptions, cancellationToken);
+
+                var suggestions = result.Value.Results
+                    .Select(s => s.Text)
+                    .Distinct()
+                    .Take(maxSuggestions)
+                    .ToList();
+
+                _logger.LogInformation("Generated {Count} suggestions for query '{Query}'", 
+                    suggestions.Count, partialQuery);
+
+                return suggestions;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting suggestions for query '{Query}'", partialQuery);
+                return new List<string>();
             }
         }
     }

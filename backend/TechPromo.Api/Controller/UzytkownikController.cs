@@ -9,9 +9,7 @@ using System.Security.Claims;
 
 namespace TechPromo.Api.Controllers
 {
-    /// <summary>
-    /// Kontroler użytkownika - zarządzanie profilami, ofertami i powiadomieniami
-    /// </summary>
+    // Kontroler użytkowników
     [ApiController]
     [Route("api/[controller]")]
     [Route("[controller]")]

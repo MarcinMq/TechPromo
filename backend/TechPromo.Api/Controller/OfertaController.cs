@@ -12,9 +12,7 @@ using System.IO;
 
 namespace TechPromo.Api.Controllers
 {
-    /// <summary>
-    /// Kontroler obsługujący operacje na ofertach - wyświetlanie, tworzenie, edycja
-    /// </summary>
+    // Kontroler ofert
     [ApiController]
     [Route("api/[controller]")]
     [Route("[controller]")]
@@ -33,18 +31,14 @@ namespace TechPromo.Api.Controllers
 
         #region Metody pomocnicze
 
-        /// <summary>
-        /// Pobiera ID aktualnie zalogowanego użytkownika
-        /// </summary>
+        // ID bieżącego użytkownika
         private int GetCurrentUserId()
         {
             if (User.Identity?.IsAuthenticated != true) return 0;
             return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         }
 
-        /// <summary>
-        /// Buduje pełny URL do awatara użytkownika
-        /// </summary>
+        // URL awatara użytkownika
         private string? BuildAutorAvatarAbsoluteUrl(int autorId)
         {
             try
@@ -321,9 +315,7 @@ namespace TechPromo.Api.Controllers
 
         #region Endpointy API
 
-        /// <summary>
-        /// Pobiera listę aktywnych ofert z możliwością filtrowania i sortowania
-        /// </summary>
+        // Lista ofert z filtrowaniem
         [HttpGet]
         public async Task<ActionResult<PagedResult<OfertaDto>>> GetOffers(
             [FromQuery] string? kategoria = null,
@@ -383,9 +375,7 @@ namespace TechPromo.Api.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Pobiera szczegóły pojedynczej oferty
-        /// </summary>
+        // Szczegóły pojedynczej oferty
         [HttpGet("{id}")]
         public async Task<ActionResult<OfertaDto>> GetOffer(int id)
         {
@@ -414,9 +404,7 @@ namespace TechPromo.Api.Controllers
             return Ok(dto);
         }
 
-        /// <summary>
-        /// Dodaje nowy komentarz do oferty
-        /// </summary>
+        // Dodaj komentarz do oferty
         [HttpPost("{id}/komentarze")]
         [Authorize]
         public async Task<ActionResult<KomentarzDto>> AddComment(int id, [FromBody] CreateCommentRequest request)
@@ -838,9 +826,7 @@ namespace TechPromo.Api.Controllers
         }
     }
 
-    /// <summary>
-    /// DTO dla tworzenia nowych ofert - używane do walidacji i przesyłania danych
-    /// </summary>
+    // DTO dla tworzenia ofert
     public class CreateOfferRequest
     {
         [Required(ErrorMessage = "Tytuł jest wymagany")]

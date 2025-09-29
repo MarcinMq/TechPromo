@@ -9,9 +9,7 @@ using TechPromo.Api.Services;
 
 namespace TechPromo.Api.Controllers
 {
-    /// <summary>
-    /// Kontroler moderatora - zarządzanie treściami, moderacja komentarzy i ofert
-    /// </summary>
+    // Moderator - komentarze i oferty
     [ApiController]
     [Route("moderator")]
     [Route("api/moderator")]
@@ -31,9 +29,7 @@ namespace TechPromo.Api.Controllers
 
         #region Moderacja komentarzy
 
-        /// <summary>
-        /// Pobiera wszystkie komentarze z systemem zgłoszeń dla moderacji
-        /// </summary>
+        // Komentarze z zgłoszeniami
         [HttpGet("komentarze")]
         public async Task<IActionResult> PobierzKomentarze()
         {
@@ -62,10 +58,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Usuwa komentarz wraz z powiązanymi powiadomieniami
-        /// </summary>
-        /// <param name="id">Identyfikator komentarza do usunięcia</param>
+        // Usuń komentarz
         [HttpDelete("komentarz/{id}")]
         public async Task<IActionResult> UsunKomentarz(int id)
         {
@@ -95,11 +88,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Wysyła ostrzeżenie do użytkownika za nieodpowiedni komentarz
-        /// </summary>
-        /// <param name="id">Identyfikator komentarza</param>
-        /// <param name="ostrzezenieDto">Dane ostrzeżenia z powodem</param>
+        // Ostrzeż użytkownika
         [HttpPost("komentarz/{id}/ostrzez")]
         public async Task<IActionResult> OstrzezUzytkownika(int id, [FromBody] OstrzezenieDto ostrzezenieDto)
         {
@@ -140,9 +129,7 @@ namespace TechPromo.Api.Controllers
 
         #region Moderacja ofert
 
-        /// <summary>
-        /// Pobiera wszystkie oferty do moderacji z informacjami o autorach i kategoriach
-        /// </summary>
+        // Oferty do moderacji
         [HttpGet("oferty")]
         public async Task<IActionResult> PobierzOferty()
         {
@@ -174,10 +161,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Zatwierdza ofertę do publikacji
-        /// </summary>
-        /// <param name="id">Identyfikator oferty do zatwierdzenia</param>
+        // Zatwierdź ofertę
         [HttpPut("oferta/{id}/zatwierdz")]
         public async Task<IActionResult> ZatwierdzOferte(int id)
         {
@@ -202,11 +186,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Odrzuca ofertę z podaniem powodu i powiadamianiem autora
-        /// </summary>
-        /// <param name="id">Identyfikator oferty do odrzucenia</param>
-        /// <param name="odrzucenieDto">Dane z powodem odrzucenia</param>
+        // Odrzuć ofertę
         [HttpPut("oferta/{id}/odrzuc")]
         public async Task<IActionResult> OdrzucOferte(int id, [FromBody] OdrzucenieDto odrzucenieDto)
         {
@@ -247,11 +227,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Edytuje ofertę przez moderatora z powiadamianiem autora
-        /// </summary>
-        /// <param name="id">Identyfikator oferty do edycji</param>
-        /// <param name="edycjaDto">Dane do aktualizacji oferty</param>
+        // Edytuj ofertę
         [HttpPut("oferta/{id}/edytuj")]
         public async Task<IActionResult> EdytujOferte(int id, [FromBody] EdycjaOfertaDto edycjaDto)
         {
@@ -319,11 +295,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Usuwa ofertę wraz z wszystkimi powiązanymi danymi
-        /// </summary>
-        /// <param name="id">Identyfikator oferty do usunięcia</param>
-        /// <param name="dto">Opcjonalne dane z powodem usunięcia</param>
+        // Usuń ofertę
         [HttpDelete("oferta/{id}")]
         public async Task<IActionResult> UsunOferte(int id, [FromBody] UsuniecieDto? dto)
         {
@@ -412,11 +384,7 @@ namespace TechPromo.Api.Controllers
 
         #region Zarządzanie zdjęciami oferty
 
-        /// <summary>
-        /// Dodaje zdjęcia do oferty przez moderatora
-        /// </summary>
-        /// <param name="id">Identyfikator oferty</param>
-        /// <param name="files">Lista plików graficznych do dodania</param>
+        // Dodaj zdjęcia do oferty
         [HttpPost("oferta/{id}/zdjecia")]
         public async Task<IActionResult> DodajZdjecia(int id, [FromForm(Name = "zdjecia")] List<IFormFile> files)
         {
@@ -484,10 +452,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Pobiera listę zdjęć oferty z identyfikatorami i kolejnością
-        /// </summary>
-        /// <param name="id">Identyfikator oferty</param>
+        // Pobierz zdjęcia oferty
         [HttpGet("oferta/{id}/zdjecia")]
         public async Task<IActionResult> PobierzZdjecia(int id)
         {
@@ -502,11 +467,7 @@ namespace TechPromo.Api.Controllers
             return Ok(list);
         }
 
-        /// <summary>
-        /// Usuwa zdjęcie z oferty wraz z plikiem fizycznym
-        /// </summary>
-        /// <param name="id">Identyfikator oferty</param>
-        /// <param name="fotoId">Identyfikator zdjęcia do usunięcia</param>
+        // Usuń zdjęcie z oferty
         [HttpDelete("oferta/{id}/zdjecie/{fotoId}")]
         public async Task<IActionResult> UsunZdjecie(int id, int fotoId)
         {
@@ -533,11 +494,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Zmienia kolejność zdjęć w ofercie
-        /// </summary>
-        /// <param name="id">Identyfikator oferty</param>
-        /// <param name="dto">Dane z nową kolejnością zdjęć</param>
+        // Zmień kolejność zdjęć
         [HttpPut("oferta/{id}/zdjecia/kolejnosc")]
         public async Task<IActionResult> ZmienKolejnosc(int id, [FromBody] ZmienKolejnoscZdjecDto dto)
         {
@@ -563,9 +520,7 @@ namespace TechPromo.Api.Controllers
 
         #region Obsługa zgłoszeń
 
-        /// <summary>
-        /// Pobiera wszystkie zgłoszenia do moderacji
-        /// </summary>
+        // Zgłoszenia do moderacji
         [HttpGet("zgloszenia")]
         public async Task<IActionResult> PobierzZgloszenia()
         {
@@ -601,11 +556,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Rozpatruje zgłoszenie i wysyła odpowiedź do zgłaszającego
-        /// </summary>
-        /// <param name="id">Identyfikator zgłoszenia</param>
-        /// <param name="rozpatrzenieDto">Dane z odpowiedzią moderatora</param>
+        // Rozpatrz zgłoszenie
         [HttpPut("zgloszenie/{id}/rozpatrz")]
         public async Task<IActionResult> RozpatrzZgloszenie(int id, [FromBody] RozpatrzenieDto rozpatrzenieDto)
         {
@@ -642,11 +593,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Przekazuje zgłoszenie do administratorów do dalszego rozpatrzenia
-        /// </summary>
-        /// <param name="id">Identyfikator zgłoszenia</param>
-        /// <param name="przekazanieDto">Dane z komentarzem moderatora</param>
+        // Przekaż zgłoszenie adminowi
         [HttpPost("zgloszenie/{id}/przekaz-adminowi")]
         public async Task<IActionResult> PrzekazAdminowi(int id, [FromBody] PrzekazanieDto przekazanieDto)
         {
@@ -693,13 +640,32 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        // Usuń zgłoszenie
+        [HttpDelete("zgloszenie/{id}")]
+        public async Task<IActionResult> UsunZgloszenie(int id)
+        {
+            try
+            {
+                var zgloszenie = await _context.Powiadomienia.FindAsync(id);
+                if (zgloszenie == null)
+                    return NotFound(new { message = "Zgłoszenie nie zostało znalezione" });
+
+                _context.Powiadomienia.Remove(zgloszenie);
+                await _context.SaveChangesAsync();
+
+                return Ok(new { message = "Zgłoszenie zostało usunięte" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas usuwania zgłoszenia", error = ex.Message });
+            }
+        }
+
         #endregion
 
         #region Metody pomocnicze
 
-        /// <summary>
-        /// Pobiera podstawowe statystyki dla panelu moderatora
-        /// </summary>
+        // Statystyki moderatora
         [HttpGet("statystyki")]
         public async Task<IActionResult> PobierzStatystyki()
         {

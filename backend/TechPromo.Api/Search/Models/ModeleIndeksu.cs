@@ -1,76 +1,47 @@
 namespace TechPromo.Api.Search.Models
 {
-    /// <summary>
-    /// Operacje na indeksie Azure AI Search
-    /// </summary>
+    // Operacje na indeksie Azure AI Search
     public enum OperacjaIndeksu
     {
-        /// <summary>
-        /// Dodaj dokument (jeśli istnieje, wywali błąd)
-        /// </summary>
+        // Dodaj dokument
         Upload,
 
-        /// <summary>
-        /// Dodaj lub zaktualizuj dokument
-        /// </summary>
+        // Dodaj lub zaktualizuj
         Merge,
 
-        /// <summary>
-        /// Dodaj lub zamień dokument całkowicie
-        /// </summary>
+        // Dodaj lub zamień
         MergeOrUpload,
 
-        /// <summary>
-        /// Usuń dokument
-        /// </summary>
+        // Usuń dokument
         Delete
     }
 
-    /// <summary>
-    /// Dokument do operacji na indeksie
-    /// </summary>
-    /// <typeparam name="T">Typ dokumentu</typeparam>
+    // Dokument do operacji
     public class DokumentIndeksu<T>
     {
-        /// <summary>
-        /// Dokument do operacji
-        /// </summary>
+        // Dokument do operacji
         public T Document { get; set; } = default!;
 
-        /// <summary>
-        /// Typ operacji do wykonania
-        /// </summary>
+        // Typ operacji
         public OperacjaIndeksu Operation { get; set; } = OperacjaIndeksu.MergeOrUpload;
     }
 
-    /// <summary>
-    /// Wynik operacji na indeksie
-    /// </summary>
+    // Wynik operacji na indeksie
     public class WynikIndeksu
     {
-        /// <summary>
-        /// Czy operacja się powiodła
-        /// </summary>
+        // Czy operacja się powiodła
         public bool Success { get; set; }
 
-        /// <summary>
-        /// Liczba pomyślnie przetworzonych dokumentów
-        /// </summary>
+        // Liczba pomyślnie przetworzonych
         public int SuccessCount { get; set; }
 
-        /// <summary>
-        /// Liczba dokumentów z błędami
-        /// </summary>
+        // Liczba dokumentów z błędami
         public int ErrorCount { get; set; }
 
-        /// <summary>
-        /// Lista błędów (jeśli wystąpiły)
-        /// </summary>
+        // Lista błędów
         public List<string> Errors { get; set; } = new();
 
-        /// <summary>
-        /// Czas wykonania operacji w milisekundach
-        /// </summary>
+        // Czas wykonania w ms
         public double ExecutionTimeMs { get; set; }
     }
 }

@@ -4,155 +4,110 @@ using Azure.Search.Documents.Indexes.Models;
 
 namespace TechPromo.Api.Search.Models
 {
-    /// <summary>
-    /// Model reprezentujący ofertę w indeksie Azure AI Search
-    /// Zoptymalizowany dla szybkiego wyszukiwania i filtrowania
-    /// </summary>
+    // Model oferty w indeksie Azure AI Search
     public class ModelWyszukiwaniaOferty
     {
-        /// <summary>
-        /// Unikalny identyfikator dokumentu w indeksie
-        /// </summary>
+        // Identyfikator dokumentu w indeksie
         [SimpleField(IsKey = true, IsFilterable = true)]
         [JsonPropertyName("id")]
         public string Id { get; set; } = string.Empty;
 
-        /// <summary>
-        /// ID oferty w bazie danych
-        /// </summary>
+        // ID oferty w bazie
         [SimpleField(IsFilterable = true, IsSortable = true)]
         [JsonPropertyName("ofertaId")]
         public int OfertaId { get; set; }
 
-        /// <summary>
-        /// Nazwa oferty - główne pole do wyszukiwania
-        /// </summary>
+        // Nazwa oferty
         [SearchableField(IsFilterable = true, IsSortable = true, AnalyzerName = LexicalAnalyzerName.Values.StandardLucene)]
         [JsonPropertyName("nazwa")]
         public string Nazwa { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Opis oferty - drugie najważniejsze pole do wyszukiwania
-        /// </summary>
+        // Opis oferty
         [SearchableField(AnalyzerName = LexicalAnalyzerName.Values.StandardLucene)]
         [JsonPropertyName("opis")]
         public string Opis { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Kategoria oferty - do filtrowania
-        /// </summary>
+        // Kategoria oferty
         [SearchableField(IsFilterable = true, IsFacetable = true)]
         [JsonPropertyName("kategoria")]
         public string Kategoria { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Sklep oferujący - do filtrowania
-        /// </summary>
+        // Sklep oferujący
         [SearchableField(IsFilterable = true, IsFacetable = true)]
         [JsonPropertyName("sklep")]
         public string Sklep { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Nazwa użytkownika który dodał ofertę
-        /// </summary>
+        // Autor oferty
         [SearchableField(IsFilterable = true)]
         [JsonPropertyName("autor")]
         public string Autor { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Aktualna cena oferty
-        /// </summary>
+        // Aktualna cena
         [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
         [JsonPropertyName("cena")]
         public double? Cena { get; set; }
 
-        /// <summary>
-        /// Poprzednia cena (przed promocją)
-        /// </summary>
+        // Poprzednia cena
         [SimpleField(IsFilterable = true, IsSortable = true)]
         [JsonPropertyName("cenaPoprzednia")]
         public double? CenaPoprzednia { get; set; }
 
-        /// <summary>
-        /// Procent zniżki (obliczony)
-        /// </summary>
+        // Procent zniżki
         [SimpleField(IsFilterable = true, IsSortable = true, IsFacetable = true)]
         [JsonPropertyName("procentZnizki")]
         public double? ProcentZnizki { get; set; }
 
-        /// <summary>
-        /// Typ oferty (okazja, kupon)
-        /// </summary>
+        // Typ oferty
         [SimpleField(IsFilterable = true, IsFacetable = true)]
         [JsonPropertyName("typ")]
         public string Typ { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Data dodania oferty
-        /// </summary>
+        // Data dodania
         [SimpleField(IsFilterable = true, IsSortable = true)]
         [JsonPropertyName("dataDodania")]
         public DateTimeOffset DataDodania { get; set; }
 
-        /// <summary>
-        /// Liczba polubień (hot votes)
-        /// </summary>
+        // Liczba polubień
         [SimpleField(IsFilterable = true, IsSortable = true)]
         [JsonPropertyName("liczbaHot")]
         public int LiczbaHot { get; set; }
 
-        /// <summary>
-        /// Liczba negatywnych głosów (cold votes)
-        /// </summary>
+        // Liczba negatywnych głosów
         [SimpleField(IsFilterable = true, IsSortable = true)]
         [JsonPropertyName("liczbaCold")]
         public int LiczbaCold { get; set; }
 
-        /// <summary>
-        /// Wynik popularności (hot - cold)
-        /// </summary>
+        // Wynik popularności
         [SimpleField(IsFilterable = true, IsSortable = true)]
         [JsonPropertyName("wynikPopularnosci")]
         public int WynikPopularnosci { get; set; }
 
-        /// <summary>
-        /// Czy oferta jest aktywna
-        /// </summary>
+        // Czy oferta aktywna
         [SimpleField(IsFilterable = true)]
         [JsonPropertyName("aktywna")]
         public bool Aktywna { get; set; }
 
-        /// <summary>
-        /// Czy oferta została zatwierdzona przez moderatora
-        /// </summary>
+        // Czy zatwierdzona przez moderatora
         [SimpleField(IsFilterable = true)]
         [JsonPropertyName("zatwierdzona")]
         public bool Zatwierdzona { get; set; }
 
-        /// <summary>
-        /// Tagi oferty - do wyszukiwania i filtrowania
-        /// </summary>
+        // Tagi oferty
         [SearchableField(IsFilterable = true, IsFacetable = true)]
         [JsonPropertyName("tagi")]
         public ICollection<string> Tagi { get; set; } = new List<string>();
 
-        /// <summary>
-        /// URL pierwszego zdjęcia oferty
-        /// </summary>
+        // URL pierwszego zdjęcia
         [SimpleField]
         [JsonPropertyName("zdjecie")]
         public string? Zdjecie { get; set; }
 
-        /// <summary>
-        /// Link do oferty w sklepie
-        /// </summary>
+        // Link do oferty
         [SimpleField]
         [JsonPropertyName("link")]
         public string Link { get; set; } = string.Empty;
 
-        /// <summary>
-        /// Kod promocyjny (jeśli dotyczy)
-        /// </summary>
+        // Kod promocyjny
         [SearchableField(IsFilterable = true)]
         [JsonPropertyName("kod")]
         public string? Kod { get; set; }

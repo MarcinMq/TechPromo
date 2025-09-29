@@ -12,9 +12,7 @@ using TechPromo.Api.Services;
 
 namespace TechPromo.Api.Controllers
 {
-    /// <summary>
-    /// Kontroler administratora - zarządzanie użytkownikami, ofertami i systemem odznak
-    /// </summary>
+    // Kontroler administratora
     [ApiController]
     [Route("admin")]
     [Route("api/admin")]
@@ -32,9 +30,7 @@ namespace TechPromo.Api.Controllers
             _badgeService = badgeService;
         }
 
-        /// <summary>
-        /// Przelicza odznaki dla konkretnego użytkownika
-        /// </summary>
+        // Przelicz odznaki użytkownika
         [HttpPost("odznaki/przelicz/{id}")]
         public async Task<IActionResult> PrzeliczOdznakiUzytkownika(int id)
         {

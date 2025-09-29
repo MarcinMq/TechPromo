@@ -6,9 +6,7 @@ using Azure.Search.Documents.Models;
 
 namespace TechPromo.Api.Controllers
 {
-    /// <summary>
-    /// Kontroler do obsługi wyszukiwania ofert za pomocą Azure AI Search
-    /// </summary>
+    // Kontroler wyszukiwania Azure AI Search
     [ApiController]
     [Route("api/[controller]")]
     public class WyszukiwarkaController : ControllerBase
@@ -24,17 +22,7 @@ namespace TechPromo.Api.Controllers
             _logger = logger;
         }
 
-        /// <summary>
-        /// Wyszukaj oferty
-        /// </summary>
-        /// <param name="q">Tekst do wyszukania</param>
-        /// <param name="filter">Filtr OData (np. "kategoria eq 'Elektronika'")</param>
-        /// <param name="sort">Sortowanie (np. "cena asc", "dataDodania desc")</param>
-        /// <param name="page">Numer strony (zaczyna od 0)</param>
-        /// <param name="size">Rozmiar strony (maksymalnie 50)</param>
-        /// <param name="facets">Facets do grupowania (kategoria,sklep,typ)</param>
-        /// <param name="highlight">Pola do podkreślenia (nazwa,opis)</param>
-        /// <returns>Wyniki wyszukiwania</returns>
+        // Wyszukaj oferty
         [HttpGet]
         public async Task<ActionResult<WynikWyszukiwania<ModelWyszukiwaniaOferty>>> Search(
             [FromQuery] string? q = null,
@@ -88,11 +76,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Wyszukiwanie zaawansowane z pełnymi opcjami
-        /// </summary>
-        /// <param name="request">Parametry wyszukiwania</param>
-        /// <returns>Wyniki wyszukiwania</returns>
+        // Wyszukiwanie zaawansowane
         [HttpPost("advanced")]
         public async Task<ActionResult<WynikWyszukiwania<ModelWyszukiwaniaOferty>>> AdvancedSearch([FromBody] ZapytanieWyszukiwania request)
         {
@@ -116,11 +100,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Reindeksuj ofertę (wymaga autoryzacji)
-        /// </summary>
-        /// <param name="ofertaId">ID oferty do reindeksacji</param>
-        /// <returns>Wynik operacji</returns>
+        // Reindeksuj ofertę
         [HttpPost("reindex/{ofertaId}")]
         [Authorize(Roles = "Admin,Moderator")]
         public async Task<ActionResult<WynikIndeksu>> ReindexOferta(int ofertaId)
@@ -147,11 +127,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Usuń ofertę z indeksu (wymaga autoryzacji)
-        /// </summary>
-        /// <param name="ofertaId">ID oferty do usunięcia</param>
-        /// <returns>Wynik operacji</returns>
+        // Usuń ofertę z indeksu
         [HttpDelete("index/{ofertaId}")]
         [Authorize(Roles = "Admin,Moderator")]
         public async Task<ActionResult<WynikIndeksu>> DeleteFromIndex(int ofertaId)
@@ -172,10 +148,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Reindeksuj wszystkie oferty (wymaga autoryzacji administratora)
-        /// </summary>
-        /// <returns>Wynik operacji</returns>
+        // Reindeksuj wszystkie oferty (admin)
         [HttpPost("reindex-all")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult<WynikIndeksu>> ReindexAll()
@@ -199,10 +172,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Pobierz statystyki indeksu (wymaga autoryzacji)
-        /// </summary>
-        /// <returns>Statystyki indeksu</returns>
+        // Statystyki indeksu
         [HttpGet("statistics")]
         [Authorize(Roles = "Admin,Moderator")]
         public async Task<ActionResult<StatystykiIndeksu>> GetStatistics()
@@ -219,10 +189,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Sprawdź status indeksu
-        /// </summary>
-        /// <returns>Status indeksu</returns>
+        // Status indeksu
         [HttpGet("status")]
         public async Task<ActionResult> GetIndexStatus()
         {
@@ -250,10 +217,7 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Utwórz indeks jeśli nie istnieje (wymaga autoryzacji administratora)
-        /// </summary>
-        /// <returns>Wynik operacji</returns>
+        // Utwórz indeks
         [HttpPost("create-index")]
         [Authorize(Roles = "Admin")]
         public async Task<ActionResult> CreateIndex()
@@ -277,17 +241,31 @@ namespace TechPromo.Api.Controllers
             }
         }
 
-        /// <summary>
-        /// Pobierz sugestie (autouzupełnianie) - funkcjonalność do przyszłej implementacji
-        /// </summary>
-        /// <param name="term">Fragment tekstu</param>
-        /// <returns>Lista sugestii</returns>
+        // Sugestie autouzupełniania
         [HttpGet("suggest")]
-        public async Task<ActionResult<List<string>>> GetSuggestions([FromQuery] string term)
+        public async Task<ActionResult<List<string>>> GetSuggestions([FromQuery] string term, [FromQuery] int limit = 5)
         {
-            // Placeholder - Azure AI Search ma wbudowane sugestie, ale wymagają dodatkowej konfiguracji
-            await Task.CompletedTask;
-            return Ok(new List<string>());
+            try
+            {
+                if (string.IsNullOrWhiteSpace(term))
+                {
+                    return Ok(new List<string>());
+                }
+
+                // Walidacja limitu
+                if (limit <= 0 || limit > 10) limit = 5;
+
+                var suggestions = await _searchService.GetSuggestionsAsync(term, limit);
+                
+                _logger.LogInformation("Generated {Count} suggestions for term '{Term}'", suggestions.Count, term);
+                
+                return Ok(suggestions);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error occurred while getting suggestions for term '{Term}'", term);
+                return StatusCode(500, new { error = "Wystąpił błąd podczas pobierania sugestii" });
+            }
         }
     }
 }
