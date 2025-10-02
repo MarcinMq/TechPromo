@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ticket, Clock, Tag, Store, DollarSign, Upload, Image, X } from 'lucide-react';
+import { Ticket, Clock, Tag, Store, Upload, Image, X, ShoppingBag, Camera, FileText } from 'lucide-react';
 import { getAuthToken, getUserData } from '../../utils/auth';
+import FormStepper from '../../components/FormStepper';
+import FormSection from '../../components/FormSection';
+import FormField from '../../components/FormField';
 
 interface CouponFormData {
   tytul: string;
@@ -14,6 +17,7 @@ interface CouponFormData {
   tagi: string;
   typ: 'kupon';
   zdjecia: File[];
+  bezMinimalnejKwoty: boolean;
 }
 
 // Te same kategorie co na stronie głównej
@@ -36,6 +40,15 @@ const CreateCouponForm: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
+  const [currentStep, setCurrentStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+
+  const steps = [
+    { id: 1, title: 'Podstawowe', description: 'Tytuł i opis' },
+    { id: 2, title: 'Szczegóły', description: 'Kod i ceny' },
+    { id: 3, title: 'Dodatkowe', description: 'Zdjęcia i tagi' }
+  ];
   
   const [formData, setFormData] = useState<CouponFormData>({
     tytul: '',
@@ -44,10 +57,11 @@ const CreateCouponForm: React.FC = () => {
     cenaPoprzednia: '',
     kod: '',
     kategoria: 'Telefony',
-  sklep: '', // przechowuje URL
+    sklep: '', // przechowuje URL
     tagi: '',
     typ: 'kupon',
-    zdjecia: []
+    zdjecia: [],
+    bezMinimalnejKwoty: false
   });
 
   useEffect(() => {
@@ -86,6 +100,85 @@ const CreateCouponForm: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    
+    // Auto-advance steps based on field completion
+    validateAndAdvanceStep(name, value);
+  };
+
+  const validateAndAdvanceStep = (fieldName: string, value: string) => {
+    const step1Fields = ['tytul', 'opis'];
+    const step2Fields = ['kod', 'cenaAktualna', 'kategoria'];
+    
+    if (step1Fields.includes(fieldName) && currentStep === 1) {
+      // Stwórz zaktualizowane dane z nową wartością
+      const updatedData = { ...formData, [fieldName]: value };
+      const step1Complete = updatedData.tytul.trim() && updatedData.opis.trim();
+      if (step1Complete && !completedSteps.includes(1)) {
+        setCompletedSteps(prev => [...prev, 1]);
+      }
+    }
+    
+    if (step2Fields.includes(fieldName) && currentStep <= 2) {
+      // Stwórz zaktualizowane dane z nową wartością
+      const updatedData = { ...formData, [fieldName]: value };
+      const step2Complete = updatedData.kod.trim() && (formData.bezMinimalnejKwoty || updatedData.cenaAktualna) && updatedData.kategoria;
+      if (step2Complete && !completedSteps.includes(2)) {
+        setCompletedSteps(prev => [...prev, 2]);
+      }
+    }
+  };
+
+  const validateStep = (step: number): boolean => {
+    const errors: Record<string, string> = {};
+    
+    switch (step) {
+      case 1:
+        if (!formData.tytul.trim()) errors.tytul = 'Tytuł jest wymagany';
+        if (formData.tytul.length > 150) errors.tytul = 'Tytuł nie może być dłuższy niż 150 znaków';
+        if (!formData.opis.trim()) errors.opis = 'Opis jest wymagany';
+        if (formData.opis.length > 1000) errors.opis = 'Opis nie może być dłuższy niż 1000 znaków';
+        break;
+      case 2:
+        if (!formData.kategoria) errors.kategoria = 'Kategoria jest wymagana';
+        if (!formData.kod.trim()) errors.kod = 'Kod promocyjny jest wymagany';
+        if (formData.kod.length > 50) errors.kod = 'Kod promocyjny nie może być dłuższy niż 50 znaków';
+        if (!formData.bezMinimalnejKwoty && !formData.cenaAktualna) {
+          errors.cenaAktualna = 'Minimalna kwota jest wymagana lub zaznacz "Bez minimalnej kwoty"';
+        }
+        if (formData.cenaAktualna && parseFloat(formData.cenaAktualna) <= 0) errors.cenaAktualna = 'Kwota musi być większa od 0';
+        if (formData.cenaPoprzednia && formData.cenaAktualna && parseFloat(formData.cenaPoprzednia) <= parseFloat(formData.cenaAktualna)) {
+          errors.cenaPoprzednia = 'Kwota poprzednia powinna być wyższa od aktualnej';
+        }
+        if (formData.sklep && !formData.sklep.match(/^https?:\/\/.+/)) {
+          errors.sklep = 'Link musi zaczynać się od http:// lub https://';
+        }
+        break;
+    }
+    
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const nextStep = () => {
+    if (validateStep(currentStep)) {
+      if (!completedSteps.includes(currentStep)) {
+        setCompletedSteps(prev => [...prev, currentStep]);
+      }
+      if (currentStep < 3) {
+        setCurrentStep(currentStep + 1);
+      }
+    }
+  };
+
+  const prevStep = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -193,7 +286,8 @@ const CreateCouponForm: React.FC = () => {
           sklep: '',
           tagi: '',
           typ: 'kupon',
-          zdjecia: []
+          zdjecia: [],
+          bezMinimalnejKwoty: false
         });
 
         // Przekierowanie po 3 sekundach
@@ -255,9 +349,18 @@ const CreateCouponForm: React.FC = () => {
 
   return (
     <div className="min-h-screen py-8 bg-gradient-to-br from-purple-50/50 to-pink-50/50">
-      <div className="max-w-3xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
-          <h1 className="text-3xl font-bold mb-6 text-gray-900 text-center">{editId ? '✏️ Edytuj Kupon' : '🎫 Nowy Kupon'}</h1>
+          <h1 className="text-3xl font-bold mb-6 text-gray-900 text-center">
+            {editId ? '✏️ Edytuj Kupon' : '🎫 Nowy Kupon'}
+          </h1>
+
+          {/* Progress Stepper */}
+          <FormStepper 
+            steps={steps} 
+            currentStep={currentStep} 
+            completedSteps={completedSteps} 
+          />
 
           {message && (
             <div className={`p-4 rounded-2xl mb-6 text-center font-semibold backdrop-blur-sm ${
@@ -269,296 +372,315 @@ const CreateCouponForm: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Tytuł */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Tytuł kuponu *
-                <span className="block text-xs text-gray-500 mt-1">Krótko opisz promocję</span>
-              </label>
-              <input
-                type="text"
-                name="tytul"
-                value={formData.tytul}
-                onChange={handleInputChange}
-                placeholder="np. 20% zniżki na wszystkie smartwatche w Media Expert"
-                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                required
-              />
-            </div>
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Step 1: Podstawowe informacje */}
+            {currentStep === 1 && (
+              <FormSection 
+                title="Podstawowe informacje" 
+                description="Główne dane o kuponie"
+                icon={FileText}
+              >
+                <FormField
+                  label="Tytuł kuponu"
+                  name="tytul"
+                  value={formData.tytul}
+                  onChange={handleInputChange}
+                  placeholder="np. 20% zniżki na wszystkie smartwatche w Media Expert"
+                  required
+                  error={fieldErrors.tytul}
+                  helperText="Krótko opisz promocję (max 150 znaków)"
+                  icon={Ticket}
+                />
+                
+                <FormField
+                  label="Opis kuponu"
+                  name="opis"
+                  type="textarea"
+                  value={formData.opis}
+                  onChange={handleInputChange}
+                  placeholder="Opisz warunki użycia kuponu, czas ważności, minimalne kwoty zakupu..."
+                  required
+                  error={fieldErrors.opis}
+                  helperText="Szczegółowy opis promocji i warunków (max 1000 znaków)"
+                  rows={5}
+                />
+              </FormSection>
+            )}
 
-            {/* Opis */}
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Opis kuponu *
-                <span className="block text-xs text-gray-500 mt-1">Szczegółowy opis promocji i warunków</span>
-              </label>
-              <textarea
-                name="opis"
-                value={formData.opis}
-                onChange={handleInputChange}
-                placeholder="Opisz warunki użycia kuponu, czas ważności, minimalne kwoty zakupu..."
-                rows={4}
-                className="w-full p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none"
-                required
-              />
-            </div>
-
-            {/* Ceny kuponu */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
-                  <div className="flex items-center mb-1">
-                    <DollarSign className="w-4 h-4 mr-1" />
-                    Minimalna kwota poprzednia
-                  </div>
-                  <span className="text-xs text-gray-500 font-normal">Minimalna kwota przed zastosowaniem kuponu</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    name="cenaPoprzednia"
-                    value={formData.cenaPoprzednia}
-                    onChange={handleInputChange}
-                    placeholder="299.00"
-                    step="0.01"
-                    min="0"
-                    className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
-                  />
-                  <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-                </div>
-              </div>
-              <div>
-                <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
-                  <div className="flex items-center mb-1">
-                    <DollarSign className="w-4 h-4 mr-1" />
-                    Minimalna kwota z kuponem
-                  </div>
-                  <span className="text-xs text-gray-500 font-normal">Minimalna kwota po zastosowaniu kuponu</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    name="cenaAktualna"
-                    value={formData.cenaAktualna}
-                    onChange={handleInputChange}
-                    placeholder="199.00"
-                    step="0.01"
-                    min="0"
-                    className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-red-600 font-semibold"
-                  />
-                  <DollarSign className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-red-400" />
-                </div>
-              </div>
-            </div>
-
-            {/* Kod promocyjny */}
-            <div>
-              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
-                <div className="flex items-center mb-1">
-                  <Tag className="w-4 h-4 mr-1" />
-                  Kod promocyjny *
-                </div>
-                <span className="text-xs text-gray-500 font-normal">Kod, który trzeba wpisać aby aktywować kupon</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
+            {/* Step 2: Kod i ceny */}
+            {currentStep === 2 && (
+              <FormSection 
+                title="Szczegóły kuponu" 
+                description="Kod promocyjny, kwoty i kategoria"
+                icon={ShoppingBag}
+              >
+                <FormField
+                  label="Kod promocyjny"
                   name="kod"
                   value={formData.kod}
                   onChange={handleInputChange}
                   placeholder="np. SAVE20, SUPER30"
-                  className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all font-mono text-lg font-bold text-purple-700"
                   required
+                  error={fieldErrors.kod}
+                  helperText="Kod, który trzeba wpisać aby aktywować kupon (max 50 znaków)"
+                  icon={Tag}
+                  className="font-mono text-lg font-bold text-purple-700"
                 />
-                <Tag className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-purple-400" />
-              </div>
-            </div>
 
-            {/* Link do strony kuponu / sklepu */}
-            <div>
-              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
-                <div className="flex items-center mb-1">
-                  <Store className="w-4 h-4 mr-1" />
-                  Link do oferty / sklepu
+                {/* Checkbox dla kuponów bez minimalnej kwoty */}
+                <div className="flex items-center space-x-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
+                  <input
+                    type="checkbox"
+                    id="bezMinimalnejKwoty"
+                    checked={formData.bezMinimalnejKwoty}
+                    onChange={(e) => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        bezMinimalnejKwoty: e.target.checked,
+                        // Wyczyść kwoty gdy zaznaczamy "bez minimalnej kwoty"
+                        ...(e.target.checked ? { cenaAktualna: '', cenaPoprzednia: '' } : {})
+                      }));
+                    }}
+                    className="w-4 h-4 text-purple-600 bg-gray-100 border-gray-300 rounded focus:ring-purple-500"
+                  />
+                  <label htmlFor="bezMinimalnejKwoty" className="text-sm font-medium text-purple-700 cursor-pointer">
+                    🎯 Kupon bez minimalnej kwoty (np. darmowa dostawa, kupony procentowe)
+                  </label>
                 </div>
-                <span className="text-xs text-gray-500 font-normal">Pełny URL strony gdzie użyjesz kuponu</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    label="Minimalna kwota poprzednia"
+                    name="cenaPoprzednia"
+                    type="number"
+                    value={formData.cenaPoprzednia}
+                    onChange={handleInputChange}
+                    placeholder="299.00"
+                    error={fieldErrors.cenaPoprzednia}
+                    helperText={formData.bezMinimalnejKwoty ? 
+                      "Pole wyłączone - kupon bez minimalnej kwoty" : 
+                      "Minimalna kwota przed zastosowaniem kuponu"
+                    }
+                    prefix="PLN"
+                    step="0.01"
+                    min="0"
+                    disabled={formData.bezMinimalnejKwoty}
+                  />
+                  
+                  <FormField
+                    label="Minimalna kwota z kuponem"
+                    name="cenaAktualna"
+                    type="number"
+                    value={formData.cenaAktualna}
+                    onChange={handleInputChange}
+                    placeholder="199.00"
+                    required={!formData.bezMinimalnejKwoty}
+                    error={fieldErrors.cenaAktualna}
+                    helperText={formData.bezMinimalnejKwoty ? 
+                      "Pole wyłączone - kupon bez minimalnej kwoty" : 
+                      "Minimalna kwota po zastosowaniu kuponu"
+                    }
+                    prefix="PLN"
+                    step="0.01"
+                    min="0"
+                    className="text-red-600 font-semibold"
+                    disabled={formData.bezMinimalnejKwoty}
+                  />
+                </div>
+
+                <FormField
+                  label="Link do oferty / sklepu"
                   name="sklep"
                   value={formData.sklep}
                   onChange={handleInputChange}
-                  placeholder="https://..."
-                  className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  placeholder="https://www.sklep.pl/promocja"
+                  error={fieldErrors.sklep}
+                  helperText="Pełny URL strony gdzie można użyć kuponu"
+                  icon={Store}
                 />
-                <Store className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              </div>
-            </div>
 
-            {/* Wybór kategorii */}
-            <div>
-              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-4">
-                <span>Kategoria *</span>
-                <span className="text-xs text-gray-500 font-normal">Wybierz kategorię produktów dla kuponu</span>
-              </label>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-                {categories.map((category) => (
-                  <div
-                    key={category.name}
-                    onClick={() => setFormData(prev => ({ ...prev, kategoria: category.name }))}
-                    className={`p-4 rounded-2xl border cursor-pointer transition-all hover:scale-105 ${
-                      formData.kategoria === category.name
-                        ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
-                        : 'border-gray-200 bg-white/80 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="text-center">
-                      <div className="text-2xl mb-2">{category.icon}</div>
-                      <div className="text-xs font-medium text-gray-700">{category.name}</div>
-                    </div>
+                {/* Kategoria */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    Kategoria *
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                    {categories.map(category => (
+                      <button
+                        key={category.name}
+                        type="button"
+                        onClick={() => {
+                          setFormData(prev => ({ ...prev, kategoria: category.name }));
+                          validateAndAdvanceStep('kategoria', category.name);
+                        }}
+                        className={`p-3 rounded-xl border transition-all text-center hover:scale-105 ${
+                          formData.kategoria === category.name
+                            ? 'bg-purple-50 border-purple-500 text-purple-700 shadow-md ring-2 ring-purple-200'
+                            : 'bg-white/90 border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50/50'
+                        }`}
+                      >
+                        <div className="text-2xl mb-1">{category.icon}</div>
+                        <div className="text-xs font-medium">{category.name}</div>
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Tagi */}
-            <div>
-              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
-                <div className="flex items-center mb-1">
-                  <Tag className="w-4 h-4 mr-1" />
-                  Tagi
+                  {fieldErrors.kategoria && (
+                    <p className="mt-2 text-sm text-red-500">{fieldErrors.kategoria}</p>
+                  )}
                 </div>
-                <span className="text-xs text-gray-500 font-normal">Słowa kluczowe oddzielone przecinkami</span>
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
+              </FormSection>
+            )}
+
+            {/* Step 3: Zdjęcia i tagi */}
+            {currentStep === 3 && (
+              <FormSection 
+                title="Dodatkowe informacje" 
+                description="Zdjęcia i tagi"
+                icon={Camera}
+              >
+                <FormField
+                  label="Tagi"
                   name="tagi"
                   value={formData.tagi}
                   onChange={handleInputChange}
                   placeholder="np. zniżka, promocja, kupon, blackfriday"
-                  className="w-full p-4 pl-12 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                  error={fieldErrors.tagi}
+                  helperText="Słowa kluczowe oddzielone przecinkami"
+                  icon={Tag}
                 />
-                <Tag className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-              </div>
-            </div>
 
-            {/* Zdjęcia */}
-            <div>
-              <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
-                <div className="flex items-center mb-1">
-                  <Image className="w-4 h-4 mr-1" />
-                  Zdjęcia kuponu
-                </div>
-                <span className="text-xs text-gray-500 font-normal">Dodaj do 5 zdjęć (JPG, PNG, max 5MB każde)</span>
-              </label>
-              
-              {/* Upload Area */}
-              <div 
-                className={`relative border-2 border-dashed rounded-2xl p-6 transition-all ${
-                  isDragOver 
-                    ? 'border-purple-500 bg-purple-50' 
-                    : 'border-gray-300 hover:border-gray-400'
-                }`}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDragOver(true);
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  setIsDragOver(false);
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setIsDragOver(false);
-                  const files = Array.from(e.dataTransfer.files);
-                  handleFileSelect(files);
-                }}
-              >
-                <div className="text-center">
-                  <Image className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-600 mb-2">
-                    Przeciągnij i upuść zdjęcia tutaj lub
-                  </p>
-                  <label className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all cursor-pointer">
-                    <Upload className="w-4 h-4 mr-2" />
-                    Wybierz pliki
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      onChange={(e) => handleFileSelect(Array.from(e.target.files || []))}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-              </div>
-
-              {/* Preview Grid */}
-              {formData.zdjecia.length > 0 && (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
-                  {formData.zdjecia.map((file, index) => (
-                    <div key={index} className="relative group">
-                      <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
-                        <img
-                          src={URL.createObjectURL(file)}
-                          alt={`Preview ${index + 1}`}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeFile(index)}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                      <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 rounded-b-xl">
-                        {file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}
-                      </div>
+                {/* Zdjęcia */}
+                <div>
+                  <label className="flex flex-col text-sm font-semibold text-gray-700 mb-2">
+                    <div className="flex items-center mb-1">
+                      <Image className="w-4 h-4 mr-1" />
+                      Zdjęcia kuponu
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
+                    <span className="text-xs text-gray-500 font-normal">Dodaj do 5 zdjęć (JPG, PNG, max 5MB każde)</span>
+                  </label>
+                  
+                  {/* Upload Area */}
+                  <div 
+                    className={`relative border-2 border-dashed rounded-2xl p-6 transition-all ${
+                      isDragOver 
+                        ? 'border-purple-500 bg-purple-50' 
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragOver(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsDragOver(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragOver(false);
+                      const files = Array.from(e.dataTransfer.files);
+                      handleFileSelect(files);
+                    }}
+                  >
+                    <div className="text-center">
+                      <Image className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <p className="text-gray-600 mb-2">
+                        Przeciągnij i upuść zdjęcia tutaj lub
+                      </p>
+                      <label className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all cursor-pointer">
+                        <Upload className="w-4 h-4 mr-2" />
+                        Wybierz pliki
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => handleFileSelect(Array.from(e.target.files || []))}
+                          className="hidden"
+                        />
+                      </label>
+                    </div>
+                  </div>
 
-            {/* Przyciski */}
-            <div className="flex justify-end space-x-4">
-              <button
-                type="button"
-                onClick={() => navigate(-1)}
-                className="w-full sm:w-auto p-4 border border-gray-300/50 rounded-2xl bg-white/90 backdrop-blur-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all text-gray-700 hover:bg-gray-100"
-              >
-                Anuluj
-              </button>
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full sm:w-auto p-4 border border-transparent rounded-2xl bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:from-purple-600 hover:to-pink-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <Clock className="w-5 h-5 animate-spin inline mr-2" />
-                    Dodawanie...
-                  </>
+                  {/* Preview Grid */}
+                  {formData.zdjecia.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
+                      {formData.zdjecia.map((file, index) => (
+                        <div key={index} className="relative group">
+                          <div className="aspect-square rounded-xl overflow-hidden bg-gray-100">
+                            <img
+                              src={URL.createObjectURL(file)}
+                              alt={`Preview ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeFile(index)}
+                            className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                          <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white text-xs p-1 rounded-b-xl">
+                            {file.name.length > 15 ? `${file.name.substring(0, 15)}...` : file.name}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </FormSection>
+            )}
+
+            {/* Navigation Buttons */}
+            <div className="flex justify-between items-center pt-6 border-t border-gray-200">
+              <div className="flex space-x-3">
+                {currentStep > 1 && (
+                  <button
+                    type="button"
+                    onClick={prevStep}
+                    className="px-6 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 transition-all"
+                  >
+                    ← Poprzedni
+                  </button>
+                )}
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  type="button"
+                  onClick={() => navigate(-1)}
+                  className="px-6 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 transition-all"
+                >
+                  Anuluj
+                </button>
+                
+                {currentStep < 3 ? (
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    className="px-6 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-all"
+                  >
+                    Dalej →
+                  </button>
                 ) : (
-                  <>
-                    {editId ? (
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {loading ? (
                       <>
-                        <Ticket className="w-5 h-5 inline mr-2" />
-                        Zapisz zmiany
+                        <Clock className="w-5 h-5 animate-spin inline mr-2" />
+                        Zapisywanie...
                       </>
                     ) : (
                       <>
                         <Ticket className="w-5 h-5 inline mr-2" />
-                        Dodaj kupon
+                        {editId ? 'Zapisz zmiany' : 'Dodaj kupon'}
                       </>
                     )}
-                  </>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </form>
         </div>
