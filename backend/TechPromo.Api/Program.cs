@@ -7,7 +7,7 @@ using System.Text;
 using TechPromo.Api.Data;
 using TechPromo.Api.Model;
 using TechPromo.Api.Services;
-using TechPromo.Api.Search.Services;
+// usunięto: using TechPromo.Api.Search.Services; (stary moduł wyszukiwarki)
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -103,13 +103,6 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IBadgeService, BadgeService>();
 
-// Azure AI Search Services
-builder.Services.AddScoped<ISerwisWyszukiwania, SerwisWyszukiwania>();
-builder.Services.AddScoped<IMapperWyszukiwaniaOfert, MapperWyszukiwaniaOfert>();
-builder.Services.AddScoped<ISearchSyncManager, SearchSyncManager>();
-
-// Background service do automatycznej synchronizacji z Azure AI Search
-builder.Services.AddHostedService<SearchSyncService>();
 
 var app = builder.Build();
 
