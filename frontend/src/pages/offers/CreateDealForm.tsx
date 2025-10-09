@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, Clock, Tag, Store, FileText, Upload, Image, X } from 'lucide-react';
+import { Rocket, Clock, Tag, Store, FileText, Upload, Image, X, Gift } from 'lucide-react';
 import { getAuthToken, getUserData } from '../../utils/auth';
 
 interface OfferFormData {
@@ -13,6 +13,7 @@ interface OfferFormData {
   tagi: string;
   typ: 'okazja';
   zdjecia: File[];
+  zaDarmo: boolean;
 }
 
 // Te same kategorie co na stronie głównej
@@ -46,7 +47,8 @@ const CreateDealForm: React.FC = () => {
   sklep: '', // używane jako URL do sklepu / oferty
     tagi: '',
     typ: 'okazja',
-    zdjecia: []
+    zdjecia: [],
+    zaDarmo: false
   });
 
   interface ExistingImage { id: number; url: string; kolejnosc: number; }
@@ -133,8 +135,15 @@ const CreateDealForm: React.FC = () => {
     if (!formData.opis.trim()) errors.opis = 'Opis jest wymagany';
     if (formData.opis.length > 1000) errors.opis = 'Opis nie może być dłuższy niż 1000 znaków';
     if (!formData.kategoria) errors.kategoria = 'Kategoria jest wymagana';
-    if (!formData.cenaAktualna) errors.cenaAktualna = 'Cena promocyjna jest wymagana';
-    if (formData.cenaAktualna && parseFloat(formData.cenaAktualna) <= 0) errors.cenaAktualna = 'Cena musi być większa od 0';
+    
+    // Walidacja ceny - nie jest wymagana jeśli oferta jest za darmo
+    if (!formData.zaDarmo && !formData.cenaAktualna) {
+      errors.cenaAktualna = 'Cena promocyjna jest wymagana (lub zaznacz "Za darmo")';
+    }
+    // Sprawdź czy cena jest większa od 0 tylko gdy nie jest za darmo i cena została podana
+    if (!formData.zaDarmo && formData.cenaAktualna && parseFloat(formData.cenaAktualna) <= 0) {
+      errors.cenaAktualna = 'Cena musi być większa od 0';
+    }
     if (formData.cenaPoprzednia && formData.cenaAktualna && parseFloat(formData.cenaPoprzednia) <= parseFloat(formData.cenaAktualna)) {
       errors.cenaPoprzednia = 'Cena poprzednia powinna być wyższa od promocyjnej';
     }
@@ -172,7 +181,7 @@ const CreateDealForm: React.FC = () => {
           payload = {
             tytul: formData.tytul.trim(),
             opis: formData.opis.trim(),
-            cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+            cena: formData.zaDarmo ? 0 : (formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null),
             cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
             kod: null,
             // Wysyłamy pusty string, jeśli pole jest puste – pozwala to wyczyścić link w backendzie
@@ -183,7 +192,7 @@ const CreateDealForm: React.FC = () => {
           payload = {
             tytul: formData.tytul.trim(),
             opis: formData.opis.trim(),
-            cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+            cena: formData.zaDarmo ? 0 : (formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null),
             cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
             kod: null,
             // Dla użytkownika pozostawiamy dotychczasowe zachowanie
@@ -225,9 +234,13 @@ const CreateDealForm: React.FC = () => {
       formDataToSend.append('tytul', formData.tytul.trim());
       formDataToSend.append('opis', formData.opis.trim());
       
-      if (formData.cenaAktualna) {
+      // Dla ofert za darmo, ustaw cenę na 0
+      if (formData.zaDarmo) {
+        formDataToSend.append('cena', '0');
+      } else if (formData.cenaAktualna) {
         formDataToSend.append('cena', formData.cenaAktualna);
       }
+      
       if (formData.cenaPoprzednia) {
         formDataToSend.append('cenaPoprzednia', formData.cenaPoprzednia);
       }
@@ -278,7 +291,8 @@ const CreateDealForm: React.FC = () => {
           sklep: '',
           tagi: '',
           typ: 'okazja',
-          zdjecia: []
+          zdjecia: [],
+          zaDarmo: false
         });
 
         // Przekierowanie po 3 sekundach
@@ -480,7 +494,7 @@ const CreateDealForm: React.FC = () => {
 
                   <div>
                     <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Cena promocyjna *
+                      Cena promocyjna {!formData.zaDarmo && '*'}
                     </label>
                     <div className="relative">
                       <input
@@ -488,19 +502,51 @@ const CreateDealForm: React.FC = () => {
                         name="cenaAktualna"
                         value={formData.cenaAktualna}
                         onChange={handleInputChange}
-                        placeholder="4599.99"
-                        required
+                        placeholder={formData.zaDarmo ? "Za darmo" : "4599.99"}
+                        required={!formData.zaDarmo}
                         step="0.01"
                         min="0"
-                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all text-red-600 font-semibold"
+                        disabled={formData.zaDarmo}
+                        className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all text-red-600 font-semibold ${
+                          formData.zaDarmo ? 'bg-gray-100 cursor-not-allowed opacity-60' : ''
+                        }`}
                       />
                       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-sm font-semibold">PLN</span>
                     </div>
                     {fieldErrors.cenaAktualna && (
                       <p className="mt-1 text-sm text-red-500">{fieldErrors.cenaAktualna}</p>
                     )}
-                    <p className="mt-1 text-xs text-gray-500">Aktualna cena promocyjna</p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {formData.zaDarmo ? 'Oferta za darmo - cena nie jest wymagana' : 'Aktualna cena promocyjna'}
+                    </p>
                   </div>
+                </div>
+
+                {/* Checkbox Za darmo */}
+                <div className="flex items-center gap-3 p-4 bg-green-50 rounded-xl border border-green-200">
+                  <input
+                    type="checkbox"
+                    id="zaDarmo"
+                    name="zaDarmo"
+                    checked={formData.zaDarmo}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        zaDarmo: isChecked,
+                        // Wyczyść cenę promocyjną jeśli zaznaczono "za darmo"
+                        cenaAktualna: isChecked ? '' : prev.cenaAktualna
+                      }));
+                      // Wyczyść błędy walidacji
+                      if (fieldErrors.cenaAktualna) {
+                        setFieldErrors(prev => ({ ...prev, cenaAktualna: '' }));
+                      }
+                    }}
+                    className="w-5 h-5 text-green-600 border-2 border-green-300 rounded focus:ring-green-500 focus:ring-2"
+                  />
+                  <label htmlFor="zaDarmo" className="text-sm font-semibold text-green-700 cursor-pointer flex items-center gap-1">
+                    <Gift className="w-4 h-4" /> Ta oferta jest za darmo
+                  </label>
                 </div>
 
                 <div>

@@ -118,13 +118,15 @@ namespace TechPromo.Api.Controllers
 
         private static string ValidatePrices(decimal? cena, decimal? cenaPoprzednia)
         {
-            if (cena.HasValue && cena <= 0)
-                return "Cena musi być większa od 0.";
+            // Cena może być 0 (za darmo) lub większa od 0
+            if (cena.HasValue && cena < 0)
+                return "Cena nie może być ujemna.";
                 
             if (cenaPoprzednia.HasValue && cenaPoprzednia <= 0)
                 return "Cena poprzednia musi być większa od 0.";
                 
-            if (cena.HasValue && cenaPoprzednia.HasValue && cena >= cenaPoprzednia)
+            // Sprawdź relację cen tylko jeśli cena promocyjna > 0 (nie dotyczy ofert za darmo)
+            if (cena.HasValue && cena > 0 && cenaPoprzednia.HasValue && cena >= cenaPoprzednia)
                 return "Cena promocyjna powinna być niższa niż cena poprzednia.";
 
             return string.Empty;
@@ -868,7 +870,7 @@ namespace TechPromo.Api.Controllers
         [StringLength(2000, ErrorMessage = "Opis nie może być dłuższy niż 2000 znaków")]
         public string Opis { get; set; } = string.Empty;
 
-        [Range(0.01, 999999.99, ErrorMessage = "Cena musi być większa od 0")]
+        [Range(0, 999999.99, ErrorMessage = "Cena nie może być ujemna")]
         public decimal? Cena { get; set; }
 
         [Range(0.01, 999999.99, ErrorMessage = "Cena poprzednia musi być większa od 0")]

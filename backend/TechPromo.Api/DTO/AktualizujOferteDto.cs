@@ -11,7 +11,7 @@ namespace TechPromo.Api.DTO
         [StringLength(2000, ErrorMessage = "Opis nie może być dłuższy niż 2000 znaków")]
         public string? Opis { get; set; }
         
-        [Range(0.01, 999999.99, ErrorMessage = "Cena musi być większa od 0")]
+        [Range(0, 999999.99, ErrorMessage = "Cena nie może być ujemna")]
         public decimal? Cena { get; set; }
         
         [Range(0.01, 999999.99, ErrorMessage = "Cena poprzednia musi być większa od 0")]

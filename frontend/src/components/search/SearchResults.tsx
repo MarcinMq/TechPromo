@@ -1,5 +1,5 @@
 import React from 'react';
-import { Flame, Snowflake, Search } from 'lucide-react';
+import { Flame, Snowflake, Search, Gift } from 'lucide-react';
 
 interface SearchResult {
   id: number;
@@ -73,7 +73,7 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, query, loading =
                 ) : (
                   <div className="text-6xl">📦</div>
                 )}
-                {result.originalPrice && (
+                {result.originalPrice && result.price > 0 && (
                   <div className="absolute top-4 right-4 bg-gradient-to-r from-red-500 to-pink-500 text-white text-sm font-bold px-3 py-1 rounded-2xl backdrop-blur-sm shadow-lg">
                     -{Math.round((1 - result.price / result.originalPrice) * 100)}%
                   </div>
@@ -90,8 +90,12 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, query, loading =
                 {/* Ceny */}
                 <div className="mb-4">
                   <div className="flex items-baseline space-x-3">
-                    <span className="text-3xl font-black text-red-600">{result.price.toFixed(2)} zł</span>
-                    {result.originalPrice && (
+                    {result.price === 0 ? (
+                      <span className="text-3xl font-black text-green-600 bg-green-100 px-3 py-1 rounded-lg flex items-center gap-2"><Gift className="w-6 h-6" /> ZA DARMO!</span>
+                    ) : (
+                      <span className="text-3xl font-black text-red-600">{result.price.toFixed(2)} zł</span>
+                    )}
+                    {result.originalPrice && result.price > 0 && (
                       <span className="text-lg line-through text-gray-400">{result.originalPrice.toFixed(2)} zł</span>
                     )}
                   </div>

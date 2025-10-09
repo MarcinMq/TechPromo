@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import CouponCode from '../components/CouponCode';
-import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search, Flag, Share2, ExternalLink } from 'lucide-react';
+import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search, Flag, Share2, ExternalLink, Gift } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth';
 import ReportOfferModal from '../components/modals/ReportOfferModal';
@@ -540,14 +540,21 @@ function HomePage() {
                               <div className="flex items-center flex-wrap gap-3">
                                 <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-sm">🎫 KUPON</span>
                                 <CouponCode code={offer.kod} size="sm" />
-                                {offer.cena && <span className="text-2xl font-black text-purple-600">{offer.cena} zł</span>}
+                                {offer.cena === 0 && <span className="text-2xl font-black text-green-600 bg-green-100 px-3 py-1 rounded-lg flex items-center gap-1"><Gift className="w-5 h-5" /> ZA DARMO!</span>}
+                                {offer.cena && offer.cena > 0 && <span className="text-2xl font-black text-purple-600">{offer.cena} zł</span>}
                                 {!offer.cena && <span className="text-base text-gray-600 font-medium">Sprawdź cenę</span>}
                               </div>
                             ) : (
                               <div className="flex items-center flex-wrap gap-3">
                                 {offer.cenaPoprzednia && <span className="text-base line-through text-gray-400 font-medium" title="Stara cena">{offer.cenaPoprzednia} zł</span>}
-                                {offer.cena ? <span className="text-3xl font-black text-red-600">{offer.cena} zł</span> : <span className="text-xl text-gray-600 font-bold">Sprawdź cenę</span>}
-                                {offer.cenaPoprzednia && offer.cena && offer.cenaPoprzednia > offer.cena && (
+                                {offer.cena === 0 ? (
+                                  <span className="text-3xl font-black text-green-600 bg-green-100 px-3 py-1 rounded-lg flex items-center gap-2"><Gift className="w-7 h-7" /> ZA DARMO!</span>
+                                ) : offer.cena ? (
+                                  <span className="text-3xl font-black text-red-600">{offer.cena} zł</span>
+                                ) : (
+                                  <span className="text-xl text-gray-600 font-bold">Sprawdź cenę</span>
+                                )}
+                                {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
                                   <span className="bg-red-500 text-white text-sm font-bold px-2 py-1 rounded-lg shadow-sm">-{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%</span>
                                 )}
                               </div>

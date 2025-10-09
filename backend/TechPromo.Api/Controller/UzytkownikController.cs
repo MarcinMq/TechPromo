@@ -654,13 +654,15 @@ namespace TechPromo.Api.Controllers
             }
 
             // Walidacja cen przed aktualizacją
-            if (dto.Cena.HasValue && dto.Cena <= 0)
-                return BadRequest("Cena musi być większa od 0.");
+            // Cena może być 0 (za darmo) lub większa od 0
+            if (dto.Cena.HasValue && dto.Cena < 0)
+                return BadRequest("Cena nie może być ujemna.");
                 
             if (dto.CenaPoprzednia.HasValue && dto.CenaPoprzednia <= 0)
                 return BadRequest("Cena poprzednia musi być większa od 0.");
                 
-            if (dto.Cena.HasValue && dto.CenaPoprzednia.HasValue && dto.Cena >= dto.CenaPoprzednia)
+            // Sprawdź relację cen tylko jeśli cena promocyjna > 0 (nie dotyczy ofert za darmo)
+            if (dto.Cena.HasValue && dto.Cena > 0 && dto.CenaPoprzednia.HasValue && dto.Cena >= dto.CenaPoprzednia)
                 return BadRequest("Cena promocyjna powinna być niższa niż cena poprzednia.");
 
             // Aktualizacja pól

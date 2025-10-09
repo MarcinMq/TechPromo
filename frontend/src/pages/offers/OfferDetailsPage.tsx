@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Flame, Snowflake, ArrowLeft, ExternalLink, Share2 } from 'lucide-react';
+import { Flame, Snowflake, ArrowLeft, ExternalLink, Share2, Gift } from 'lucide-react';
 import CouponCode from '../../components/CouponCode';
 import ReportCommentModal from '../../components/modals/ReportCommentModal';
 import { getAuthToken } from '../../utils/auth';
@@ -538,15 +538,17 @@ export default function OfferDetailsPage() {
                     </>
                   )}
                   {/* Stara cena (jeśli występuje i > aktualnej) */}
-                  {offer.cenaPoprzednia && offer.cena && offer.cenaPoprzednia > offer.cena && (
+                  {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
                     <span className="text-lg line-through text-gray-400">{offer.cenaPoprzednia} zł</span>
                   )}
-                  {/* Nowa cena */}
-                  {offer.cena && (
+                  {/* Nowa cena lub za darmo */}
+                  {offer.cena === 0 ? (
+                    <span className="text-4xl font-black text-green-600 bg-green-100 px-4 py-2 rounded-lg flex items-center gap-2"><Gift className="w-8 h-8" /> ZA DARMO!</span>
+                  ) : offer.cena ? (
                     <span className="text-3xl font-black text-red-600">{offer.cena} zł</span>
-                  )}
+                  ) : null}
                   {/* Badge rabatu */}
-                  {offer.cenaPoprzednia && offer.cena && offer.cenaPoprzednia > offer.cena && (
+                  {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
                     <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
                       -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
                     </span>
