@@ -9,6 +9,7 @@ using TechPromo.Api.Data;
 using TechPromo.Api.DTO;
 using TechPromo.Api.Model;
 using TechPromo.Api.Services;
+using TechPromo.Api.Search.Services;
 
 namespace TechPromo.Api.Controllers
 {
@@ -22,12 +23,18 @@ namespace TechPromo.Api.Controllers
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly TechPromoDbContext _context;
         private readonly IBadgeService _badgeService;
+        private readonly SerwisSync? _syncService;
 
-    public AdminController(UserManager<Uzytkownik> userManager, TechPromoDbContext context, IBadgeService badgeService)
+    public AdminController(
+        UserManager<Uzytkownik> userManager, 
+        TechPromoDbContext context, 
+        IBadgeService badgeService,
+        SerwisSync? syncService = null)
         {
             _userManager = userManager;
             _context = context;
             _badgeService = badgeService;
+            _syncService = syncService;
         }
 
         // Przelicz odznaki użytkownika
@@ -362,6 +369,12 @@ namespace TechPromo.Api.Controllers
             // Usuń ofertę
             _context.Oferty.Remove(oferta);
             await _context.SaveChangesAsync();
+
+            // Usuń z Azure Search Index
+            if (_syncService != null)
+            {
+                _ = Task.Run(async () => await _syncService.UsunOferteZIndeksuAsync(id));
+            }
 
             return Ok($"Oferta '{oferta.Nazwa}' użytkownika '{oferta.Uzytkownik.UserName}' została usunięta");
         }

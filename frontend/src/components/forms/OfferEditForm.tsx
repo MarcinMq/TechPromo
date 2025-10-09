@@ -24,7 +24,7 @@ interface OfferEditFormProps {
 
 const categories = ['Telefony','Laptopy','Audio','TV','Gaming','Foto','Smartwatche','Tablety','PC','Akcesoria'];
 
-const OfferEditForm: React.FC<OfferEditFormProps> = ({ initial, onClose, onSaved, offerId, endpoint, method }) => {
+const OfferEditForm: React.FC<OfferEditFormProps> = ({ initial, onClose, onSaved, endpoint, method }) => {
   const [form, setForm] = useState<OfferEditValues>(initial);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

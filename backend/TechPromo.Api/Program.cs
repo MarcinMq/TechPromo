@@ -7,7 +7,10 @@ using System.Text;
 using TechPromo.Api.Data;
 using TechPromo.Api.Model;
 using TechPromo.Api.Services;
-// usunięto: using TechPromo.Api.Search.Services; (stary moduł wyszukiwarki)
+using TechPromo.Api.Search.Services;
+using Azure;
+using Azure.Search.Documents;
+using Azure.Search.Documents.Indexes;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -102,6 +105,32 @@ builder.Services.AddAuthentication(options =>
 // Rejestruję serwis do tworzenia tokenów JWT
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IBadgeService, BadgeService>();
+
+// Azure AI Search - konfiguracja klientów i serwisów wyszukiwania
+var azureSearchEndpoint = builder.Configuration["AzureSearch:Endpoint"];
+var azureSearchApiKey = builder.Configuration["AzureSearch:ApiKey"];
+var azureSearchIndexName = builder.Configuration["AzureSearch:IndexName"];
+
+if (!string.IsNullOrEmpty(azureSearchEndpoint) && !string.IsNullOrEmpty(azureSearchApiKey))
+{
+    var endpoint = new Uri(azureSearchEndpoint);
+    var credential = new AzureKeyCredential(azureSearchApiKey);
+
+    // SearchIndexClient - do zarządzania indeksami (tworzenie, usuwanie, etc.)
+    builder.Services.AddSingleton(sp => new SearchIndexClient(endpoint, credential));
+
+    // SearchClient - do wykonywania operacji na dokumentach (wyszukiwanie, dodawanie, etc.)
+    builder.Services.AddSingleton(sp => new SearchClient(endpoint, azureSearchIndexName ?? "oferty-index", credential));
+
+    // Rejestracja serwisów wyszukiwania
+    builder.Services.AddScoped<ISerwisWyszukiwania, SerwisWyszukiwania>();
+    builder.Services.AddScoped<SerwisSync>();
+}
+else
+{
+    // Jeśli brak konfiguracji Azure Search, loguj ostrzeżenie
+    Console.WriteLine("⚠️ UWAGA: Azure AI Search nie jest skonfigurowany. Ustaw Endpoint i ApiKey w appsettings.json");
+}
 
 
 var app = builder.Build();

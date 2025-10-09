@@ -6,6 +6,7 @@ using TechPromo.Api.Data;
 using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
 using TechPromo.Api.Services;
+using TechPromo.Api.Search.Services;
 using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
@@ -21,12 +22,18 @@ namespace TechPromo.Api.Controllers
         private readonly TechPromoDbContext _context;
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly IBadgeService _badgeService;
+        private readonly SerwisSync? _syncService;
 
-        public OfertaController(TechPromoDbContext context, UserManager<Uzytkownik> userManager, IBadgeService badgeService)
+        public OfertaController(
+            TechPromoDbContext context, 
+            UserManager<Uzytkownik> userManager, 
+            IBadgeService badgeService,
+            SerwisSync? syncService = null)
         {
             _context = context;
             _userManager = userManager;
             _badgeService = badgeService;
+            _syncService = syncService;
         }
 
         #region Metody pomocnicze
@@ -36,6 +43,24 @@ namespace TechPromo.Api.Controllers
         {
             if (User.Identity?.IsAuthenticated != true) return 0;
             return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        }
+
+        // Synchronizuj ofertę z Azure Search (w tle)
+        private void SyncOfertaToAzureSearch(int ofertaId)
+        {
+            if (_syncService != null)
+            {
+                _ = Task.Run(async () => await _syncService.SynchronizujOferteAsync(ofertaId));
+            }
+        }
+
+        // Usuń ofertę z Azure Search (w tle)
+        private void RemoveOfertaFromAzureSearch(int ofertaId)
+        {
+            if (_syncService != null)
+            {
+                _ = Task.Run(async () => await _syncService.UsunOferteZIndeksuAsync(ofertaId));
+            }
         }
 
         // URL awatara użytkownika
@@ -630,6 +655,12 @@ namespace TechPromo.Api.Controllers
                 if (!string.IsNullOrWhiteSpace(request.Tagi))
                 {
                     await AddTagsToOffer(oferta.IdOferta, request.Tagi);
+                }
+
+                // Synchronizuj z Azure Search jeśli oferta jest zatwierdzona i aktywna
+                if (oferta.Zatwierdzona && oferta.Aktywna)
+                {
+                    SyncOfertaToAzureSearch(oferta.IdOferta);
                 }
 
                 var result = await CreateOfferResponse(oferta.IdOferta);

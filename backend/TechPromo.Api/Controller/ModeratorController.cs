@@ -6,6 +6,7 @@ using TechPromo.Api.Data;
 using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
 using TechPromo.Api.Services;
+using TechPromo.Api.Search.Services;
 
 namespace TechPromo.Api.Controllers
 {
@@ -19,12 +20,18 @@ namespace TechPromo.Api.Controllers
         private readonly TechPromoDbContext _context;
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly IBadgeService _badgeService;
+        private readonly SerwisSync? _syncService;
 
-        public ModeratorController(TechPromoDbContext context, UserManager<Uzytkownik> userManager, IBadgeService badgeService)
+        public ModeratorController(
+            TechPromoDbContext context, 
+            UserManager<Uzytkownik> userManager, 
+            IBadgeService badgeService,
+            SerwisSync? syncService = null)
         {
             _context = context;
             _userManager = userManager;
             _badgeService = badgeService;
+            _syncService = syncService;
         }
 
         #region Moderacja komentarzy
@@ -175,6 +182,12 @@ namespace TechPromo.Api.Controllers
                 oferta.Aktywna = true;
                 await _context.SaveChangesAsync();
 
+                // Synchronizuj z Azure Search Index
+                if (_syncService != null)
+                {
+                    _ = Task.Run(async () => await _syncService.SynchronizujOferteAsync(id));
+                }
+
                 // Automatyczne przeliczenie odznak po zatwierdzeniu oferty
                 await _badgeService.EvaluateForUserAsync(oferta.IdUzytkownik);
 
@@ -218,6 +231,12 @@ namespace TechPromo.Api.Controllers
 
                 _context.Powiadomienia.Add(powiadomienie);
                 await _context.SaveChangesAsync();
+
+                // Usuń z Azure Search Index (odrzucona oferta nie powinna być widoczna)
+                if (_syncService != null)
+                {
+                    _ = Task.Run(async () => await _syncService.UsunOferteZIndeksuAsync(id));
+                }
 
                 return Ok(new { message = "Oferta została odrzucona, autor został powiadomiony" });
             }

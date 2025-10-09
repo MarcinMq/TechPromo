@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ticket, Clock, Tag, Store, Upload, Image, X, ShoppingBag, Camera, FileText } from 'lucide-react';
+import { Ticket, Clock, Tag, Store, FileText, Upload, Image, X, ShoppingBag } from 'lucide-react';
 import { getAuthToken, getUserData } from '../../utils/auth';
-import FormStepper from '../../components/FormStepper';
-import FormSection from '../../components/FormSection';
-import FormField from '../../components/FormField';
 
 interface CouponFormData {
   tytul: string;
@@ -40,15 +37,7 @@ const CreateCouponForm: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const steps = [
-    { id: 1, title: 'Podstawowe', description: 'Tytuł i opis' },
-    { id: 2, title: 'Szczegóły', description: 'Kod i ceny' },
-    { id: 3, title: 'Dodatkowe', description: 'Zdjęcia i tagi' }
-  ];
   
   const [formData, setFormData] = useState<CouponFormData>({
     tytul: '',
@@ -57,13 +46,34 @@ const CreateCouponForm: React.FC = () => {
     cenaPoprzednia: '',
     kod: '',
     kategoria: 'Telefony',
-    sklep: '', // przechowuje URL
+    sklep: '', // używane jako URL do sklepu / oferty
     tagi: '',
     typ: 'kupon',
     zdjecia: [],
     bezMinimalnejKwoty: false
   });
 
+  interface ExistingImage { id: number; url: string; kolejnosc: number; }
+  const [existingImages, setExistingImages] = useState<ExistingImage[]>([]);
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const role = getUserData()?.role;
+
+  const refreshExistingImages = async (offerId:number) => {
+    try {
+      const token = getAuthToken();
+      if(!token) return;
+      let listUrl = '';
+      if(role === 'User') listUrl = `/api/uzytkownik/oferta/${offerId}/zdjecia`;
+      else if(role === 'Moderator' || role === 'Admin') listUrl = `/api/moderator/oferta/${offerId}/zdjecia`;
+      if(!listUrl) return;
+      const resp = await fetch(listUrl, { headers: { 'Authorization': `Bearer ${token}` }});
+      if(!resp.ok) return;
+      const data = await resp.json();
+      setExistingImages((data||[]).map((x:any)=>({ id: x.idOfertaZdjecie ?? x.IdOfertaZdjecie, url: x.urlZdjecia ?? x.UrlZdjecia, kolejnosc: x.kolejnosc ?? x.Kolejnosc })));
+    } catch { /* ignore */ }
+  };
+
+  // Detect edit mode
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const edit = params.get('edit');
@@ -90,9 +100,23 @@ const CreateCouponForm: React.FC = () => {
             }));
           })
           .catch(() => {
-            setMessage({ type: 'error', text: 'Brak uprawnień do edycji tego kuponu' });
+            setMessage({ type: 'error', text: 'Brak uprawnień do edycji tej oferty' });
             setTimeout(()=> navigate('/konto/profil'), 1500);
           });
+        // Pobierz istniejące zdjęcia
+        const token = getAuthToken();
+        const imageFetches: Promise<any>[] = [];
+        if (role === 'User') {
+          imageFetches.push(fetch(`/api/uzytkownik/oferta/${idNum}/zdjecia`, { headers: { 'Authorization': `Bearer ${token}` }}));
+        } else if (role === 'Moderator' || role === 'Admin') {
+          imageFetches.push(fetch(`/api/moderator/oferta/${idNum}/zdjecia`, { headers: { 'Authorization': `Bearer ${token}` }}));
+        }
+        Promise.all(imageFetches)
+          .then(responses => Promise.all(responses.filter(r=>r.ok).map(r=>r.json())))
+          .then(allLists => {
+            const merged = allLists.flat();
+            setExistingImages(merged.map((x:any)=>({ id: x.idOfertaZdjecie ?? x.IdOfertaZdjecie, url: x.urlZdjecia ?? x.UrlZdjecia, kolejnosc: x.kolejnosc ?? x.Kolejnosc })));
+          }).catch(()=>{});
       }
     }
   }, []);
@@ -101,84 +125,34 @@ const CreateCouponForm: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    // Clear field error when user starts typing
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
-    
-    // Auto-advance steps based on field completion
-    validateAndAdvanceStep(name, value);
   };
 
-  const validateAndAdvanceStep = (fieldName: string, value: string) => {
-    const step1Fields = ['tytul', 'opis'];
-    const step2Fields = ['kod', 'cenaAktualna', 'kategoria'];
-    
-    if (step1Fields.includes(fieldName) && currentStep === 1) {
-      // Stwórz zaktualizowane dane z nową wartością
-      const updatedData = { ...formData, [fieldName]: value };
-      const step1Complete = updatedData.tytul.trim() && updatedData.opis.trim();
-      if (step1Complete && !completedSteps.includes(1)) {
-        setCompletedSteps(prev => [...prev, 1]);
-      }
-    }
-    
-    if (step2Fields.includes(fieldName) && currentStep <= 2) {
-      // Stwórz zaktualizowane dane z nową wartością
-      const updatedData = { ...formData, [fieldName]: value };
-      const step2Complete = updatedData.kod.trim() && (formData.bezMinimalnejKwoty || updatedData.cenaAktualna) && updatedData.kategoria;
-      if (step2Complete && !completedSteps.includes(2)) {
-        setCompletedSteps(prev => [...prev, 2]);
-      }
-    }
-  };
-
-  const validateStep = (step: number): boolean => {
+  const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
-    switch (step) {
-      case 1:
-        if (!formData.tytul.trim()) errors.tytul = 'Tytuł jest wymagany';
-        if (formData.tytul.length > 150) errors.tytul = 'Tytuł nie może być dłuższy niż 150 znaków';
-        if (!formData.opis.trim()) errors.opis = 'Opis jest wymagany';
-        if (formData.opis.length > 1000) errors.opis = 'Opis nie może być dłuższy niż 1000 znaków';
-        break;
-      case 2:
-        if (!formData.kategoria) errors.kategoria = 'Kategoria jest wymagana';
-        if (!formData.kod.trim()) errors.kod = 'Kod promocyjny jest wymagany';
-        if (formData.kod.length > 50) errors.kod = 'Kod promocyjny nie może być dłuższy niż 50 znaków';
-        if (!formData.bezMinimalnejKwoty && !formData.cenaAktualna) {
-          errors.cenaAktualna = 'Minimalna kwota jest wymagana lub zaznacz "Bez minimalnej kwoty"';
-        }
-        if (formData.cenaAktualna && parseFloat(formData.cenaAktualna) <= 0) errors.cenaAktualna = 'Kwota musi być większa od 0';
-        if (formData.cenaPoprzednia && formData.cenaAktualna && parseFloat(formData.cenaPoprzednia) <= parseFloat(formData.cenaAktualna)) {
-          errors.cenaPoprzednia = 'Kwota poprzednia powinna być wyższa od aktualnej';
-        }
-        if (formData.sklep && !formData.sklep.match(/^https?:\/\/.+/)) {
-          errors.sklep = 'Link musi zaczynać się od http:// lub https://';
-        }
-        break;
+    if (!formData.tytul.trim()) errors.tytul = 'Tytuł jest wymagany';
+    if (formData.tytul.length > 150) errors.tytul = 'Tytuł nie może być dłuższy niż 150 znaków';
+    if (!formData.opis.trim()) errors.opis = 'Opis jest wymagany';
+    if (formData.opis.length > 1000) errors.opis = 'Opis nie może być dłuższy niż 1000 znaków';
+    if (!formData.kategoria) errors.kategoria = 'Kategoria jest wymagana';
+    if (!formData.kod.trim()) errors.kod = 'Kod promocyjny jest wymagany';
+    if (formData.kod.length > 50) errors.kod = 'Kod promocyjny nie może być dłuższy niż 50 znaków';
+    if (!formData.bezMinimalnejKwoty && !formData.cenaAktualna) {
+      errors.cenaAktualna = 'Minimalna kwota jest wymagana lub zaznacz "Bez minimalnej kwoty"';
+    }
+    if (formData.cenaAktualna && parseFloat(formData.cenaAktualna) <= 0) errors.cenaAktualna = 'Kwota musi być większa od 0';
+    if (formData.cenaPoprzednia && formData.cenaAktualna && parseFloat(formData.cenaPoprzednia) <= parseFloat(formData.cenaAktualna)) {
+      errors.cenaPoprzednia = 'Kwota poprzednia powinna być wyższa od aktualnej';
+    }
+    if (formData.sklep && !formData.sklep.match(/^https?:\/\/.+/)) {
+      errors.sklep = 'Link musi zaczynać się od http:// lub https://';
     }
     
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  };
-
-  const nextStep = () => {
-    if (validateStep(currentStep)) {
-      if (!completedSteps.includes(currentStep)) {
-        setCompletedSteps(prev => [...prev, currentStep]);
-      }
-      if (currentStep < 3) {
-        setCurrentStep(currentStep + 1);
-      }
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -187,48 +161,74 @@ const CreateCouponForm: React.FC = () => {
     setMessage(null);
 
     try {
-      // Walidacja podstawowa
-      if (!formData.tytul.trim()) {
-        throw new Error('Tytuł jest wymagany');
-      }
-      if (!formData.opis.trim()) {
-        throw new Error('Opis jest wymagany');
-      }
-      if (!formData.kod.trim()) {
-        throw new Error('Kod promocyjny jest wymagany dla kuponów');
-      }
-      if (!formData.kategoria) {
-        throw new Error('Kategoria jest wymagana');
+      // Walidacja formularza
+      if (!validateForm()) {
+        setLoading(false);
+        return;
       }
 
       const token = getAuthToken();
       if (!token) throw new Error('Brak tokenu uwierzytelniającego. Zaloguj się ponownie.');
 
+      // Edit mode: send JSON PUT
       if (editId) {
-        const payload = {
-          tytul: formData.tytul.trim(),
-          opis: formData.opis.trim(),
-          cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
-          cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
-          kod: formData.kod.trim(),
-          // Wysyłamy pusty string jeśli pole puste, aby można było wyczyścić link
-          link: formData.sklep !== undefined ? formData.sklep.trim() : ''
-        };
-        const role = getUserData()?.role;
-        const putUrl = (role === 'Admin' || role === 'Moderator')
-          ? `/api/admin/oferta/${editId}`
-          : `/api/uzytkownik/oferta/${editId}`;
+        let putUrl = '';
+        let payload: any = {};
+
+        if (role === 'Admin' || role === 'Moderator') {
+          // Ujednolicamy ścieżkę edycji – Moderator używa tego samego endpointu co Admin
+          putUrl = `/api/admin/oferta/${editId}`;
+          payload = {
+            tytul: formData.tytul.trim(),
+            opis: formData.opis.trim(),
+            cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+            cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
+            kod: formData.kod.trim(),
+            // Wysyłamy pusty string, jeśli pole jest puste – pozwala to wyczyścić link w backendzie
+            link: formData.sklep !== undefined ? formData.sklep.trim() : ''
+          };
+        } else { // User
+          putUrl = `/api/uzytkownik/oferta/${editId}`;
+          payload = {
+            tytul: formData.tytul.trim(),
+            opis: formData.opis.trim(),
+            cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+            cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
+            kod: formData.kod.trim(),
+            // Dla użytkownika pozostawiamy dotychczasowe zachowanie
+            link: formData.sklep.trim() || null
+          };
+        }
+
         const res = await fetch(putUrl, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
           body: JSON.stringify(payload)
         });
         if (!res.ok) throw new Error('Nie udało się zaktualizować kuponu');
-        setMessage({ type: 'success', text: role === 'User' ? 'Kupon zaktualizowany – oczekuje ponownej moderacji.' : 'Kupon zaktualizowany.' });
-  setTimeout(() => navigate(role === 'User' ? '/konto/profil' : '/'), 1500);
+
+        // Jeśli są nowe zdjęcia dodane w polu (formData.zdjecia), wyślij je teraz
+        if(formData.zdjecia.length > 0){
+          const fd = new FormData();
+          formData.zdjecia.forEach(f => fd.append('zdjecia', f));
+          let uploadUrl = '';
+            if (role === 'User') uploadUrl = `/api/uzytkownik/oferta/${editId}/zdjecia`;
+            else if (role === 'Moderator' || role === 'Admin') uploadUrl = `/api/moderator/oferta/${editId}/zdjecia`;
+          if(uploadUrl){
+            const upRes = await fetch(uploadUrl, { method:'POST', headers:{'Authorization': `Bearer ${token}`}, body: fd });
+            if(!upRes.ok){
+              setMessage({ type:'error', text:'Kupon zaktualizowany, ale nie udało się wysłać nowych zdjęć.' });
+            } else {
+              await refreshExistingImages(editId);
+              setFormData(prev=>({...prev, zdjecia:[]}));
+            }
+          }
+        }
+
+        setMessage({ type: 'success', text: role === 'User' ? 'Kupon zaktualizowany (oczekuje na ponowną moderację). Nowe zdjęcia dodane.' : 'Kupon zaktualizowany.' });
+        // Nie przekierowujemy od razu – użytkownik może dalej edytować zdjęcia
         return;
       }
-
       // Przygotuj dane do wysłania jako FormData
       const formDataToSend = new FormData();
       formDataToSend.append('tytul', formData.tytul.trim());
@@ -245,7 +245,9 @@ const CreateCouponForm: React.FC = () => {
       formDataToSend.append('kategoria', formData.kategoria);
       if (formData.sklep.trim()) {
         let url = formData.sklep.trim();
-        if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+        if (!/^https?:\/\//i.test(url)) {
+          url = 'https://' + url; // automatyczne dodanie protokołu
+        }
         formDataToSend.append('sklep', url);
       }
       if (formData.tagi.trim()) {
@@ -265,6 +267,7 @@ const CreateCouponForm: React.FC = () => {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
+          // Nie dodawaj Content-Type dla FormData - przeglądarka ustawi automatycznie z boundary
         },
         body: formDataToSend
       });
@@ -296,7 +299,7 @@ const CreateCouponForm: React.FC = () => {
         }, 3000);
       } else {
         const errorData = await response.text();
-        throw new Error(`Błąd (${response.status}): ${errorData || 'Nie udało się dodać kuponu'}`);
+        throw new Error(`Błąd (${response.status}): ${errorData || 'Nie udało się dodać oferty'}`);
       }
     } catch (error: any) {
       console.error('Błąd:', error);
@@ -347,6 +350,24 @@ const CreateCouponForm: React.FC = () => {
     }));
   };
 
+  const handleExistingDelete = async (imgId: number) => {
+    if (!editId) return; if (!confirm('Usunąć zdjęcie?')) return;
+    const role = getUserData()?.role;
+    const base = role === 'User' ? '/api/uzytkownik' : '/api/moderator';
+    const res = await fetch(`${base}/oferta/${editId}/zdjecie/${imgId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getAuthToken()}` }});
+    if (res.ok) setExistingImages(prev => prev.filter(i => i.id !== imgId));
+  };
+  const handleReorderSave = async () => {
+    if (!editId) return;
+    const role = getUserData()?.role;
+    const base = role === 'User' ? '/api/uzytkownik' : '/api/moderator';
+    const body = { kolejnosci: existingImages.map((img, idx) => ({ idOfertaZdjecie: img.id, kolejnosc: idx+1 })) };
+    await fetch(`${base}/oferta/${editId}/zdjecia/kolejnosc`, { method: 'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify(body)});
+  };
+  const onDragStart = (idx:number) => setDragIndex(idx);
+  const onDragOver = (e:React.DragEvent<HTMLDivElement>, idx:number) => { e.preventDefault(); if (dragIndex===null||dragIndex===idx) return; setExistingImages(prev => { const arr=[...prev]; const [m]=arr.splice(dragIndex,1); arr.splice(idx,0,m); return arr; }); setDragIndex(idx); };
+  const onDragEnd = () => { setDragIndex(null); };
+
   return (
     <div className="min-h-screen py-8 bg-gradient-to-br from-purple-50/50 to-pink-50/50">
       <div className="max-w-4xl mx-auto px-4">
@@ -354,13 +375,6 @@ const CreateCouponForm: React.FC = () => {
           <h1 className="text-3xl font-bold mb-6 text-gray-900 text-center">
             {editId ? '✏️ Edytuj Kupon' : '🎫 Nowy Kupon'}
           </h1>
-
-          {/* Progress Stepper */}
-          <FormStepper 
-            steps={steps} 
-            currentStep={currentStep} 
-            completedSteps={completedSteps} 
-          />
 
           {message && (
             <div className={`p-4 rounded-2xl mb-6 text-center font-semibold backdrop-blur-sm ${
@@ -372,60 +386,104 @@ const CreateCouponForm: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Step 1: Podstawowe informacje */}
-            {currentStep === 1 && (
-              <FormSection 
-                title="Podstawowe informacje" 
-                description="Główne dane o kuponie"
-                icon={FileText}
-              >
-                <FormField
-                  label="Tytuł kuponu"
-                  name="tytul"
-                  value={formData.tytul}
-                  onChange={handleInputChange}
-                  placeholder="np. 20% zniżki na wszystkie smartwatche w Media Expert"
-                  required
-                  error={fieldErrors.tytul}
-                  helperText="Krótko opisz promocję (max 150 znaków)"
-                  icon={Ticket}
-                />
-                
-                <FormField
-                  label="Opis kuponu"
-                  name="opis"
-                  type="textarea"
-                  value={formData.opis}
-                  onChange={handleInputChange}
-                  placeholder="Opisz warunki użycia kuponu, czas ważności, minimalne kwoty zakupu..."
-                  required
-                  error={fieldErrors.opis}
-                  helperText="Szczegółowy opis promocji i warunków (max 1000 znaków)"
-                  rows={5}
-                />
-              </FormSection>
-            )}
+          {editId && existingImages.length > 0 && (
+            <div className="mb-8">
+              <h2 className="text-lg font-semibold mb-2">Zdjęcia (przeciągnij aby zmienić kolejność – pierwsze = główne)</h2>
+              <div className="flex flex-wrap gap-4">
+                {existingImages.map((img, idx) => (
+                  <div key={img.id}
+                       draggable
+                       onDragStart={() => onDragStart(idx)}
+                       onDragOver={(e)=>onDragOver(e, idx)}
+                       onDragEnd={onDragEnd}
+                       className={`relative w-28 h-28 rounded-xl overflow-hidden border-2 ${idx===0? 'border-green-500':'border-transparent'} shadow group bg-gray-100`}> 
+                    <img src={`http://localhost:5023${img.url}`} className="w-full h-full object-cover pointer-events-none select-none" />
+                    {idx===0 && <span className="absolute bottom-0 left-0 right-0 bg-green-600/80 text-white text-[10px] text-center py-0.5">Główne</span>}
+                    <button type="button" onClick={()=>handleExistingDelete(img.id)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 text-white flex items-center justify-center text-xs opacity-80 hover:opacity-100">×</button>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-2 text-right">
+                <button type="button" onClick={handleReorderSave} className="px-3 py-1 text-xs rounded bg-custom-blue text-white hover:bg-blue-700">Zapisz kolejność</button>
+              </div>
+            </div>
+          )}
 
-            {/* Step 2: Kod i ceny */}
-            {currentStep === 2 && (
-              <FormSection 
-                title="Szczegóły kuponu" 
-                description="Kod promocyjny, kwoty i kategoria"
-                icon={ShoppingBag}
-              >
-                <FormField
-                  label="Kod promocyjny"
-                  name="kod"
-                  value={formData.kod}
-                  onChange={handleInputChange}
-                  placeholder="np. SAVE20, SUPER30"
-                  required
-                  error={fieldErrors.kod}
-                  helperText="Kod, który trzeba wpisać aby aktywować kupon (max 50 znaków)"
-                  icon={Tag}
-                  className="font-mono text-lg font-bold text-purple-700"
-                />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Podstawowe informacje */}
+            <div className="bg-gradient-to-br from-blue-50/50 to-white/80 rounded-2xl p-6 border border-blue-100">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                Podstawowe informacje
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tytuł kuponu *
+                  </label>
+                  <input
+                    type="text"
+                    name="tytul"
+                    value={formData.tytul}
+                    onChange={handleInputChange}
+                    placeholder="np. 20% zniżki na wszystkie smartwatche w Media Expert"
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
+                  {fieldErrors.tytul && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.tytul}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Krótko opisz promocję (max 150 znaków)</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Opis kuponu *
+                  </label>
+                  <textarea
+                    name="opis"
+                    value={formData.opis}
+                    onChange={handleInputChange}
+                    placeholder="Opisz warunki użycia kuponu, czas ważności, minimalne kwoty zakupu..."
+                    required
+                    rows={5}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
+                  {fieldErrors.opis && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.opis}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Szczegółowy opis promocji i warunków (max 1000 znaków)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Kod promocyjny i ceny */}
+            <div className="bg-gradient-to-br from-pink-50/50 to-white/80 rounded-2xl p-6 border border-pink-100">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <ShoppingBag className="w-5 h-5 mr-2 text-pink-600" />
+                Kod promocyjny i kwoty
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Kod promocyjny *
+                  </label>
+                  <input
+                    type="text"
+                    name="kod"
+                    value={formData.kod}
+                    onChange={handleInputChange}
+                    placeholder="np. SAVE20, SUPER30"
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all font-mono text-lg font-bold text-purple-700"
+                  />
+                  {fieldErrors.kod && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.kod}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Kod, który trzeba wpisać aby aktywować kupon (max 50 znaków)</p>
+                </div>
 
                 {/* Checkbox dla kuponów bez minimalnej kwoty */}
                 <div className="flex items-center space-x-3 p-4 bg-purple-50 rounded-xl border border-purple-200">
@@ -448,79 +506,110 @@ const CreateCouponForm: React.FC = () => {
                   </label>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    label="Minimalna kwota poprzednia"
-                    name="cenaPoprzednia"
-                    type="number"
-                    value={formData.cenaPoprzednia}
-                    onChange={handleInputChange}
-                    placeholder="299.00"
-                    error={fieldErrors.cenaPoprzednia}
-                    helperText={formData.bezMinimalnejKwoty ? 
-                      "Pole wyłączone - kupon bez minimalnej kwoty" : 
-                      "Minimalna kwota przed zastosowaniem kuponu"
-                    }
-                    prefix="PLN"
-                    step="0.01"
-                    min="0"
-                    disabled={formData.bezMinimalnejKwoty}
-                  />
-                  
-                  <FormField
-                    label="Minimalna kwota z kuponem"
-                    name="cenaAktualna"
-                    type="number"
-                    value={formData.cenaAktualna}
-                    onChange={handleInputChange}
-                    placeholder="199.00"
-                    required={!formData.bezMinimalnejKwoty}
-                    error={fieldErrors.cenaAktualna}
-                    helperText={formData.bezMinimalnejKwoty ? 
-                      "Pole wyłączone - kupon bez minimalnej kwoty" : 
-                      "Minimalna kwota po zastosowaniu kuponu"
-                    }
-                    prefix="PLN"
-                    step="0.01"
-                    min="0"
-                    className="text-red-600 font-semibold"
-                    disabled={formData.bezMinimalnejKwoty}
-                  />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Minimalna kwota poprzednia
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        name="cenaPoprzednia"
+                        value={formData.cenaPoprzednia}
+                        onChange={handleInputChange}
+                        placeholder="299.00"
+                        step="0.01"
+                        min="0"
+                        disabled={formData.bezMinimalnejKwoty}
+                        className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all ${formData.bezMinimalnejKwoty ? 'bg-gray-100 text-gray-500' : ''}`}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">PLN</span>
+                    </div>
+                    {fieldErrors.cenaPoprzednia && (
+                      <p className="mt-1 text-sm text-red-500">{fieldErrors.cenaPoprzednia}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      {formData.bezMinimalnejKwoty ? 
+                        "Pole wyłączone - kupon bez minimalnej kwoty" : 
+                        "Minimalna kwota przed zastosowaniem kuponu"
+                      }
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Minimalna kwota z kuponem
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        name="cenaAktualna"
+                        value={formData.cenaAktualna}
+                        onChange={handleInputChange}
+                        placeholder="199.00"
+                        required={!formData.bezMinimalnejKwoty}
+                        step="0.01"
+                        min="0"
+                        disabled={formData.bezMinimalnejKwoty}
+                        className={`w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all text-red-600 font-semibold ${formData.bezMinimalnejKwoty ? 'bg-gray-100 text-gray-500' : ''}`}
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-sm font-semibold">PLN</span>
+                    </div>
+                    {fieldErrors.cenaAktualna && (
+                      <p className="mt-1 text-sm text-red-500">{fieldErrors.cenaAktualna}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">
+                      {formData.bezMinimalnejKwoty ? 
+                        "Pole wyłączone - kupon bez minimalnej kwoty" : 
+                        "Minimalna kwota po zastosowaniu kuponu"
+                      }
+                    </p>
+                  </div>
                 </div>
 
-                <FormField
-                  label="Link do oferty / sklepu"
-                  name="sklep"
-                  value={formData.sklep}
-                  onChange={handleInputChange}
-                  placeholder="https://www.sklep.pl/promocja"
-                  error={fieldErrors.sklep}
-                  helperText="Pełny URL strony gdzie można użyć kuponu"
-                  icon={Store}
-                />
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <Store className="w-4 h-4 inline mr-1" />
+                    Link do oferty / sklepu
+                  </label>
+                  <input
+                    type="text"
+                    name="sklep"
+                    value={formData.sklep}
+                    onChange={handleInputChange}
+                    placeholder="https://www.sklep.pl/promocja"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-500 transition-all"
+                  />
+                  {fieldErrors.sklep && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.sklep}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Pełny URL strony gdzie można użyć kuponu</p>
+                </div>
 
                 {/* Kategoria */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Kategoria *
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {categories.map(category => (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {categories.map((category) => (
                       <button
                         key={category.name}
                         type="button"
                         onClick={() => {
                           setFormData(prev => ({ ...prev, kategoria: category.name }));
-                          validateAndAdvanceStep('kategoria', category.name);
+                          if (fieldErrors.kategoria) {
+                            setFieldErrors(prev => ({ ...prev, kategoria: '' }));
+                          }
                         }}
                         className={`p-3 rounded-xl border transition-all text-center hover:scale-105 ${
                           formData.kategoria === category.name
-                            ? 'bg-purple-50 border-purple-500 text-purple-700 shadow-md ring-2 ring-purple-200'
-                            : 'bg-white/90 border-gray-200 text-gray-700 hover:border-purple-300 hover:bg-purple-50/50'
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 hover:border-blue-300'
                         }`}
                       >
                         <div className="text-2xl mb-1">{category.icon}</div>
-                        <div className="text-xs font-medium">{category.name}</div>
+                        <div className="text-xs font-medium text-gray-700">{category.name}</div>
                       </button>
                     ))}
                   </div>
@@ -528,26 +617,35 @@ const CreateCouponForm: React.FC = () => {
                     <p className="mt-2 text-sm text-red-500">{fieldErrors.kategoria}</p>
                   )}
                 </div>
-              </FormSection>
-            )}
+              </div>
+            </div>
 
-            {/* Step 3: Zdjęcia i tagi */}
-            {currentStep === 3 && (
-              <FormSection 
-                title="Dodatkowe informacje" 
-                description="Zdjęcia i tagi"
-                icon={Camera}
-              >
-                <FormField
-                  label="Tagi"
-                  name="tagi"
-                  value={formData.tagi}
-                  onChange={handleInputChange}
-                  placeholder="np. zniżka, promocja, kupon, blackfriday"
-                  error={fieldErrors.tagi}
-                  helperText="Słowa kluczowe oddzielone przecinkami"
-                  icon={Tag}
-                />
+            {/* Tagi i Zdjęcia */}
+            <div className="bg-gradient-to-br from-indigo-50/50 to-white/80 rounded-2xl p-6 border border-indigo-100">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <Image className="w-5 h-5 mr-2 text-indigo-600" />
+                Tagi i Zdjęcia
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <Tag className="w-4 h-4 inline mr-1" />
+                    Tagi
+                  </label>
+                  <input
+                    type="text"
+                    name="tagi"
+                    value={formData.tagi}
+                    onChange={handleInputChange}
+                    placeholder="np. zniżka, promocja, kupon, blackfriday"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
+                  />
+                  {fieldErrors.tagi && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.tagi}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Słowa kluczowe oddzielone przecinkami</p>
+                </div>
 
                 {/* Zdjęcia */}
                 <div>
@@ -563,7 +661,7 @@ const CreateCouponForm: React.FC = () => {
                   <div 
                     className={`relative border-2 border-dashed rounded-2xl p-6 transition-all ${
                       isDragOver 
-                        ? 'border-purple-500 bg-purple-50' 
+                        ? 'border-indigo-500 bg-indigo-50' 
                         : 'border-gray-300 hover:border-gray-400'
                     }`}
                     onDragOver={(e) => {
@@ -586,7 +684,7 @@ const CreateCouponForm: React.FC = () => {
                       <p className="text-gray-600 mb-2">
                         Przeciągnij i upuść zdjęcia tutaj lub
                       </p>
-                      <label className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all cursor-pointer">
+                      <label className="inline-flex items-center px-4 py-2 bg-indigo-500 text-white rounded-xl hover:bg-indigo-600 transition-all cursor-pointer">
                         <Upload className="w-4 h-4 mr-2" />
                         Wybierz pliki
                         <input
@@ -627,60 +725,36 @@ const CreateCouponForm: React.FC = () => {
                     </div>
                   )}
                 </div>
-              </FormSection>
-            )}
+              </div>
+            </div>
 
-            {/* Navigation Buttons */}
+            {/* Przyciski akcji */}
             <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-              <div className="flex space-x-3">
-                {currentStep > 1 && (
-                  <button
-                    type="button"
-                    onClick={prevStep}
-                    className="px-6 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 transition-all"
-                  >
-                    ← Poprzedni
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="px-6 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 transition-all"
+              >
+                Anuluj
+              </button>
               
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="px-6 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 transition-all"
-                >
-                  Anuluj
-                </button>
-                
-                {currentStep < 3 ? (
-                  <button
-                    type="button"
-                    onClick={nextStep}
-                    className="px-6 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-all"
-                  >
-                    Dalej →
-                  </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              >
+                {loading ? (
+                  <>
+                    <Clock className="w-5 h-5 animate-spin inline mr-2" />
+                    Zapisywanie...
+                  </>
                 ) : (
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-6 py-3 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl hover:from-purple-600 hover:to-pink-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                      <>
-                        <Clock className="w-5 h-5 animate-spin inline mr-2" />
-                        Zapisywanie...
-                      </>
-                    ) : (
-                      <>
-                        <Ticket className="w-5 h-5 inline mr-2" />
-                        {editId ? 'Zapisz zmiany' : 'Dodaj kupon'}
-                      </>
-                    )}
-                  </button>
+                  <>
+                    <Ticket className="w-5 h-5 inline mr-2" />
+                    {editId ? 'Zapisz zmiany' : 'Dodaj kupon'}
+                  </>
                 )}
-              </div>
+              </button>
             </div>
           </form>
         </div>

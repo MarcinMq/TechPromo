@@ -26,58 +26,40 @@ const SearchPage: React.FC = () => {
     setQuery(searchQuery);
     
     if (searchQuery) {
-      performSearch(searchQuery, {});
+      performSearch(searchQuery);
     }
   }, [searchParams]);
 
-  const performSearch = async (searchQuery: string, filters: any) => {
+  const performSearch = async (searchQuery: string) => {
     setLoading(true);
     setQuery(searchQuery);
 
     try {
-      // TODO: Integracja z API backendu
-      // Na razie symulujemy wyniki wyszukiwania
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Symulacja opóźnienia
+      // Wykonaj zapytanie do backendu
+      const response = await fetch(`http://localhost:5023/api/wyszukiwarka?q=${encodeURIComponent(searchQuery)}`);
+      
+      if (!response.ok) {
+        throw new Error('Błąd podczas pobierania wyników wyszukiwania');
+      }
 
-      const mockResults: SearchResult[] = [
-        {
-          id: 1,
-          title: "iPhone 15 Pro 128GB - Super promocja!",
-          price: 4599,
-          originalPrice: 5999,
-          category: "Telefony",
-          shop: "Media Expert",
-          votes: { hot: 124, cold: 8 }
+      const data = await response.json();
+      
+      // Mapuj wyniki z API na interfejs SearchResult
+      const mappedResults: SearchResult[] = data.items.map((item: any) => ({
+        id: item.document.ofertaId,
+        title: item.document.nazwa,
+        price: item.document.cena,
+        originalPrice: item.document.cenaPoprzednia,
+        category: item.document.kategoria,
+        shop: item.document.sklep,
+        votes: {
+          hot: item.document.liczbaHot,
+          cold: item.document.liczbaCold
         },
-        {
-          id: 2,
-          title: "Samsung Galaxy Watch 6 44mm",
-          price: 899,
-          originalPrice: 1299,
-          category: "Smartwatche", 
-          shop: "RTV Euro AGD",
-          votes: { hot: 89, cold: 12 }
-        },
-        {
-          id: 3,
-          title: "Sony WH-1000XM5 Słuchawki bezprzewodowe",
-          price: 1199,
-          originalPrice: 1599,
-          category: "Audio",
-          shop: "x-kom",
-          votes: { hot: 156, cold: 3 }
-        }
-      ];
+        image: item.document.zdjecie ? `http://localhost:5023${item.document.zdjecie}` : undefined
+      }));
 
-      // Filtruj wyniki na podstawie zapytania
-      const filteredResults = searchQuery 
-        ? mockResults.filter(item => 
-            item.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            item.category.toLowerCase().includes(searchQuery.toLowerCase())
-          )
-        : mockResults;
-
-      setResults(filteredResults);
+      setResults(mappedResults);
       
       // Aktualizuj URL
       if (searchQuery) {
@@ -92,8 +74,8 @@ const SearchPage: React.FC = () => {
     }
   };
 
-  const handleSearch = (searchQuery: string, filters: any) => {
-    performSearch(searchQuery, filters);
+  const handleSearch = (searchQuery: string) => {
+    performSearch(searchQuery);
   };
 
   return (

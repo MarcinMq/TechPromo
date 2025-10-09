@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Rocket, Clock, Tag, Store, FileText, Upload, Image, X, ShoppingBag, Camera } from 'lucide-react';
+import { Rocket, Clock, Tag, Store, FileText, Upload, Image, X } from 'lucide-react';
 import { getAuthToken, getUserData } from '../../utils/auth';
-import FormStepper from '../../components/FormStepper';
-import FormSection from '../../components/FormSection';
-import FormField from '../../components/FormField';
 
 interface OfferFormData {
   tytul: string;
@@ -38,15 +35,7 @@ const CreateDealForm: React.FC = () => {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
-  const [currentStep, setCurrentStep] = useState(1);
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-
-  const steps = [
-    { id: 1, title: 'Podstawowe', description: 'Tytuł i opis' },
-    { id: 2, title: 'Szczegóły', description: 'Ceny i sklep' },
-    { id: 3, title: 'Dodatkowe', description: 'Zdjęcia i tagi' }
-  ];
   
   const [formData, setFormData] = useState<OfferFormData>({
     tytul: '',
@@ -131,80 +120,30 @@ const CreateDealForm: React.FC = () => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     
-    
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
-    
-    
-    validateAndAdvanceStep(name, value);
   };
 
-  const validateAndAdvanceStep = (fieldName: string, value: string) => {
-    const step1Fields = ['tytul', 'opis'];
-    const step2Fields = ['cenaAktualna', 'kategoria'];
-    
-    if (step1Fields.includes(fieldName) && currentStep === 1) {
-      // Stwórz zaktualizowane dane z nową wartością
-      const updatedData = { ...formData, [fieldName]: value };
-      const step1Complete = updatedData.tytul.trim() && updatedData.opis.trim();
-      if (step1Complete && !completedSteps.includes(1)) {
-        setCompletedSteps(prev => [...prev, 1]);
-      }
-    }
-    
-    if (step2Fields.includes(fieldName) && currentStep <= 2) {
-      // Stwórz zaktualizowane dane z nową wartością
-      const updatedData = { ...formData, [fieldName]: value };
-      const step2Complete = updatedData.cenaAktualna && updatedData.kategoria;
-      if (step2Complete && !completedSteps.includes(2)) {
-        setCompletedSteps(prev => [...prev, 2]);
-      }
-    }
-  };
-
-  const validateStep = (step: number): boolean => {
+  const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
-    switch (step) {
-      case 1:
-        if (!formData.tytul.trim()) errors.tytul = 'Tytuł jest wymagany';
-        if (formData.tytul.length > 150) errors.tytul = 'Tytuł nie może być dłuższy niż 150 znaków';
-        if (!formData.opis.trim()) errors.opis = 'Opis jest wymagany';
-        if (formData.opis.length > 1000) errors.opis = 'Opis nie może być dłuższy niż 1000 znaków';
-        break;
-      case 2:
-        if (!formData.kategoria) errors.kategoria = 'Kategoria jest wymagana';
-        if (!formData.cenaAktualna) errors.cenaAktualna = 'Cena promocyjna jest wymagana';
-        if (formData.cenaAktualna && parseFloat(formData.cenaAktualna) <= 0) errors.cenaAktualna = 'Cena musi być większa od 0';
-        if (formData.cenaPoprzednia && formData.cenaAktualna && parseFloat(formData.cenaPoprzednia) <= parseFloat(formData.cenaAktualna)) {
-          errors.cenaPoprzednia = 'Cena poprzednia powinna być wyższa od promocyjnej';
-        }
-        if (formData.sklep && !formData.sklep.match(/^https?:\/\/.+/)) {
-          errors.sklep = 'Link musi zaczynać się od http:// lub https://';
-        }
-        break;
+    if (!formData.tytul.trim()) errors.tytul = 'Tytuł jest wymagany';
+    if (formData.tytul.length > 150) errors.tytul = 'Tytuł nie może być dłuższy niż 150 znaków';
+    if (!formData.opis.trim()) errors.opis = 'Opis jest wymagany';
+    if (formData.opis.length > 1000) errors.opis = 'Opis nie może być dłuższy niż 1000 znaków';
+    if (!formData.kategoria) errors.kategoria = 'Kategoria jest wymagana';
+    if (!formData.cenaAktualna) errors.cenaAktualna = 'Cena promocyjna jest wymagana';
+    if (formData.cenaAktualna && parseFloat(formData.cenaAktualna) <= 0) errors.cenaAktualna = 'Cena musi być większa od 0';
+    if (formData.cenaPoprzednia && formData.cenaAktualna && parseFloat(formData.cenaPoprzednia) <= parseFloat(formData.cenaAktualna)) {
+      errors.cenaPoprzednia = 'Cena poprzednia powinna być wyższa od promocyjnej';
+    }
+    if (formData.sklep && !formData.sklep.match(/^https?:\/\/.+/)) {
+      errors.sklep = 'Link musi zaczynać się od http:// lub https://';
     }
     
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  };
-
-  const nextStep = () => {
-    if (validateStep(currentStep)) {
-      if (!completedSteps.includes(currentStep)) {
-        setCompletedSteps(prev => [...prev, currentStep]);
-      }
-      if (currentStep < 3) {
-        setCurrentStep(currentStep + 1);
-      }
-    }
-  };
-
-  const prevStep = () => {
-    if (currentStep > 1) {
-      setCurrentStep(currentStep - 1);
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -213,15 +152,10 @@ const CreateDealForm: React.FC = () => {
     setMessage(null);
 
     try {
-      // Walidacja podstawowa
-      if (!formData.tytul.trim()) {
-        throw new Error('Tytuł jest wymagany');
-      }
-      if (!formData.opis.trim()) {
-        throw new Error('Opis jest wymagany');
-      }
-      if (!formData.kategoria) {
-        throw new Error('Kategoria jest wymagana');
+      // Walidacja formularza
+      if (!validateForm()) {
+        setLoading(false);
+        return;
       }
 
       const token = getAuthToken();
@@ -430,13 +364,6 @@ const CreateDealForm: React.FC = () => {
             {editId ? '✏️ Edytuj Okazję' : '🛍️ Nowa Okazja'}
           </h1>
 
-          {/* Progress Stepper */}
-          <FormStepper 
-            steps={steps} 
-            currentStep={currentStep} 
-            completedSteps={completedSteps} 
-          />
-
           {message && (
             <div className={`p-4 rounded-2xl mb-6 text-center font-semibold backdrop-blur-sm ${
               message.type === 'success' 
@@ -470,113 +397,155 @@ const CreateDealForm: React.FC = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* Step 1: Podstawowe informacje */}
-            {currentStep === 1 && (
-              <FormSection 
-                title="Podstawowe informacje" 
-                description="Główne dane o ofercie"
-                icon={FileText}
-              >
-                <FormField
-                  label="Tytuł okazji"
-                  name="tytul"
-                  value={formData.tytul}
-                  onChange={handleInputChange}
-                  placeholder="np. iPhone 15 Pro 128GB - 23% taniej w Media Expert"
-                  required
-                  error={fieldErrors.tytul}
-                  helperText="Krótko opisz produkt i promocję (max 150 znaków)"
-                  icon={FileText}
-                />
-                
-                <FormField
-                  label="Opis"
-                  name="opis"
-                  type="textarea"
-                  value={formData.opis}
-                  onChange={handleInputChange}
-                  placeholder="Opisz produkt, jego specyfikację, warunki promocji, dostępność..."
-                  required
-                  error={fieldErrors.opis}
-                  helperText="Szczegółowy opis produktu i warunków promocji (max 1000 znaków)"
-                  rows={5}
-                />
-              </FormSection>
-            )}
-
-            {/* Step 2: Ceny i sklep */}
-            {currentStep === 2 && (
-              <FormSection 
-                title="Szczegóły oferty" 
-                description="Ceny, kategoria i link do sklepu"
-                icon={ShoppingBag}
-              >
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <FormField
-                    label="Cena poprzednia"
-                    name="cenaPoprzednia"
-                    type="number"
-                    value={formData.cenaPoprzednia}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Podstawowe informacje */}
+            <div className="bg-gradient-to-br from-blue-50/50 to-white/80 rounded-2xl p-6 border border-blue-100">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-blue-600" />
+                Podstawowe informacje
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Tytuł okazji *
+                  </label>
+                  <input
+                    type="text"
+                    name="tytul"
+                    value={formData.tytul}
                     onChange={handleInputChange}
-                    placeholder="5999.99"
-                    error={fieldErrors.cenaPoprzednia}
-                    helperText="Cena przed promocją"
-                    prefix="PLN"
-                    step="0.01"
-                    min="0"
-                  />
-                  
-                  <FormField
-                    label="Cena promocyjna"
-                    name="cenaAktualna"
-                    type="number"
-                    value={formData.cenaAktualna}
-                    onChange={handleInputChange}
-                    placeholder="4599.99"
+                    placeholder="np. iPhone 15 Pro 128GB - 23% taniej w Media Expert"
                     required
-                    error={fieldErrors.cenaAktualna}
-                    helperText="Aktualna cena promocyjna"
-                    prefix="PLN"
-                    step="0.01"
-                    min="0"
-                    className="text-red-600 font-semibold"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />
+                  {fieldErrors.tytul && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.tytul}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Krótko opisz produkt i promocję (max 150 znaków)</p>
                 </div>
 
-                <FormField
-                  label="Link do oferty / sklepu"
-                  name="sklep"
-                  value={formData.sklep}
-                  onChange={handleInputChange}
-                  placeholder="https://www.sklep.pl/produkt"
-                  error={fieldErrors.sklep}
-                  helperText="Pełny URL do oferty w sklepie"
-                  icon={Store}
-                />
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Opis *
+                  </label>
+                  <textarea
+                    name="opis"
+                    value={formData.opis}
+                    onChange={handleInputChange}
+                    placeholder="Opisz produkt, jego specyfikację, warunki promocji, dostępność..."
+                    required
+                    rows={5}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                  />
+                  {fieldErrors.opis && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.opis}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Szczegółowy opis produktu i warunków promocji (max 1000 znaków)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Ceny i sklep */}
+            <div className="bg-gradient-to-br from-green-50/50 to-white/80 rounded-2xl p-6 border border-green-100">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <Tag className="w-5 h-5 mr-2 text-green-600" />
+                Ceny i sklep
+              </h2>
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Cena poprzednia
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        name="cenaPoprzednia"
+                        value={formData.cenaPoprzednia}
+                        onChange={handleInputChange}
+                        placeholder="5999.99"
+                        step="0.01"
+                        min="0"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 text-sm">PLN</span>
+                    </div>
+                    {fieldErrors.cenaPoprzednia && (
+                      <p className="mt-1 text-sm text-red-500">{fieldErrors.cenaPoprzednia}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">Cena przed promocją</p>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Cena promocyjna *
+                    </label>
+                    <div className="relative">
+                      <input
+                        type="number"
+                        name="cenaAktualna"
+                        value={formData.cenaAktualna}
+                        onChange={handleInputChange}
+                        placeholder="4599.99"
+                        required
+                        step="0.01"
+                        min="0"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all text-red-600 font-semibold"
+                      />
+                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-red-500 text-sm font-semibold">PLN</span>
+                    </div>
+                    {fieldErrors.cenaAktualna && (
+                      <p className="mt-1 text-sm text-red-500">{fieldErrors.cenaAktualna}</p>
+                    )}
+                    <p className="mt-1 text-xs text-gray-500">Aktualna cena promocyjna</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <Store className="w-4 h-4 inline mr-1" />
+                    Link do oferty / sklepu
+                  </label>
+                  <input
+                    type="text"
+                    name="sklep"
+                    value={formData.sklep}
+                    onChange={handleInputChange}
+                    placeholder="https://www.sklep.pl/produkt"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500 transition-all"
+                  />
+                  {fieldErrors.sklep && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.sklep}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Pełny URL do oferty w sklepie</p>
+                </div>
 
                 {/* Kategoria */}
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Kategoria *
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                    {categories.map(category => (
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {categories.map((category) => (
                       <button
                         key={category.name}
                         type="button"
                         onClick={() => {
                           setFormData(prev => ({ ...prev, kategoria: category.name }));
-                          validateAndAdvanceStep('kategoria', category.name);
+                          if (fieldErrors.kategoria) {
+                            setFieldErrors(prev => ({ ...prev, kategoria: '' }));
+                          }
                         }}
                         className={`p-3 rounded-xl border transition-all text-center hover:scale-105 ${
                           formData.kategoria === category.name
-                            ? 'bg-blue-50 border-blue-500 text-blue-700 shadow-md'
-                            : 'bg-white/90 border-gray-200 text-gray-700 hover:border-blue-300 hover:bg-blue-50/50'
+                            ? 'border-blue-500 bg-blue-50 shadow-md'
+                            : 'border-gray-200 hover:border-blue-300'
                         }`}
                       >
                         <div className="text-2xl mb-1">{category.icon}</div>
-                        <div className="text-xs font-medium">{category.name}</div>
+                        <div className="text-xs font-medium text-gray-700">{category.name}</div>
                       </button>
                     ))}
                   </div>
@@ -584,26 +553,35 @@ const CreateDealForm: React.FC = () => {
                     <p className="mt-2 text-sm text-red-500">{fieldErrors.kategoria}</p>
                   )}
                 </div>
-              </FormSection>
-            )}
+              </div>
+            </div>
 
-            {/* Step 3: Zdjęcia i tagi */}
-            {currentStep === 3 && (
-              <FormSection 
-                title="Dodatkowe informacje" 
-                description="Zdjęcia i tagi"
-                icon={Camera}
-              >
-                <FormField
-                  label="Tagi"
-                  name="tagi"
-                  value={formData.tagi}
-                  onChange={handleInputChange}
-                  placeholder="np. apple, smartphone, promocja"
-                  error={fieldErrors.tagi}
-                  helperText="Słowa kluczowe oddzielone przecinkami"
-                  icon={Tag}
-                />
+            {/* Tagi i Zdjęcia */}
+            <div className="bg-gradient-to-br from-purple-50/50 to-white/80 rounded-2xl p-6 border border-purple-100">
+              <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                <Image className="w-5 h-5 mr-2 text-purple-600" />
+                Tagi i Zdjęcia
+              </h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <Tag className="w-4 h-4 inline mr-1" />
+                    Tagi
+                  </label>
+                  <input
+                    type="text"
+                    name="tagi"
+                    value={formData.tagi}
+                    onChange={handleInputChange}
+                    placeholder="np. apple, smartphone, promocja"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                  />
+                  {fieldErrors.tagi && (
+                    <p className="mt-1 text-sm text-red-500">{fieldErrors.tagi}</p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-500">Słowa kluczowe oddzielone przecinkami</p>
+                </div>
 
                 {/* Zdjęcia */}
                 <div>
@@ -619,7 +597,7 @@ const CreateDealForm: React.FC = () => {
                   <div 
                     className={`relative border-2 border-dashed rounded-2xl p-6 transition-all ${
                       isDragOver 
-                        ? 'border-blue-500 bg-blue-50' 
+                        ? 'border-purple-500 bg-purple-50' 
                         : 'border-gray-300 hover:border-gray-400'
                     }`}
                     onDragOver={(e) => {
@@ -642,7 +620,7 @@ const CreateDealForm: React.FC = () => {
                       <p className="text-gray-600 mb-2">
                         Przeciągnij i upuść zdjęcia tutaj lub
                       </p>
-                      <label className="inline-flex items-center px-4 py-2 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all cursor-pointer">
+                      <label className="inline-flex items-center px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-all cursor-pointer">
                         <Upload className="w-4 h-4 mr-2" />
                         Wybierz pliki
                         <input
@@ -683,64 +661,36 @@ const CreateDealForm: React.FC = () => {
                     </div>
                   )}
                 </div>
-              </FormSection>
-            )}
+              </div>
+            </div>
 
-            {/* Navigation Buttons */}
+            {/* Przyciski akcji */}
             <div className="flex justify-between items-center pt-6 border-t border-gray-200">
-              <div className="flex space-x-3">
-                {currentStep > 1 && (
-                  <button
-                    type="button"
-                    onClick={prevStep}
-                    className="px-6 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 transition-all"
-                  >
-                    ← Poprzedni
-                  </button>
-                )}
-              </div>
+              <button
+                type="button"
+                onClick={() => navigate(-1)}
+                className="px-6 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 transition-all"
+              >
+                Anuluj
+              </button>
               
-              <div className="flex space-x-3">
-                <button
-                  type="button"
-                  onClick={() => navigate(-1)}
-                  className="px-6 py-3 border border-gray-300 rounded-xl bg-white text-gray-700 hover:bg-gray-50 transition-all"
-                >
-                  Anuluj
-                </button>
-                
-                {currentStep < 3 ? (
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      nextStep();
-                    }}
-                    className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-all"
-                  >
-                    Dalej →
-                  </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-xl hover:from-blue-600 hover:to-purple-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg"
+              >
+                {loading ? (
+                  <>
+                    <Clock className="w-5 h-5 animate-spin inline mr-2" />
+                    Zapisywanie...
+                  </>
                 ) : (
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-6 py-3 bg-green-500 text-white rounded-xl hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                      <>
-                        <Clock className="w-5 h-5 animate-spin inline mr-2" />
-                        Zapisywanie...
-                      </>
-                    ) : (
-                      <>
-                        <Rocket className="w-5 h-5 inline mr-2" />
-                        {editId ? 'Zapisz zmiany' : 'Opublikuj Okazję'}
-                      </>
-                    )}
-                  </button>
+                  <>
+                    <Rocket className="w-5 h-5 inline mr-2" />
+                    {editId ? 'Zapisz zmiany' : 'Opublikuj Okazję'}
+                  </>
                 )}
-              </div>
+              </button>
             </div>
           </form>
         </div>
