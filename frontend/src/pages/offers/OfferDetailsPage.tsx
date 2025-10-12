@@ -59,6 +59,8 @@ export default function OfferDetailsPage() {
   const [reportSuccessFlash, setReportSuccessFlash] = useState<string | null>(null);
   const [saveLoading, setSaveLoading] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [similarOffers, setSimilarOffers] = useState<any[]>([]);
+  const [loadingSimilar, setLoadingSimilar] = useState(false);
 
   // Funkcja udostępniania - kopiuje link do schowka
   const handleShare = async () => {
@@ -169,6 +171,22 @@ export default function OfferDetailsPage() {
     }
   };
 
+  const fetchSimilarOffers = async () => {
+    if (!id) return;
+    try {
+      setLoadingSimilar(true);
+      const res = await fetch(`/api/wyszukiwarka/podobne/${id}?liczba=5`);
+      if (res.ok) {
+        const data = await res.json();
+        setSimilarOffers(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching similar offers:', error);
+    } finally {
+      setLoadingSimilar(false);
+    }
+  };
+
   useEffect(() => {
     const load = async () => {
       try {
@@ -180,6 +198,7 @@ export default function OfferDetailsPage() {
         setCurrentImage(0);
         await fetchComments(true);
         await checkIfSaved(); // Sprawdź czy oferta jest zapisana
+        await fetchSimilarOffers(); // Pobierz podobne oferty
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -389,23 +408,23 @@ export default function OfferDetailsPage() {
 
   const renderComments = (nodes: CommentNode[], depth = 0) => (
     nodes.map(c => (
-      <div key={c.id} className={`rounded p-3 mb-3 ${depth === 0 ? 'bg-gray-50 border' : 'bg-white border-l-2'} `} style={depth>0?{marginLeft: depth * 16}:{}}>
-        <div className="text-xs text-gray-500 mb-1">{c.autor} • {c.data}</div>
-        <div className="text-sm text-gray-800 whitespace-pre-line mb-2">{c.tresc}</div>
+      <div key={c.id} className={`rounded p-3 mb-3 transition-colors ${depth === 0 ? 'bg-gray-50 dark:bg-gray-800 border dark:border-gray-700' : 'bg-white dark:bg-gray-900 border-l-2 dark:border-l-gray-600'} `} style={depth>0?{marginLeft: depth * 16}:{}}>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 transition-colors">{c.autor} • {c.data}</div>
+        <div className="text-sm text-gray-800 dark:text-gray-300 whitespace-pre-line mb-2 transition-colors">{c.tresc}</div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 text-xs">
-            <button onClick={()=>handleCommentVote(c.id,'up')} className={`px-2 py-0.5 rounded border ${c.userVote==='up' ? 'bg-green-600 text-white border-green-600' : 'bg-white hover:bg-green-50 text-green-600 border-green-300'}`}>▲ {c.up ?? 0}</button>
-            <button onClick={()=>handleCommentVote(c.id,'down')} className={`px-2 py-0.5 rounded border ${c.userVote==='down' ? 'bg-red-600 text-white border-red-600' : 'bg-white hover:bg-red-50 text-red-600 border-red-300'}`}>▼ {c.down ?? 0}</button>
+            <button onClick={()=>handleCommentVote(c.id,'up')} className={`px-2 py-0.5 rounded border transition-colors ${c.userVote==='up' ? 'bg-green-600 text-white border-green-600' : 'bg-white dark:bg-gray-700 hover:bg-green-50 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-300 dark:border-green-700'}`}>▲ {c.up ?? 0}</button>
+            <button onClick={()=>handleCommentVote(c.id,'down')} className={`px-2 py-0.5 rounded border transition-colors ${c.userVote==='down' ? 'bg-red-600 text-white border-red-600' : 'bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 border-red-300 dark:border-red-700'}`}>▼ {c.down ?? 0}</button>
           </div>
-          <button onClick={() => setReplyParentId(replyParentId === c.id ? null : c.id)} className="text-xs text-blue-600 hover:underline">{replyParentId === c.id ? 'Anuluj' : 'Odpowiedz'}</button>
-          <button onClick={() => openReport(c.id)} className="text-xs text-red-600 hover:underline">Zgłoś</button>
+          <button onClick={() => setReplyParentId(replyParentId === c.id ? null : c.id)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline transition-colors">{replyParentId === c.id ? 'Anuluj' : 'Odpowiedz'}</button>
+          <button onClick={() => openReport(c.id)} className="text-xs text-red-600 dark:text-red-400 hover:underline transition-colors">Zgłoś</button>
         </div>
         {replyParentId === c.id && (
           <div className="mt-2 space-y-2">
-            <textarea value={replyText} onChange={e=>setReplyText(e.target.value)} className="w-full border rounded p-2 text-xs resize-y min-h-[60px]" placeholder="Twoja odpowiedź..." />
+            <textarea value={replyText} onChange={e=>setReplyText(e.target.value)} className="w-full border dark:border-gray-600 rounded p-2 text-xs resize-y min-h-[60px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors" placeholder="Twoja odpowiedź..." />
             <div className="flex gap-2">
-              <button onClick={()=>handleAddReply(c.id)} className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">Wyślij</button>
-              <button onClick={()=>{setReplyParentId(null); setReplyText('');}} className="text-xs text-gray-500 hover:underline">Anuluj</button>
+              <button onClick={()=>handleAddReply(c.id)} className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">Wyślij</button>
+              <button onClick={()=>{setReplyParentId(null); setReplyText('');}} className="text-xs text-gray-500 dark:text-gray-400 hover:underline transition-colors">Anuluj</button>
             </div>
           </div>
         )}
@@ -418,26 +437,26 @@ export default function OfferDetailsPage() {
     ))
   );
 
-  if (loading) return <div className="p-4 text-center">Ładowanie...</div>;
-  if (error) return <div className="p-4 text-center text-red-600">{error}</div>;
-  if (!offer) return <div className="p-4 text-center">Brak danych</div>;
+  if (loading) return <div className="p-4 text-center text-gray-900 dark:text-gray-100">Ładowanie...</div>;
+  if (error) return <div className="p-4 text-center text-red-600 dark:text-red-400">{error}</div>;
+  if (!offer) return <div className="p-4 text-center text-gray-900 dark:text-gray-100">Brak danych</div>;
 
   const temp = offer.votes.hot - offer.votes.cold;
   // Rabat obliczany inline w renderze (usunieto zmienna discount)
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <div className="w-full max-w-5xl mx-auto px-4 py-4">
         {reportSuccessFlash && (
-          <div className="mb-4 px-4 py-2 rounded-xl bg-green-100 text-green-700 text-sm border border-green-200 shadow">
+          <div className="mb-4 px-4 py-2 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm border border-green-200 dark:border-green-800 shadow">
             {reportSuccessFlash}
           </div>
         )}
-        <div className="flex items-center mb-4 text-sm text-gray-600">
-          <Link to="/" className="text-blue-600 hover:underline flex items-center"><ArrowLeft className="w-4 h-4 mr-1" /> Wróć</Link>
+        <div className="flex items-center mb-4 text-sm text-gray-600 dark:text-gray-400">
+          <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline flex items-center"><ArrowLeft className="w-4 h-4 mr-1" /> Wróć</Link>
         </div>
 
-        <div className="bg-white border rounded-lg shadow-sm overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden transition-colors">
           <div className="p-4 md:p-6">
             <div className="flex flex-col md:flex-row md:space-x-6">
               {/* Galeria */}
@@ -445,7 +464,7 @@ export default function OfferDetailsPage() {
                 {offer.zdjecia && offer.zdjecia.length > 0 ? (
                   <div className="space-y-3">
                     {/* Obraz główny / karuzela */}
-                    <div className="w-full aspect-square bg-gray-100 border rounded-xl overflow-hidden relative group cursor-zoom-in" onClick={() => setLightboxOpen(true)}>
+                    <div className="w-full aspect-square bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 rounded-xl overflow-hidden relative group cursor-zoom-in transition-colors" onClick={() => setLightboxOpen(true)}>
                       {offer.zdjecia.map((z, idx) => {
                         const src = z.startsWith('http') ? z : `http://localhost:5023${z}`;
                         return (
@@ -453,7 +472,7 @@ export default function OfferDetailsPage() {
                             key={idx}
                             src={src}
                             alt={`${offer.tytul} (${idx+1}/${offer.zdjecia.length})`}
-                            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 bg-white ${idx === currentImage ? 'opacity-100' : 'opacity-0'}`}
+                            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 bg-white dark:bg-gray-800 ${idx === currentImage ? 'opacity-100' : 'opacity-0'}`}
                             draggable={false}
                           />
                         );
@@ -499,7 +518,7 @@ export default function OfferDetailsPage() {
                               key={i}
                               type="button"
                               onClick={() => setCurrentImage(i)}
-                              className={`relative flex-shrink-0 w-16 h-16 border rounded-lg overflow-hidden bg-white transition ring-2 ${i===currentImage ? 'ring-custom-blue' : 'ring-transparent hover:ring-gray-300'}`}
+                              className={`relative flex-shrink-0 w-16 h-16 border dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-700 transition ring-2 ${i===currentImage ? 'ring-custom-blue dark:ring-blue-500' : 'ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600'}`}
                             >
                               <img src={src} alt={`miniatura ${i+1}`} className="absolute inset-0 w-full h-full object-cover" />
                             </button>
@@ -509,7 +528,7 @@ export default function OfferDetailsPage() {
                     )}
                   </div>
                 ) : (
-                  <div className="w-full aspect-square bg-gray-100 border rounded flex items-center justify-center text-5xl">
+                  <div className="w-full aspect-square bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 rounded flex items-center justify-center text-5xl transition-colors">
                     {offer.typ === 'kupon' ? '🎫' : '🛍️'}
                   </div>
                 )}
@@ -518,14 +537,14 @@ export default function OfferDetailsPage() {
               {/* Treść */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between mb-3">
-                  <h1 className="text-2xl font-bold text-gray-900 pr-4 leading-tight">{offer.tytul}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 pr-4 leading-tight">{offer.tytul}</h1>
                   <div className="flex flex-col items-center w-20">
-                    <div className="w-16 h-16 flex items-center justify-center rounded-lg border font-bold text-lg bg-red-50 text-red-600">
+                    <div className="w-16 h-16 flex items-center justify-center rounded-lg border dark:border-gray-600 font-bold text-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400">
                       {temp}°
                     </div>
                     <div className="flex items-center space-x-1 mt-2">
-                      <button onClick={() => handleVote('hot')} className={`px-2 py-1 rounded text-xs flex items-center transition-colors ${offer.userVote==='hot' ? 'bg-red-600 text-white' : 'bg-red-100 text-red-600 hover:bg-red-200'}`}><Flame className="w-3 h-3 mr-1" /> {offer.votes.hot}</button>
-                      <button onClick={() => handleVote('cold')} className={`px-2 py-1 rounded text-xs flex items-center transition-colors ${offer.userVote==='cold' ? 'bg-blue-600 text-white' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'}`}><Snowflake className="w-3 h-3 mr-1" /> {offer.votes.cold}</button>
+                      <button onClick={() => handleVote('hot')} className={`px-2 py-1 rounded text-xs flex items-center transition-colors ${offer.userVote==='hot' ? 'bg-red-600 text-white' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'}`}><Flame className="w-3 h-3 mr-1" /> {offer.votes.hot}</button>
+                      <button onClick={() => handleVote('cold')} className={`px-2 py-1 rounded text-xs flex items-center transition-colors ${offer.userVote==='cold' ? 'bg-blue-600 text-white' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'}`}><Snowflake className="w-3 h-3 mr-1" /> {offer.votes.cold}</button>
                     </div>
                   </div>
                 </div>
@@ -539,13 +558,13 @@ export default function OfferDetailsPage() {
                   )}
                   {/* Stara cena (jeśli występuje i > aktualnej) */}
                   {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
-                    <span className="text-lg line-through text-gray-400">{offer.cenaPoprzednia} zł</span>
+                    <span className="text-lg line-through text-gray-400 dark:text-gray-500">{offer.cenaPoprzednia} zł</span>
                   )}
                   {/* Nowa cena lub za darmo */}
                   {offer.cena === 0 ? (
-                    <span className="text-4xl font-black text-green-600 bg-green-100 px-4 py-2 rounded-lg flex items-center gap-2"><Gift className="w-8 h-8" /> ZA DARMO!</span>
+                    <span className="text-4xl font-black text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-4 py-2 rounded-lg flex items-center gap-2"><Gift className="w-8 h-8" /> ZA DARMO!</span>
                   ) : offer.cena ? (
-                    <span className="text-3xl font-black text-red-600">{offer.cena} zł</span>
+                    <span className="text-3xl font-black text-red-600 dark:text-red-400">{offer.cena} zł</span>
                   ) : null}
                   {/* Badge rabatu */}
                   {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
@@ -569,19 +588,19 @@ export default function OfferDetailsPage() {
                     </a>
                   </div>
                 ) : (
-                  <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
-                    <p className="text-sm text-yellow-700">
+                  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
                       <strong>Brak linku do sklepu.</strong> Ta oferta nie zawiera linku do sklepu.
                     </p>
                   </div>
                 )}
 
-                <div className="text-sm text-gray-600 mb-4">
+                <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 transition-colors">
                   <span className="mr-4">Kategoria: <strong>{offer.kategoria}</strong></span>
                   <span>Dodane: {offer.dataUtworzenia}</span>
                 </div>
 
-                <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-line mb-6">
+                <div className="prose prose-sm max-w-none text-gray-800 dark:text-gray-300 whitespace-pre-line mb-6 transition-colors">
                   {offer.opis || 'Brak opisu.'}
                 </div>
 
@@ -589,7 +608,7 @@ export default function OfferDetailsPage() {
                 <div className="flex items-center space-x-3 mb-6">
                   <button 
                     onClick={handleShare}
-                    className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm"
+                    className="flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors"
                   >
                     <Share2 className="w-4 h-4" /> 
                     <span>Udostępnij</span>
@@ -597,24 +616,24 @@ export default function OfferDetailsPage() {
                   <button 
                     onClick={handleSave}
                     disabled={saveLoading}
-                    className={`flex items-center space-x-1 text-sm disabled:opacity-50 ${
+                    className={`flex items-center space-x-1 text-sm disabled:opacity-50 transition-colors ${
                       isSaved 
-                        ? 'text-yellow-600 hover:text-yellow-700' 
-                        : 'text-gray-600 hover:text-yellow-600'
+                        ? 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300' 
+                        : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400'
                     }`}
                   >
-                    <span className={`text-lg ${isSaved ? 'text-yellow-500' : 'text-gray-400'}`}>⭐</span>
+                    <span className={`text-lg ${isSaved ? 'text-yellow-500 dark:text-yellow-400' : 'text-gray-400 dark:text-gray-500'}`}>⭐</span>
                     <span>{saveLoading ? 'Zapisywanie...' : (isSaved ? 'Zapisane' : 'Zapisz')}</span>
                   </button>
                 </div>
 
-                <div className="border-t pt-4">
+                <div className="border-t dark:border-gray-700 pt-4 transition-colors">
                   <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <h2 className="font-semibold">Komentarze ({comments.length})</h2>
+                    <h2 className="font-semibold text-gray-900 dark:text-gray-100">Komentarze ({comments.length})</h2>
                     {comments.length>0 && (
-                      <div className="text-xs text-gray-600 flex items-center gap-1">
+                      <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1 transition-colors">
                         <span>sortowanie:</span>
-                        <select value={commentSort} onChange={e=>setCommentSort(e.target.value as any)} className="border rounded px-2 py-1 text-xs bg-white">
+                        <select value={commentSort} onChange={e=>setCommentSort(e.target.value as any)} className="border dark:border-gray-600 rounded px-2 py-1 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors">
                           <option value="newest">Najpierw najnowsze</option>
                           <option value="oldest">Najpierw najstarsze</option>
                           <option value="helpful">Najbardziej pomocne</option>
@@ -624,22 +643,103 @@ export default function OfferDetailsPage() {
                     )}
                   </div>
                   <div className="mb-4">
-                    {commentTree.length>0 ? renderComments(commentTree) : <div className="text-sm text-gray-500">Brak komentarzy.</div>}
+                    {commentTree.length>0 ? renderComments(commentTree) : <div className="text-sm text-gray-500 dark:text-gray-400">Brak komentarzy.</div>}
                     {comments.length < commentsTotal && (
                       <div className="mt-4">
-                        <button onClick={()=>fetchComments(false)} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 rounded text-xs">Załaduj więcej...</button>
+                        <button onClick={()=>fetchComments(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 transition-colors">Załaduj więcej...</button>
                       </div>
                     )}
                   </div>
                   <div className="flex flex-col sm:flex-row gap-2">
-                    <textarea value={commentText} onChange={e => setCommentText(e.target.value)} className="flex-1 border rounded p-2 text-sm resize-y min-h-[80px]" placeholder="Dodaj komentarz..." />
-                    <button onClick={handleAddComment} className="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 self-start">Wyślij</button>
+                    <textarea value={commentText} onChange={e => setCommentText(e.target.value)} className="flex-1 border dark:border-gray-600 rounded p-2 text-sm resize-y min-h-[80px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors" placeholder="Dodaj komentarz..." />
+                    <button onClick={handleAddComment} className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 dark:hover:bg-blue-600 self-start transition-colors">Wyślij</button>
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Sekcja z podobnymi ofertami */}
+        {similarOffers.length > 0 && (
+          <div className="mt-8 mb-8">
+            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6 transition-colors">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                <Flame className="w-5 h-5 text-orange-500" />
+                Podobne oferty
+              </h2>
+              
+              {loadingSimilar ? (
+                <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+                  Ładowanie podobnych ofert...
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                  {similarOffers.map((similar: any) => {
+                    const temperatura = similar.liczbaHot - similar.liczbaCold;
+                    return (
+                      <Link
+                        key={similar.ofertaId}
+                        to={`/okazja/${similar.ofertaId}`}
+                        className="group bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 hover:shadow-md transition-all border border-gray-200 dark:border-gray-600"
+                      >
+                        {/* Zdjęcie */}
+                        <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white dark:bg-gray-800 mb-3">
+                          {similar.zdjecia && similar.zdjecia.length > 0 ? (
+                            <img
+                              src={similar.zdjecia[0]}
+                              alt={similar.nazwa}
+                              className="w-full h-full object-contain"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-4xl">
+                              {similar.typ === 'kupon' ? '🎫' : '🛍️'}
+                            </div>
+                          )}
+                          {/* Badge temperatury */}
+                          <div className={`absolute top-2 right-2 px-2 py-1 rounded-lg text-xs font-bold ${
+                            temperatura > 0 
+                              ? 'bg-red-600 text-white' 
+                              : temperatura < 0 
+                              ? 'bg-blue-600 text-white' 
+                              : 'bg-gray-600 text-white'
+                          }`}>
+                            {temperatura > 0 ? '+' : ''}{temperatura}°
+                          </div>
+                        </div>
+
+                        {/* Tytuł */}
+                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {similar.nazwa}
+                        </h3>
+
+                        {/* Cena */}
+                        <div className="flex items-center gap-2">
+                          {similar.cena !== undefined && (
+                            <>
+                              {similar.cena === 0 ? (
+                                <span className="text-sm font-bold text-green-600 dark:text-green-400">GRATIS</span>
+                              ) : (
+                                <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                                  {similar.cena} zł
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </div>
+
+                        {/* Sklep */}
+                        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+                          {similar.sklep}
+                        </div>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
       </div>
       {/* Modal zgłoszenia komentarza */}

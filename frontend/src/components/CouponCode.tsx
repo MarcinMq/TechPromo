@@ -8,7 +8,7 @@ interface CouponCodeProps {
 export default function CouponCode({ code, size='md' }: CouponCodeProps) {
   const [copied, setCopied] = useState(false);
   if (!code) return null;
-  const base = 'bg-gray-100 text-gray-800 font-mono rounded border select-all';
+  const base = 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200 font-mono rounded border dark:border-gray-600 select-all';
   const pad = size === 'sm' ? 'text-xs px-2 py-0.5' : 'text-sm px-3 py-1';
   const btnPad = size === 'sm' ? 'px-2 py-0.5 text-[10px]' : 'px-2.5 py-1 text-xs';
   return (
@@ -17,7 +17,7 @@ export default function CouponCode({ code, size='md' }: CouponCodeProps) {
       <button
         type="button"
         onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(()=>setCopied(false), 1800); }}
-        className={`bg-blue-600 hover:bg-blue-700 text-white rounded ${btnPad} font-medium transition-colors`}
+        className={`bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded ${btnPad} font-medium transition-colors`}
       >
         {copied ? 'Skopiowano' : 'Kopiuj'}
       </button>

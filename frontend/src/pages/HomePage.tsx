@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import CouponCode from '../components/CouponCode';
-import { Flame, Snowflake, MessageCircle, Star, Zap, Users, Search, Flag, Share2, ExternalLink, Gift } from 'lucide-react';
+import { Flame, Snowflake, MessageCircle, Star, Zap, Search, Flag, Share2, Gift } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth';
 import ReportOfferModal from '../components/modals/ReportOfferModal';
@@ -71,7 +71,172 @@ function OfferImage({ offer }: { offer: OfertaDto }) {
   );
 }
 
+// Prawy sidebar - najgorętsze okazje i aktywność użytkownika
+function RightSidebar() {
+  const [hotOffers, setHotOffers] = useState<OfertaDto[]>([]);
+  const [userActivity, setUserActivity] = useState<any[]>([]);
+  const [loadingHot, setLoadingHot] = useState(true);
+  const [loadingActivity, setLoadingActivity] = useState(true);
+  const token = getAuthToken();
+
+  // Pobierz najgorętsze okazje
+  useEffect(() => {
+    const fetchHotOffers = async () => {
+      try {
+        const response = await fetch('/api/oferta?sortBy=gorace&skip=0&take=5');
+        const data = await response.json();
+        setHotOffers(data.items || data.Items || []);
+      } catch (err) {
+        console.error('Error fetching hot offers:', err);
+      } finally {
+        setLoadingHot(false);
+      }
+    };
+    fetchHotOffers();
+  }, []);
+
+  // Pobierz aktywność użytkownika jeśli zalogowany
+  useEffect(() => {
+    if (!token) {
+      setLoadingActivity(false);
+      return;
+    }
+
+    const fetchActivity = async () => {
+      try {
+        const response = await fetch('/api/uzytkownik/aktywnosc?skip=0&take=5', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setUserActivity(data.items || data.Items || []);
+        }
+      } catch (err) {
+        console.error('Error fetching user activity:', err);
+      } finally {
+        setLoadingActivity(false);
+      }
+    };
+    fetchActivity();
+  }, [token]);
+
+  return (
+    <div className="hidden lg:block w-80 flex-shrink-0">
+      <div className="sticky top-24 space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto scrollbar-thin">
+        {/* Najgorętsze okazje */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 p-4 transition-colors">
+        <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+          <Flame className="w-5 h-5 text-red-600" />
+          Najgorętsze okazje
+        </h3>
+        
+        {loadingHot ? (
+          <div className="text-sm text-gray-600 dark:text-gray-400">Ładowanie...</div>
+        ) : hotOffers.length === 0 ? (
+          <div className="text-sm text-gray-600 dark:text-gray-400">Brak gorących okazji</div>
+        ) : (
+          <div className="space-y-3">
+            {hotOffers.map(offer => {
+              const temperatura = offer.votes.hot - offer.votes.cold;
+              return (
+                <Link
+                  key={offer.id}
+                  to={`/okazja/${offer.id}`}
+                  className="block group hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg p-2 -mx-2 transition-colors"
+                >
+                  <div className="flex gap-3">
+                    <div className="flex-shrink-0 w-16 h-16 rounded-lg border dark:border-gray-600 overflow-hidden bg-white flex items-center justify-center">
+                      {offer.zdjecia && offer.zdjecia.length > 0 ? (
+                        <img
+                          src={offer.zdjecia[0].startsWith('http') ? offer.zdjecia[0] : `http://localhost:5023${offer.zdjecia[0]}`}
+                          alt={offer.tytul}
+                          className="w-full h-full object-contain"
+                        />
+                      ) : (
+                        <span className="text-2xl">{offer.typ === 'kupon' ? '🎫' : '🛍️'}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                        {offer.tytul}
+                      </h4>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                          {temperatura}°
+                        </span>
+                        {offer.cena !== undefined && (
+                          <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                            {offer.cena === 0 ? 'GRATIS' : `${offer.cena} zł`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Twoja najnowsza aktywność */}
+      {token && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 p-4 transition-colors">
+          <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <Zap className="w-5 h-5 text-blue-600" />
+            Twoja aktywność
+          </h3>
+          
+          {loadingActivity ? (
+            <div className="text-sm text-gray-600 dark:text-gray-400">Ładowanie...</div>
+          ) : userActivity.length === 0 ? (
+            <div className="text-sm text-gray-600 dark:text-gray-400">Brak aktywności</div>
+          ) : (
+            <div className="space-y-3">
+              {userActivity.map((activity, idx) => {
+                const getActivityIcon = (typ: string) => {
+                  switch (typ) {
+                    case 'oferta': return '🛍️';
+                    case 'komentarz': return '💬';
+                    case 'glos': return '👍';
+                    case 'odznaka': return '🏆';
+                    default: return '•';
+                  }
+                };
+
+                return (
+                  <div
+                    key={idx}
+                    className="flex items-start gap-2 text-sm border-l-2 border-gray-200 dark:border-gray-600 pl-3 py-1"
+                  >
+                    <span className="text-lg flex-shrink-0">{getActivityIcon(activity.typ)}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-gray-900 dark:text-gray-100 font-medium">{activity.opis}</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-xs mt-0.5">{activity.data}</p>
+                      {activity.punkty && (
+                        <span className="inline-block mt-1 text-xs font-semibold text-green-600 dark:text-green-400">
+                          +{activity.punkty} pkt
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+      </div>
+    </div>
+  );
+}
+
 function HomePage() {
+  const location = useLocation();
+  
   // Proste filtry obsługiwane przez backend (hot/newest/price)
   const [activeFilter, setActiveFilter] = useState<'gorace' | 'najnowsze' | 'cena' | 'wszystkie'>('gorace');
   const [selectedCategory, setSelectedCategory] = useState('wszystkie');
@@ -91,12 +256,17 @@ function HomePage() {
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const skipRef = useRef(0);
 
-  // Top 3 ofert z największą liczbą HOT (malejąco)
-  const topHotOffers = useMemo(() => {
-    return [...offers]
-      .sort((a, b) => (b.votes.hot - a.votes.hot))
-      .slice(0, 3);
-  }, [offers]);
+  // Odczytaj kategorię z URL przy pierwszym załadowaniu
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const kategoriaParam = params.get('kategoria');
+    if (kategoriaParam) {
+      setSelectedCategory(kategoriaParam);
+    } else {
+      // Jeśli nie ma parametru kategoria w URL, ustaw na "wszystkie"
+      setSelectedCategory('wszystkie');
+    }
+  }, [location]);
 
   // Debounce search input
   useEffect(() => {
@@ -343,24 +513,6 @@ function HomePage() {
     }
   };
 
-  // Stała lista kategorii (spójna z formularzami dodawania)
-  const categories = useMemo(() => {
-    const base = [
-      { name: 'Telefony', icon: '📱' },
-      { name: 'Laptopy', icon: '💻' },
-      { name: 'Audio', icon: '🎧' },
-      { name: 'TV', icon: '📺' },
-      { name: 'Gaming', icon: '🎮' },
-      { name: 'Foto', icon: '📷' },
-      { name: 'Smartwatche', icon: '⌚' },
-      { name: 'Tablety', icon: '📱' },
-      { name: 'PC', icon: '🖥️' },
-      { name: 'Akcesoria', icon: '🔌' }
-    ];
-    const withCounts = base.map(c => ({ ...c, count: offers.filter(o => o.kategoria.toLowerCase() === c.name.toLowerCase()).length }));
-    return [{ name: 'Wszystkie', icon: '🔥', count: offers.length }, ...withCounts];
-  }, [offers]);
-
   const filteredOffers = useMemo(() => {
     let list = [...offers];
     // Use case-insensitive comparison for the special 'Wszystkie' category
@@ -373,43 +525,56 @@ function HomePage() {
     return list;
   }, [offers, selectedCategory, searchDebounced]);
 
-  const getTemperatureColor = (temp: number) => {
-    if (temp >= 100) return 'text-red-600 bg-red-50 border-red-200';
-    if (temp >= 50) return 'text-orange-600 bg-orange-50 border-orange-200';
-    if (temp >= 0) return 'text-blue-600 bg-blue-50 border-blue-200';
-    return 'text-gray-600 bg-gray-50 border-gray-200';
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Top banner jak pepper.pl */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3">
-        <div className="px-2 text-center">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      {/* Top banner */}
+      <div className="bg-blue-600 dark:bg-blue-700 text-white py-2.5">
+        <div className="px-4 text-center">
           <p className="text-sm font-medium">
-            <Star className="inline w-4 h-4 mr-2" />
+            <Star className="inline w-4 h-4 mr-1.5" />
             Prawdziwi ludzie, prawdziwe oszczędności
           </p>
         </div>
       </div>
 
-      {/* Main hero - jak pepper.pl */}
-      <div className="bg-white border-b shadow-sm">
-        <div className="px-2 py-8">
-          <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-3">
-              <span className="text-blue-600">Tech</span>Promo
-            </h1>
-            <h2 className="text-xl text-gray-700 font-medium">
-              Odkrywaj setki okazji publikowanych przez łowców okazji, takich jak Ty!
-            </h2>
+      {/* Main hero - Clean and minimal */}
+      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 transition-colors">
+        <div className="max-w-[1800px] mx-auto px-4 py-12 text-center">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4">
+            TechPromo
+          </h1>
+          
+          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
+            Odkrywaj setki okazji publikowanych przez łowców okazji, takich jak Ty!
+          </p>
+          
+          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+            <Link
+              to="/auth/register"
+              className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
+            >
+              <Zap className="w-5 h-5 inline mr-2" />
+              Dołącz za darmo
+            </Link>
+            
+            <Link
+              to="#oferty"
+              onClick={(e) => {
+                e.preventDefault();
+                document.querySelector('.offers-section')?.scrollIntoView({ behavior: 'smooth' });
+              }}
+              className="px-6 py-3 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            >
+              Przeglądaj okazje
+            </Link>
           </div>
         </div>
       </div>
 
-      {/* Filtry główne - jak na pepper.pl */}
-      <div className="bg-white border-b shadow-sm sticky top-16 z-40">
-        <div className="px-2">
-          <div className="flex flex-col sm:flex-row sm:items-center py-4 gap-4">
+      {/* Filtry główne */}
+      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-16 z-40 shadow-sm transition-colors">
+        <div className="max-w-[1800px] mx-auto px-4">
+          <div className="flex flex-col sm:flex-row sm:items-center py-3 gap-3">
             <div className="flex space-x-2 overflow-x-auto pb-2 sm:pb-0">
               {[
                 { key: 'gorace', label: '🔥 Gorące' },
@@ -420,7 +585,7 @@ function HomePage() {
                 <button
                   key={f.key}
                   onClick={() => setActiveFilter(f.key as any)}
-                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 ${activeFilter === f.key ? 'bg-blue-600 text-white shadow-md' : 'text-gray-700 hover:bg-gray-100 border border-gray-200'}`}
+                  className={`flex-shrink-0 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${activeFilter === f.key ? 'bg-blue-600 dark:bg-blue-700 text-white' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
                 >
                   {f.label}
                 </button>
@@ -429,130 +594,76 @@ function HomePage() {
             
             <div className="flex-1" />
             <div className="relative w-full sm:w-80">
-              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500" />
               <input
                 type="text"
                 placeholder="Szukaj ofert, sklepów, marek..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 text-sm rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-200 focus:border-blue-400 outline-none transition-all duration-200"
+                className="w-full pl-10 pr-4 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-blue-500 dark:focus:border-blue-600 outline-none transition-colors"
               />
             </div>
           </div>
         </div>
       </div>
 
-      <div className="px-2 py-6">
-        <div className="flex flex-col lg:flex-row gap-4">
-          {/* Sidebar lewy - kategorie na mobile jako poziome przyciski */}
-          <div className="w-full lg:w-72 flex-shrink-0">
-            <div className="bg-white rounded-lg shadow-sm border p-4 lg:sticky lg:top-32">
-              <div className="text-lg font-bold text-gray-900 mb-4 lg:block hidden">📂 Kategorie</div>
-              
-              {/* Na mobile - poziome przewijanie kategorii */}
-              <div className="lg:hidden overflow-x-auto">
-                <div className="flex space-x-2 pb-2">
-                  {categories.map(category => (
-                    <button
-                      key={category.name}
-                      onClick={() => setSelectedCategory(category.name)}
-                      className={`flex-shrink-0 flex items-center space-x-2 px-3 py-2 rounded-full text-sm font-medium transition-all duration-200 ${
-                        selectedCategory.toLowerCase() === category.name.toLowerCase()
-                          ? 'bg-blue-600 text-white shadow-md'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-200'
-                      }`}
-                    >
-                      <span>{category.icon}</span>
-                      <span>{category.name}</span>
-                      <span className="bg-white/20 text-xs px-1.5 py-0.5 rounded-full">{category.count}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              
-              {/* Na desktop - pionowa lista */}
-              <div className="hidden lg:block space-y-1">
-                {categories.map(category => (
-                  <button
-                    key={category.name}
-                    onClick={() => setSelectedCategory(category.name)}
-                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left text-sm font-medium transition-all duration-200 ${
-                      selectedCategory.toLowerCase() === category.name.toLowerCase()
-                        ? 'bg-blue-50 text-blue-700 border border-blue-200'
-                        : 'text-gray-700 hover:bg-gray-50 border border-transparent'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="text-lg">{category.icon}</span>
-                      <span>{category.name}</span>
-                    </div>
-                    <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">{category.count}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Główna lista ofert - responsywna */}
+      <div className="max-w-[1800px] mx-auto px-4 py-6 offers-section">
+        <div className="flex gap-6">
+          {/* Główna lista ofert */}
           <div className="flex-1 min-w-0">
             {loading ? (
               <div className="text-center py-8">
-                <div className="text-lg text-gray-600">Ładowanie ofert...</div>
+                <div className="text-lg text-gray-600 dark:text-gray-400">Ładowanie ofert...</div>
               </div>
             ) : error ? (
               <div className="text-center py-8">
-                <div className="text-lg text-red-600">{error}</div>
+                <div className="text-lg text-red-600 dark:text-red-400">{error}</div>
               </div>
-      ) : filteredOffers.length === 0 ? (
+            ) : filteredOffers.length === 0 ? (
               <div className="text-center py-8">
-                <div className="text-lg text-gray-600">Brak ofert do wyświetlenia</div>
+                <div className="text-lg text-gray-600 dark:text-gray-400">Brak ofert do wyświetlenia</div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {filteredOffers.map(offer => {
-                  const temperatura = offer.votes.hot - offer.votes.cold;
-                  const gradient = temperatura > 100 ? 'from-red-500/5 to-orange-500/5' : temperatura > 50 ? 'from-orange-500/5 to-yellow-500/5' : temperatura > 20 ? 'from-yellow-400/5 to-amber-400/5' : temperatura < -10 ? 'from-blue-500/5 to-cyan-500/5' : 'from-gray-100/5 to-gray-50/5';
-                  return (
-                    <div key={offer.id} className={`bg-white rounded-xl shadow-sm border hover:shadow-md transition-all duration-200 bg-gradient-to-r ${gradient} group`}>
-                      <div className="p-4 sm:p-6 flex flex-col sm:flex-row gap-4">
+            <div className="space-y-3">
+              {filteredOffers.map(offer => {
+                return (
+                    <div key={offer.id} className="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 hover:shadow-md transition-all">
+                      <div className="p-4 sm:p-5 flex flex-col sm:flex-row gap-4">
                         <div className="relative flex-shrink-0 self-start">
                           <OfferImage offer={offer} />
-                          <div className={`absolute -top-2 -left-2 flex items-center justify-center px-3 py-1 rounded-full text-sm font-bold border shadow-sm ${getTemperatureColor(temperatura)}`}>
-                            {temperatura}°
-                          </div>
                           <div className="absolute bottom-2 left-2 flex space-x-1">
-                            <button onClick={() => handleVote(offer.id, 'hot')} className="flex items-center space-x-1 bg-red-600/90 hover:bg-red-600 text-white px-2 py-1 rounded-lg text-xs shadow-sm transition-colors">
-                              <Flame className="w-3 h-3" />
+                            <button onClick={() => handleVote(offer.id, 'hot')} className="flex items-center space-x-1 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-md transition-colors">
+                              <Flame className="w-4 h-4" />
                               <span>{offer.votes.hot}</span>
                             </button>
-                            <button onClick={() => handleVote(offer.id, 'cold')} className="flex items-center space-x-1 bg-blue-600/90 hover:bg-blue-600 text-white px-2 py-1 rounded-lg text-xs shadow-sm transition-colors">
-                              <Snowflake className="w-3 h-3" />
+                            <button onClick={() => handleVote(offer.id, 'cold')} className="flex items-center space-x-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-bold shadow-md transition-colors">
+                              <Snowflake className="w-4 h-4" />
                               <span>{offer.votes.cold}</span>
                             </button>
                           </div>
                         </div>
                         
                         <div className="flex-1 min-w-0 flex flex-col">
-                          <Link to={`/okazja/${offer.id}`} className="text-lg font-bold text-gray-900 hover:text-blue-600 transition-colors leading-tight mb-2 line-clamp-2 group-hover:text-blue-600">{offer.tytul}</Link>
+                          <Link to={`/okazja/${offer.id}`} className="text-lg font-bold text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors leading-tight mb-2 line-clamp-2 group-hover:text-blue-600 dark:group-hover:text-blue-400">{offer.tytul}</Link>
                           
                           <div className="mb-3">
                             {offer.typ === 'kupon' ? (
                               <div className="flex items-center flex-wrap gap-3">
                                 <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-sm">🎫 KUPON</span>
                                 <CouponCode code={offer.kod} size="sm" />
-                                {offer.cena === 0 && <span className="text-2xl font-black text-green-600 bg-green-100 px-3 py-1 rounded-lg flex items-center gap-1"><Gift className="w-5 h-5" /> ZA DARMO!</span>}
-                                {offer.cena && offer.cena > 0 && <span className="text-2xl font-black text-purple-600">{offer.cena} zł</span>}
-                                {!offer.cena && <span className="text-base text-gray-600 font-medium">Sprawdź cenę</span>}
+                                {offer.cena === 0 && <span className="text-2xl font-black text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-lg flex items-center gap-1"><Gift className="w-5 h-5" /> ZA DARMO!</span>}
+                                {offer.cena && offer.cena > 0 && <span className="text-2xl font-black text-purple-600 dark:text-purple-400">{offer.cena} zł</span>}
+                                {!offer.cena && <span className="text-base text-gray-600 dark:text-gray-400 font-medium">Sprawdź cenę</span>}
                               </div>
                             ) : (
                               <div className="flex items-center flex-wrap gap-3">
-                                {offer.cenaPoprzednia && <span className="text-base line-through text-gray-400 font-medium" title="Stara cena">{offer.cenaPoprzednia} zł</span>}
+                                {offer.cenaPoprzednia && <span className="text-base line-through text-gray-400 dark:text-gray-500 font-medium" title="Stara cena">{offer.cenaPoprzednia} zł</span>}
                                 {offer.cena === 0 ? (
-                                  <span className="text-3xl font-black text-green-600 bg-green-100 px-3 py-1 rounded-lg flex items-center gap-2"><Gift className="w-7 h-7" /> ZA DARMO!</span>
+                                  <span className="text-3xl font-black text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-lg flex items-center gap-2"><Gift className="w-7 h-7" /> ZA DARMO!</span>
                                 ) : offer.cena ? (
-                                  <span className="text-3xl font-black text-red-600">{offer.cena} zł</span>
+                                  <span className="text-3xl font-black text-red-600 dark:text-red-400">{offer.cena} zł</span>
                                 ) : (
-                                  <span className="text-xl text-gray-600 font-bold">Sprawdź cenę</span>
+                                  <span className="text-xl text-gray-600 dark:text-gray-400 font-bold">Sprawdź cenę</span>
                                 )}
                                 {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
                                   <span className="bg-red-500 text-white text-sm font-bold px-2 py-1 rounded-lg shadow-sm">-{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%</span>
@@ -561,27 +672,27 @@ function HomePage() {
                             )}
                           </div>
                           
-                          <div className="text-base text-gray-600 line-clamp-2 mb-4 leading-relaxed">{offer.opis}</div>
+                          <div className="text-base text-gray-600 dark:text-gray-400 line-clamp-2 mb-4 leading-relaxed">{offer.opis}</div>
                           <div className="mt-auto">
                             <div className="flex items-center justify-between mb-4">
-                              <div className="flex items-center space-x-3 text-sm text-gray-500">
+                              <div className="flex items-center space-x-3 text-sm text-gray-500 dark:text-gray-400">
                                 <img
                                   src={offer.autorAvatarUrl || '/default-avatar.svg'}
                                   alt={offer.autor}
-                                  className="w-7 h-7 rounded-full object-cover border-2 border-gray-200"
+                                  className="w-7 h-7 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
                                   onError={(e)=>{ const img=e.target as HTMLImageElement; img.onerror=null; img.src='/default-avatar.svg'; }}
                                 />
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
-                                  <span className="font-medium text-gray-700">{offer.autor}</span>
+                                  <span className="font-medium text-gray-700 dark:text-gray-300">{offer.autor}</span>
                                   <div className="flex items-center space-x-2 text-xs">
-                                    <span className="hidden sm:inline text-gray-400">•</span>
+                                    <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
                                     <span>{formatDate(offer.dataUtworzenia)}</span>
-                                    <span className="text-gray-400">•</span>
-                                    <span className="text-purple-600 font-medium">{offer.kategoria}</span>
+                                    <span className="text-gray-400 dark:text-gray-500">•</span>
+                                    <span className="text-purple-600 dark:text-purple-400 font-medium">{offer.kategoria}</span>
                                   </div>
                                 </div>
                               </div>
-                              <button className="flex items-center space-x-1 text-gray-500 hover:text-blue-600 text-sm transition-colors">
+                              <button className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors">
                                 <MessageCircle className="w-4 h-4" />
                                 <span className="font-medium">{offer.liczbaKomentarzy}</span>
                               </button>
@@ -593,7 +704,7 @@ function HomePage() {
                               <div className="flex items-center gap-2">
                                 <button 
                                   onClick={() => handleShare(offer.id)}
-                                  className="flex items-center space-x-1 text-gray-600 hover:text-blue-600 text-sm px-3 py-1.5 rounded-lg hover:bg-blue-50 transition-all"
+                                  className="flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all"
                                 >
                                   <Share2 className="w-4 h-4" />
                                   <span className="hidden sm:inline font-medium">Udostępnij</span>
@@ -604,17 +715,17 @@ function HomePage() {
                                   disabled={saveLoading.has(offer.id)}
                                   className={`flex items-center space-x-1 text-sm px-3 py-1.5 rounded-lg transition-all disabled:opacity-50 ${
                                     savedOffers.has(offer.id) 
-                                      ? 'text-yellow-600 hover:text-yellow-700 bg-yellow-50 hover:bg-yellow-100' 
-                                      : 'text-gray-600 hover:text-yellow-600 hover:bg-yellow-50'
+                                      ? 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/30 hover:bg-yellow-100 dark:hover:bg-yellow-900/50' 
+                                      : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400 hover:bg-yellow-50 dark:hover:bg-yellow-900/30'
                                   }`}
                                 >
-                                  <span className={`text-lg ${savedOffers.has(offer.id) ? 'text-yellow-500' : 'text-gray-400'}`}>⭐</span>
+                                  <span className={`text-lg ${savedOffers.has(offer.id) ? 'text-yellow-500 dark:text-yellow-400' : 'text-gray-400 dark:text-gray-500'}`}>⭐</span>
                                   <span className="hidden sm:inline font-medium">{saveLoading.has(offer.id) ? 'Zapisywanie...' : (savedOffers.has(offer.id) ? 'Zapisane' : 'Zapisz')}</span>
                                 </button>
                                 
                                 <button 
                                   onClick={() => setReportingOfferId(offer.id)} 
-                                  className="flex items-center space-x-1 text-gray-500 hover:text-red-600 text-sm px-3 py-1.5 rounded-lg hover:bg-red-50 transition-all" 
+                                  className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 text-sm px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 transition-all" 
                                   title="Zgłoś ofertę"
                                 >
                                   <Flag className="w-4 h-4" />
@@ -626,20 +737,10 @@ function HomePage() {
                               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                                 <Link 
                                   to={`/okazja/${offer.id}`} 
-                                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center"
+                                  className="bg-blue-600 dark:bg-blue-700 hover:bg-blue-700 dark:hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors text-center flex items-center justify-center space-x-2"
                                 >
-                                  Szczegóły
+                                  <span>Zobacz szczegóły</span>
                                 </Link>
-                                
-                                <a
-                                  href={offer.link}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm flex items-center justify-center space-x-2"
-                                >
-                                  <ExternalLink className="w-4 h-4" />
-                                  <span>Przejdź do sklepu</span>
-                                </a>
                               </div>
                             </div>
                           </div>
@@ -651,14 +752,14 @@ function HomePage() {
                 {loading && (
                   <div className="space-y-3" aria-hidden>
                     {Array.from({length: 3}).map((_,i)=>(
-                      <div key={i} className="animate-pulse bg-white rounded border p-4 flex">
-                        <div className="w-28 h-28 bg-gray-200 rounded mr-4" />
+                      <div key={i} className="animate-pulse bg-white dark:bg-gray-800 rounded border dark:border-gray-700 p-4 flex">
+                        <div className="w-28 h-28 bg-gray-200 dark:bg-gray-700 rounded mr-4" />
                         <div className="flex-1 space-y-3">
-                          <div className="h-4 bg-gray-200 rounded w-3/4" />
-                          <div className="h-4 bg-gray-200 rounded w-1/2" />
+                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4" />
+                          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/2" />
                           <div className="flex space-x-2 pt-2">
-                            <div className="h-6 w-16 bg-gray-200 rounded" />
-                            <div className="h-6 w-20 bg-gray-200 rounded" />
+                            <div className="h-6 w-16 bg-gray-200 dark:bg-gray-700 rounded" />
+                            <div className="h-6 w-20 bg-gray-200 dark:bg-gray-700 rounded" />
                           </div>
                         </div>
                       </div>
@@ -666,79 +767,19 @@ function HomePage() {
                   </div>
                 )}
               </div>
-            )}
+            )
+          }
 
-            {/* Załaduj więcej */}
-            <div ref={sentinelRef} className="h-4" />
+          {/* Załaduj więcej */}
+          <div ref={sentinelRef} className="h-4" />
           </div>
 
-          {/* Prawny sidebar - najgorętsze dziś, kupony, jak to działa */}
-          <div className="hidden xl:block w-72 flex-shrink-0">
-            <div className="bg-white rounded border p-4 sticky top-32">
-              <h3 className="font-bold text-gray-900 mb-3 text-sm">🔥 Najgorętsze dziś</h3>
-              <div className="space-y-3">
-                {topHotOffers.map(offer => (
-                  <div key={offer.id} className="pb-3 border-b border-gray-100 last:border-0">
-                    <Link to={`/okazja/${offer.id}`} className="text-sm text-gray-900 hover:text-blue-600 line-clamp-2 block mb-1">
-                      {offer.tytul}
-                    </Link>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-red-600">
-                        {offer.typ === 'kupon' && offer.kod ? (
-                          <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">
-                            KUPON: {offer.kod}
-                          </span>
-                        ) : offer.cena ? (
-                          `${offer.cena} zł`
-                        ) : (
-                          'Sprawdź cenę'
-                        )}
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded border font-bold ${getTemperatureColor(offer.votes.hot - offer.votes.cold)}`}>
-                        {offer.votes.hot - offer.votes.cold}°
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            
-
-            {/* Community info */}
-            <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded border p-4 mt-4">
-              <h3 className="font-bold text-gray-900 mb-3 text-sm">💡 Jak to działa?</h3>
-              <div className="space-y-2 text-xs text-gray-600">
-                <div className="flex items-start space-x-2">
-                  <Zap className="w-3 h-3 mt-0.5 text-blue-600" />
-                  <span>Znajdź lub dodaj okazję</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Flame className="w-3 h-3 mt-0.5 text-red-600" />
-                  <span>Głosuj HOT/COLD</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <MessageCircle className="w-3 h-3 mt-0.5 text-green-600" />
-                  <span>Komentuj i dyskutuj</span>
-                </div>
-                <div className="flex items-start space-x-2">
-                  <Users className="w-3 h-3 mt-0.5 text-purple-600" />
-                  <span>Zbuduj reputację</span>
-                </div>
-              </div>
-              
-              <div className="mt-3 pt-3 border-t border-gray-200">
-                <Link 
-                  to="/auth/register"
-                  className="block bg-blue-600 text-white text-center py-2 rounded text-sm font-medium hover:bg-blue-700 transition-colors"
-                >
-                  Dołącz za darmo
-                </Link>
-              </div>
-            </div>
-          </div>
+          {/* Prawy sidebar */}
+          <RightSidebar />
         </div>
       </div>
+
+      {/* Modals and notifications */}
       {reportSuccessFlash && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-green-600 text-white px-4 py-2 rounded shadow-lg z-50 text-sm">
           {reportSuccessFlash}

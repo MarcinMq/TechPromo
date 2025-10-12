@@ -357,4 +357,50 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
             return null;
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<List<ModelWyszukiwaniaOferty>> PobierzPodobneOfertyAsync(
+        string ofertaId, 
+        string kategoria, 
+        string nazwa, 
+        int liczbaWynikow = 5)
+    {
+        try
+        {
+            var searchOptions = new SearchOptions
+            {
+                Size = liczbaWynikow,
+                Filter = $"OfertaId ne '{ofertaId}' and Aktywna eq true and Zatwierdzona eq true"
+            };
+
+            // Jeśli kategoria jest podana, dodaj do filtra
+            if (!string.IsNullOrWhiteSpace(kategoria))
+            {
+                searchOptions.Filter += $" and Kategoria eq '{kategoria.Replace("'", "''")}'";
+            }
+
+            // Sortuj po popularności (LiczbaHot)
+            searchOptions.OrderBy.Add("LiczbaHot desc");
+
+            // Wyszukaj podobne oferty na podstawie nazwy
+            var searchText = string.IsNullOrWhiteSpace(nazwa) ? "*" : nazwa;
+            var response = await _searchClient.SearchAsync<ModelWyszukiwaniaOferty>(
+                searchText,
+                searchOptions);
+
+            var results = new List<ModelWyszukiwaniaOferty>();
+            await foreach (var result in response.Value.GetResultsAsync())
+            {
+                results.Add(result.Document);
+            }
+
+            return results;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas pobierania podobnych ofert dla {OfertaId}: {Message}", 
+                ofertaId, ex.Message);
+            return new List<ModelWyszukiwaniaOferty>();
+        }
+    }
 }

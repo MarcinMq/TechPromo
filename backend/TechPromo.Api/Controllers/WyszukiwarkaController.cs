@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using TechPromo.Api.Data;
 using TechPromo.Api.Search.Models;
 using TechPromo.Api.Search.Services;
 
@@ -11,15 +13,18 @@ public class WyszukiwarkaController : ControllerBase
     private readonly ISerwisWyszukiwania _searchService;
     private readonly SerwisSync _syncService;
     private readonly ILogger<WyszukiwarkaController> _logger;
+    private readonly TechPromoDbContext _context;
 
     public WyszukiwarkaController(
         ISerwisWyszukiwania searchService,
         SerwisSync syncService,
-        ILogger<WyszukiwarkaController> logger)
+        ILogger<WyszukiwarkaController> logger,
+        TechPromoDbContext context)
     {
         _searchService = searchService;
         _syncService = syncService;
         _logger = logger;
+        _context = context;
     }
 
     /// <summary>
@@ -107,6 +112,40 @@ public class WyszukiwarkaController : ControllerBase
         {
             _logger.LogError(ex, "Błąd podczas pobierania sugestii: {Message}", ex.Message);
             return StatusCode(500, new { message = "Wystąpił błąd podczas pobierania sugestii" });
+        }
+    }
+
+    /// <summary>
+    /// Pobiera podobne oferty
+    /// GET /api/wyszukiwarka/podobne/{ofertaId}?liczba=5
+    /// </summary>
+    [HttpGet("podobne/{ofertaId}")]
+    public async Task<IActionResult> PobierzPodobneOferty(int ofertaId, [FromQuery] int liczba = 5)
+    {
+        try
+        {
+            // Pobierz dane oferty z bazy
+            var oferta = await _context.Oferty
+                .Include(o => o.Kategoria)
+                .Where(o => o.IdOferta == ofertaId)
+                .Select(o => new { o.Nazwa, Kategoria = o.Kategoria != null ? o.Kategoria.Nazwa : "" })
+                .FirstOrDefaultAsync();
+
+            if (oferta == null)
+                return NotFound(new { message = "Oferta nie znaleziona" });
+
+            var podobne = await _searchService.PobierzPodobneOfertyAsync(
+                ofertaId.ToString(), 
+                oferta.Kategoria, 
+                oferta.Nazwa, 
+                liczba);
+
+            return Ok(podobne);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas pobierania podobnych ofert: {Message}", ex.Message);
+            return StatusCode(500, new { message = "Wystąpił błąd podczas pobierania podobnych ofert" });
         }
     }
 

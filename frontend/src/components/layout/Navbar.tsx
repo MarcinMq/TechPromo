@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Rocket, Edit3, Settings, LogOut } from 'lucide-react';
+import { Rocket, Settings, LogOut, Zap, Sparkles, Moon, Sun } from 'lucide-react';
 import PanelSelector from '../ui/PanelSelector';
 import OfferTypeModal from '../modals/OfferTypeModal';
 import SearchBar from '../search/SearchBar';
 import { getAuthToken, isAuthenticated } from '../../utils/auth';
+import { useTheme } from '../../contexts/ThemeContext';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -13,11 +14,27 @@ interface NavbarProps {
   onLogout: () => void;
 }
 
+// Lista kategorii
+const categories = [
+  { name: 'Wszystkie', icon: '🔥', path: '/' },
+  { name: 'Telefony', icon: '📱', path: '/?kategoria=telefony' },
+  { name: 'Laptopy', icon: '💻', path: '/?kategoria=laptopy' },
+  { name: 'Audio', icon: '🎧', path: '/?kategoria=audio' },
+  { name: 'TV', icon: '📺', path: '/?kategoria=tv' },
+  { name: 'Gaming', icon: '🎮', path: '/?kategoria=gaming' },
+  { name: 'Foto', icon: '📷', path: '/?kategoria=foto' },
+  { name: 'Smartwatche', icon: '⌚', path: '/?kategoria=smartwatche' },
+  { name: 'Tablety', icon: '📱', path: '/?kategoria=tablety' },
+  { name: 'PC', icon: '🖥️', path: '/?kategoria=pc' },
+  { name: 'Akcesoria', icon: '🔌', path: '/?kategoria=akcesoria' }
+];
+
 const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogout }) => {
   const [showPanelSelector, setShowPanelSelector] = useState(false);
   const [showOfferTypeModal, setShowOfferTypeModal] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   const handlePanelClick = () => {
     setShowPanelSelector(true);
@@ -57,14 +74,20 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
 
   return (
     <>
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md shadow-sm border-b border-white/20">
+      <nav className="sticky top-0 z-50 bg-white dark:bg-gray-900 shadow border-b border-gray-200 dark:border-gray-700 transition-colors">
         <div className="w-full max-w-none px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
+          <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2 sm:space-x-3 text-xl sm:text-2xl font-extrabold text-gray-900 flex-shrink-0">
-              <Rocket className="w-6 h-6 sm:w-8 sm:h-8 text-custom-blue" />
-              <span className="font-bold hidden sm:inline">TechPromo</span>
-              <span className="font-bold sm:hidden">TP</span>
+            <Link to="/" className="flex items-center space-x-2 text-xl font-bold flex-shrink-0">
+              <div className="bg-blue-600 p-2 rounded-lg">
+                <Rocket className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-gray-900 dark:text-white hidden sm:inline">
+                TechPromo
+              </span>
+              <span className="text-gray-900 dark:text-white sm:hidden">
+                TP
+              </span>
             </Link>
 
             {/* Wyszukiwarka - centrum */}
@@ -81,74 +104,107 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
             </div>
 
             {/* Akcje - prawa strona */}
-            <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4 flex-shrink-0">
+            <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
+              {/* Theme toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                aria-label="Toggle theme"
+              >
+                {theme === 'light' ? (
+                  <Moon className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                ) : (
+                  <Sun className="w-5 h-5 text-gray-700 dark:text-gray-300" />
+                )}
+              </button>
+
               {isLoggedIn ? (
                 <>
-                  {/* Przycisk publikuj - zawsze widoczny dla zalogowanych */}
+                  {/* Przycisk publikuj */}
                   <button 
-                    className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 lg:px-6 py-2 sm:py-3 bg-custom-blue text-white rounded-xl hover:bg-custom-blue-dark transition-all duration-300 font-semibold shadow-lg hover:shadow-xl text-xs sm:text-sm lg:text-base" 
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm" 
                     onClick={handlePublish}
                   >
-                    <Edit3 className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="hidden sm:inline lg:hidden">+</span>
-                    <span className="hidden lg:inline">Publikuj</span>
+                    <Sparkles className="w-4 h-4" />
+                    <span className="hidden sm:inline">Publikuj</span>
                   </button>
 
                   {/* Menu użytkownika */}
-                  <div className="flex items-center space-x-1 sm:space-x-2">
+                  <div className="flex items-center space-x-2">
                     {/* Panel - tylko Moderator/Admin */}
                     {(userRole === 'Moderator' || userRole === 'Admin') && (
                       <button 
                         onClick={handlePanelClick} 
-                        className="p-2 sm:p-3 rounded-xl hover:bg-gray-200 transition-all duration-300 hover:shadow-lg"
+                        className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                       >
-                        <Settings className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                       </button>
                     )}
 
                     {/* Profil */}
                     <Link 
                       to="/konto/profil" 
-                      className="flex items-center space-x-2 text-gray-700 hover:text-custom-blue transition-all duration-300 font-semibold px-2 lg:px-3 py-2 rounded-xl hover:bg-gray-100"
+                      className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <span className="relative inline-block w-7 h-7 sm:w-8 sm:h-8">
+                      <span className="relative inline-block w-8 h-8">
                         {avatarUrl ? (
-                          <img src={avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover border" />
+                          <img src={avatarUrl} alt="avatar" className="w-full h-full rounded-full object-cover border-2 border-gray-300 dark:border-gray-600" />
                         ) : (
-                          <img src="/default-avatar.svg" alt="default avatar" className="w-full h-full rounded-full object-cover border" />
+                          <img src="/default-avatar.svg" alt="default avatar" className="w-full h-full rounded-full object-cover border-2 border-gray-300 dark:border-gray-600" />
                         )}
                       </span>
-                      <span className="hidden lg:inline text-sm sm:text-base">{userName || 'Profil'}</span>
+                      <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">{userName || 'Profil'}</span>
                     </Link>
 
                     {/* Wyloguj */}
                     <button 
                       onClick={onLogout} 
-                      className="p-2 sm:p-3 rounded-xl hover:bg-red-100 transition-all duration-300 hover:shadow-lg"
+                      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                     >
-                      <LogOut className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />
+                      <LogOut className="w-5 h-5 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors" />
                     </button>
                   </div>
                 </>
               ) : (
                 /* Przyciski logowania */
-                <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-4">
+                <div className="flex items-center space-x-2">
                   <Link 
                     to="/auth/login" 
-                    className="text-gray-600 hover:text-custom-blue font-semibold transition-all duration-300 px-2 sm:px-4 py-2 rounded-xl hover:bg-gray-100 text-xs sm:text-sm lg:text-base"
+                    className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm text-gray-700 dark:text-gray-300"
                   >
                     <span className="hidden sm:inline">Zaloguj się</span>
                     <span className="sm:hidden">Login</span>
                   </Link>
                   <Link 
                     to="/auth/register" 
-                    className="bg-custom-blue text-white px-2 sm:px-3 lg:px-6 py-2 sm:py-3 rounded-xl hover:bg-custom-blue-dark font-semibold transition-all duration-300 shadow-lg hover:shadow-xl text-xs sm:text-sm lg:text-base"
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm"
                   >
-                    <span className="hidden sm:inline">Zarejestruj się</span>
-                    <span className="sm:hidden">Rejestr.</span>
+                    <span className="flex items-center gap-1">
+                      <Zap className="w-4 h-4 hidden sm:inline" />
+                      <span className="hidden sm:inline">Zarejestruj się</span>
+                      <span className="sm:hidden">Rejestr.</span>
+                    </span>
                   </Link>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+        
+        {/* Kategorie - drugi rząd */}
+        <div className="border-t border-gray-200 dark:border-gray-700 py-2">
+          <div className="overflow-x-auto scrollbar-hide">
+            <div className="flex items-center space-x-1 min-w-max px-2">
+              {categories.map((category) => (
+                <Link
+                  key={category.name}
+                  to={category.path}
+                  className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap"
+                >
+                  <span>{category.icon}</span>
+                  <span className="hidden sm:inline">{category.name}</span>
+                </Link>
+              ))}
             </div>
           </div>
         </div>

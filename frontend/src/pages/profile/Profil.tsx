@@ -555,99 +555,108 @@ const Profil = () => {
   };
 
   if (loading) return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50/50 to-purple-50/50">
-      <div className="p-8 bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 text-center">
-        <div className="text-2xl mb-4">🔄</div>
-        <div className="text-lg font-semibold">Ładowanie profilu...</div>
+    <div className="flex justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <div className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 text-center transition-colors">
+        <div className="text-4xl mb-4 animate-pulse">🔄</div>
+        <div className="text-xl font-bold text-gray-900 dark:text-gray-100">Ładowanie profilu...</div>
       </div>
     </div>
   );
   
   if (err) return (
-    <div className="flex justify-center items-center min-h-screen bg-gradient-to-br from-blue-50/50 to-purple-50/50">
-      <div className="p-8 bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 text-center">
-        <div className="text-2xl mb-4">❌</div>
-        <div className="text-lg font-semibold text-red-600">{err}</div>
+    <div className="flex justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+      <div className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 text-center transition-colors">
+        <div className="text-4xl mb-4">❌</div>
+        <div className="text-xl font-bold text-red-600 dark:text-red-400">{err}</div>
       </div>
     </div>
   );
 
   return (
-    <div className="py-10 bg-gradient-to-br from-blue-50 to-purple-50/60">
+    <div className="py-10 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <div className="mx-auto w-full max-w-6xl px-4">
         {/* Header */}
-        <div className="relative overflow-hidden rounded-3xl border border-white/50 bg-white/80 backdrop-blur-md shadow-xl">
-          <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 via-blue-500/10 to-purple-500/10" />
-          <div className="relative p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+        <div className="overflow-hidden rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm transition-colors">
+          <div className="p-6 sm:p-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
             <div className="flex items-center gap-5">
               <div className="relative w-20 h-20 sm:w-24 sm:h-24">
                 {data?.avatarUrl ? (
-                  <img src={data.avatarUrl} alt="avatar" className="w-full h-full object-cover rounded-2xl border shadow ring-1 ring-black/5" />
+                  <img src={data.avatarUrl} alt="avatar" className="w-full h-full object-cover rounded-lg border-2 border-gray-300 dark:border-gray-600 shadow-md" />
                 ) : (
-                  <div className="w-full h-full rounded-2xl bg-white border shadow ring-1 ring-black/5 flex items-center justify-center text-2xl sm:text-3xl font-black text-indigo-600">
+                  <div className="w-full h-full rounded-lg bg-blue-600 dark:bg-blue-700 border-2 border-gray-300 dark:border-gray-600 shadow-md flex items-center justify-center text-2xl sm:text-3xl font-bold text-white">
                     {(data?.nick?.[0] || '?').toUpperCase()}
                   </div>
                 )}
                 <label className="absolute -bottom-2 -right-2 cursor-pointer">
                   <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handleAvatarChange(f);}} />
-                  <span className="px-2 py-1 text-xs rounded-xl bg-blue-600 text-white shadow hover:bg-blue-700">{uploadingAvatar? 'Wgrywam...' : 'Zmień'}</span>
+                  <span className="px-3 py-1.5 text-xs rounded-lg bg-blue-600 dark:bg-blue-700 text-white shadow-md hover:bg-blue-700 dark:hover:bg-blue-600 hover:scale-105 transition-all font-bold">
+                    {uploadingAvatar? '⏳' : '📷'}
+                  </span>
                 </label>
               </div>
               <div>
                 <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 tracking-tight">{data?.nick || 'Użytkownik'}</h1>
+                  <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 transition-colors">{data?.nick || 'Użytkownik'}</h1>
                   {data?.rola && (
-                    <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-indigo-600 text-white shadow-sm">{data.rola}</span>
+                    <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-600 dark:bg-blue-700 text-white shadow-sm transition-colors">
+                      {data.rola}
+                    </span>
                   )}
                 </div>
-                <div className="mt-1 text-sm text-gray-600">Dołączył: {data?.dataRejestracji}</div>
+                <div className="mt-1 text-sm text-gray-600 dark:text-gray-400 transition-colors">Dołączył: {data?.dataRejestracji}</div>
               </div>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              <div className="px-4 py-2 rounded-2xl bg-emerald-50 text-emerald-700 font-extrabold shadow ring-1 ring-emerald-200">{data?.punkty ?? 0} pkt</div>
-              <button onClick={startEdit} className="px-4 py-2 rounded-2xl bg-blue-600 text-white font-semibold shadow hover:-translate-y-0.5 hover:shadow-lg transition-transform">Edytuj profil</button>
+              <div className="px-5 py-2.5 rounded-lg bg-green-600 dark:bg-green-700 text-white font-bold shadow-sm text-lg transition-colors">
+                <Zap className="inline w-5 h-5 mr-1" />
+                {data?.punkty ?? 0} pkt
+              </div>
+              <button 
+                onClick={startEdit} 
+                className="px-5 py-2.5 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 border dark:border-gray-600 text-gray-900 dark:text-gray-100 font-bold shadow-sm hover:shadow-md transition-all"
+              >
+                ⚙️ Edytuj
+              </button>
             </div>
           </div>
         </div>
-
-  {/* Quick nav by role removed – wszystko w profilu */}
 
   {/* Main grid */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left: Account data / form */}
           <div className="lg:col-span-5 xl:col-span-4">
-            <div className="rounded-3xl border bg-white/80 backdrop-blur-md shadow p-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-4">Dane konta</h2>
+            <div className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-6 transition-colors">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 transition-colors">📋 Dane konta</h2>
               {editing ? (
                 <div className="space-y-4">
                   <div>
-                    <label className="text-xs font-semibold text-gray-600">Nick</label>
-                    <input value={nickEdit} onChange={e=>setNickEdit(e.target.value)} className="mt-1 w-full p-3 rounded-xl border bg-white/90 focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Nick</label>
+                    <input value={nickEdit} onChange={e=>setNickEdit(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600">Email</label>
-                    <input value={emailEdit} onChange={e=>setEmailEdit(e.target.value)} className="mt-1 w-full p-3 rounded-xl border bg-white/90 focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Email</label>
+                    <input value={emailEdit} onChange={e=>setEmailEdit(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600">Aktualne hasło (jeśli zmieniasz)</label>
-                    <input type="password" value={pwdCurrent} onChange={e=>setPwdCurrent(e.target.value)} className="mt-1 w-full p-3 rounded-xl border bg-white/90 focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Aktualne hasło (jeśli zmieniasz)</label>
+                    <input type="password" value={pwdCurrent} onChange={e=>setPwdCurrent(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-600">Nowe hasło</label>
-                    <input type="password" value={pwdNew} onChange={e=>setPwdNew(e.target.value)} className="mt-1 w-full p-3 rounded-xl border bg-white/90 focus:ring-2 focus:ring-blue-500 outline-none" />
+                    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Nowe hasło</label>
+                    <input type="password" value={pwdNew} onChange={e=>setPwdNew(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div className="flex gap-3 pt-2">
-                    <button onClick={cancelEdit} type="button" className="flex-1 p-3 rounded-xl border bg-white hover:bg-gray-50">Anuluj</button>
-                    <button onClick={saveProfile} disabled={saving} className="flex-1 p-3 rounded-xl bg-blue-600 text-white font-semibold disabled:opacity-50 hover:shadow-lg transition">{saving? 'Zapisywanie...' : 'Zapisz'}</button>
+                    <button onClick={cancelEdit} type="button" className="flex-1 p-3 rounded-lg border dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all font-semibold">Anuluj</button>
+                    <button onClick={saveProfile} disabled={saving} className="flex-1 p-3 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-bold disabled:opacity-50 hover:bg-blue-700 dark:hover:bg-blue-600 shadow-sm hover:shadow-md transition-all">{saving? 'Zapisywanie...' : '💾 Zapisz'}</button>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-xl border bg-white/70"><span className="text-gray-600">Nick</span><span className="font-semibold text-gray-900">{data?.nick}</span></div>
-                  <div className="flex items-center justify-between p-3 rounded-xl border bg-white/70"><span className="text-gray-600">Email</span><span className="text-gray-900">{data?.email}</span></div>
-                  <div className="flex items-center justify-between p-3 rounded-xl border bg-white/70"><span className="text-gray-600">Rola</span><span className="font-semibold text-indigo-700">{data?.rola}</span></div>
-                  <div className="flex items-center justify-between p-3 rounded-xl border bg-white/70"><span className="text-gray-600">Punkty</span><span className="font-extrabold text-emerald-600 text-lg">{data?.punkty}</span></div>
-                  <div className="flex items-center justify-between p-3 rounded-xl border bg-white/70"><span className="text-gray-600">Data rejestracji</span><span className="text-gray-700">{data?.dataRejestracji}</span></div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors"><span className="text-gray-600 dark:text-gray-400">Nick</span><span className="font-semibold text-gray-900 dark:text-gray-100">{data?.nick}</span></div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors"><span className="text-gray-600 dark:text-gray-400">Email</span><span className="text-gray-900 dark:text-gray-100">{data?.email}</span></div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors"><span className="text-gray-600 dark:text-gray-400">Rola</span><span className="font-semibold text-blue-600 dark:text-blue-400">{data?.rola}</span></div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors"><span className="text-gray-600 dark:text-gray-400">Punkty</span><span className="font-bold text-green-600 dark:text-green-400 text-lg">{data?.punkty}</span></div>
+                  <div className="flex items-center justify-between p-3 rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 transition-colors"><span className="text-gray-600 dark:text-gray-400">Data rejestracji</span><span className="text-gray-900 dark:text-gray-100">{data?.dataRejestracji}</span></div>
                 </div>
               )}
             </div>
@@ -655,33 +664,32 @@ const Profil = () => {
 
           {/* Right: Badges */}
           <div className="lg:col-span-7 xl:col-span-8">
-            <div className="rounded-3xl border bg-white/80 backdrop-blur-md shadow p-6">
+            <div className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-6 transition-colors">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-gray-900">🏆 Odznaki ({data?.odznaki?.length || 0})</h2>
+                <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">🏆 Odznaki ({data?.odznaki?.length || 0})</h2>
               </div>
               {data?.odznaki && data.odznaki.length > 0 ? (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                   {data.odznaki.map((odznaka) => (
                     <div
                       key={odznaka.idOdznaka}
-                      className="group relative overflow-hidden rounded-2xl border bg-white/70 p-4 hover:shadow-xl transition-all">
-                      <div className="absolute -top-10 -right-10 w-24 h-24 bg-gradient-to-br from-yellow-300/30 to-orange-300/30 rounded-full blur-2xl" />
-                      <div className="relative flex items-center gap-4">
-                        <div className="text-3xl drop-shadow-sm">{odznaka.ikona || '🏆'}</div>
+                      className="overflow-hidden rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-md hover:scale-105 transition-all">
+                      <div className="flex items-center gap-4">
+                        <div className="text-3xl">{odznaka.ikona || '🏆'}</div>
                         <div className="flex-1">
-                          <div className="font-bold text-gray-900">{odznaka.nazwa}</div>
-                          <div className="text-xs text-gray-500">{odznaka.dataPrzyznania}</div>
-                          <div className="mt-1 text-xs text-gray-600 line-clamp-2" title={odznaka.opis}>{odznaka.opis}</div>
+                          <div className="font-bold text-gray-900 dark:text-gray-100 transition-colors">{odznaka.nazwa}</div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 transition-colors">{odznaka.dataPrzyznania}</div>
+                          <div className="mt-1 text-xs text-gray-600 dark:text-gray-400 line-clamp-2 transition-colors" title={odznaka.opis}>{odznaka.opis}</div>
                         </div>
                       </div>
                     </div>
                   ))}
                 </div>
               ) : (
-                <div className="text-center p-10 border-2 border-dashed rounded-2xl bg-white/60">
+                <div className="text-center p-10 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900 transition-colors">
                   <div className="text-4xl mb-2">🎯</div>
-                  <div className="text-gray-700 font-semibold">Brak odznak</div>
-                  <div className="text-sm text-gray-500 mt-1">Głosuj i dodawaj oferty, aby je zdobywać!</div>
+                  <div className="text-gray-900 dark:text-gray-100 font-semibold transition-colors">Brak odznak</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 transition-colors">Głosuj i dodawaj oferty, aby je zdobywać!</div>
                 </div>
               )}
             </div>
@@ -689,35 +697,35 @@ const Profil = () => {
         </div>
 
   {/* Sekcja: funkcje z Panelu Użytkownika */}
-        <div className="mt-8 rounded-3xl border bg-white/80 backdrop-blur-md shadow p-6">
+        <div className="mt-8 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-6 transition-colors">
           {message && (
-            <div className={`p-3 rounded-xl mb-4 text-center font-semibold ${
-              message.includes('Błąd') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+            <div className={`p-3 rounded-lg mb-4 text-center font-semibold transition-colors ${
+              message.includes('Błąd') ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-400'
             }`}>
               {message}
             </div>
           )}
           <div className="flex flex-wrap gap-3 justify-center mb-6">
             <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all ${activeTab === 'offers' ? 'bg-custom-blue text-white' : 'bg-white/60 text-gray-700 border'}`}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'offers' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
               onClick={() => setActiveTab('offers')}
             >
               <ShoppingBag className="w-5 h-5 inline mr-1" /> Moje oferty ({offers.length})
             </button>
             <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all ${activeTab === 'activity' ? 'bg-custom-blue text-white' : 'bg-white/60 text-gray-700 border'}`}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'activity' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
               onClick={() => setActiveTab('activity')}
             >
               <BarChart3 className="w-5 h-5 inline mr-1" /> Aktywność ({userActivity.length})
             </button>
             <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all ${activeTab === 'comments' ? 'bg-custom-blue text-white' : 'bg-white/60 text-gray-700 border'}`}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'comments' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
               onClick={() => setActiveTab('comments')}
             >
               <MessageCircle className="w-5 h-5 inline mr-1" /> Komentarze ({userComments.length})
             </button>
             <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all ${activeTab === 'zapisane' ? 'bg-custom-blue text-white' : 'bg-white/60 text-gray-700 border'}`}
+              className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'zapisane' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
               onClick={() => { setActiveTab('zapisane'); fetchSavedOffers(); }}
             >
               <Check className="w-5 h-5 inline mr-1" /> Zapisane ({savedOffers.length})
@@ -725,24 +733,24 @@ const Profil = () => {
           </div>
 
           {(data?.rola === 'Moderator' || data?.rola === 'Admin') && (
-            <div className="mt-2 border-t pt-4">
-              <div className="text-sm text-gray-600 font-semibold mb-3">Moderacja</div>
+            <div className="mt-2 border-t dark:border-gray-700 pt-4 transition-colors">
+              <div className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-3 transition-colors">Moderacja</div>
               <div className="flex flex-wrap gap-3 mb-6">
-                <button className={`px-4 py-2 rounded-2xl ${activeTab==='modComments'?'bg-custom-blue text-white':'bg-white/60 border'}`} onClick={()=>{ setActiveTab('modComments'); fetchModComments(); }}><MessageCircle className="inline w-4 h-4 mr-1"/>Komentarze ({modComments.length})</button>
-                <button className={`px-4 py-2 rounded-2xl ${activeTab==='modOffers'?'bg-custom-blue text-white':'bg-white/60 border'}`} onClick={()=>{ setActiveTab('modOffers'); fetchModOffers(); }}><ShoppingBag className="inline w-4 h-4 mr-1"/>Oferty</button>
-                <button className={`px-4 py-2 rounded-2xl ${activeTab==='modReports'?'bg-custom-blue text-white':'bg-white/60 border'}`} onClick={()=>{ setActiveTab('modReports'); data?.rola==='Admin'?fetchAdminReports():fetchModReports(); }}><Clipboard className="inline w-4 h-4 mr-1"/>Zgłoszenia</button>
+                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='modComments'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('modComments'); fetchModComments(); }}><MessageCircle className="inline w-4 h-4 mr-1"/>Komentarze ({modComments.length})</button>
+                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='modOffers'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('modOffers'); fetchModOffers(); }}><ShoppingBag className="inline w-4 h-4 mr-1"/>Oferty</button>
+                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='modReports'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('modReports'); data?.rola==='Admin'?fetchAdminReports():fetchModReports(); }}><Clipboard className="inline w-4 h-4 mr-1"/>Zgłoszenia</button>
               </div>
             </div>
           )}
 
           {data?.rola === 'Admin' && (
-            <div className="mt-2 border-t pt-4">
-              <div className="text-sm text-gray-600 font-semibold mb-3">Administracja</div>
+            <div className="mt-2 border-t dark:border-gray-700 pt-4 transition-colors">
+              <div className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-3 transition-colors">Administracja</div>
               <div className="flex flex-wrap gap-3 mb-6">
-                <button className={`px-4 py-2 rounded-2xl ${activeTab==='adminUsers'?'bg-custom-blue text-white':'bg-white/60 border'}`} onClick={()=>{ setActiveTab('adminUsers'); fetchAdminUsers(); }}><Users className="inline w-4 h-4 mr-1"/>Użytkownicy ({adminUsers.length})</button>
-                <button className={`px-4 py-2 rounded-2xl ${activeTab==='adminBadges'?'bg-custom-blue text-white':'bg-white/60 border'}`} onClick={()=>{ setActiveTab('adminBadges'); fetchAdminBadges(); }}><Trophy className="inline w-4 h-4 mr-1"/>Odznaki ({adminBadges.length})</button>
-                <button className={`px-4 py-2 rounded-2xl ${activeTab==='adminOffers'?'bg-custom-blue text-white':'bg-white/60 border'}`} onClick={()=>{ setActiveTab('adminOffers'); fetchAdminOffers(); }}><ShoppingBag className="inline w-4 h-4 mr-1"/>Oferty (admin)</button>
-                <button className={`px-4 py-2 rounded-2xl ${activeTab==='modReports'?'bg-custom-blue text-white':'bg-white/60 border'}`} onClick={()=>{ setActiveTab('modReports'); fetchAdminReports(); }}><Clipboard className="inline w-4 h-4 mr-1"/>Zgłoszenia</button>
+                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='adminUsers'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('adminUsers'); fetchAdminUsers(); }}><Users className="inline w-4 h-4 mr-1"/>Użytkownicy ({adminUsers.length})</button>
+                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='adminBadges'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('adminBadges'); fetchAdminBadges(); }}><Trophy className="inline w-4 h-4 mr-1"/>Odznaki ({adminBadges.length})</button>
+                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='adminOffers'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('adminOffers'); fetchAdminOffers(); }}><ShoppingBag className="inline w-4 h-4 mr-1"/>Oferty (admin)</button>
+                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='modReports'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('modReports'); fetchAdminReports(); }}><Clipboard className="inline w-4 h-4 mr-1"/>Zgłoszenia</button>
               </div>
             </div>
           )}
@@ -750,9 +758,9 @@ const Profil = () => {
           {activeTab === 'offers' && (
             <div>
               <div className="mb-6">
-                <h3 className="text-xl font-bold mb-3 text-gray-900 flex items-center"><Filter className="w-5 h-5 mr-2 text-blue-600" /> Filtry</h3>
+                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-gray-100 flex items-center transition-colors"><Filter className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" /> Filtry</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <select value={categoryFilter} onChange={(e)=>setCategoryFilter(e.target.value)} className="p-2 border rounded-xl">
+                  <select value={categoryFilter} onChange={(e)=>setCategoryFilter(e.target.value)} className="p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
                     <option value="">Wszystkie kategorie</option>
                     <option value="Elektronika">Elektronika</option>
                     <option value="Moda">Moda</option>
@@ -765,8 +773,8 @@ const Profil = () => {
                     <option value="Podróże">Podróże</option>
                     <option value="Inne">Inne</option>
                   </select>
-                  <input value={tagFilter} onChange={(e)=>setTagFilter(e.target.value)} placeholder="Filtruj po tagach" className="p-2 border rounded-xl" />
-                  <select value={sortBy} onChange={(e)=>setSortBy(e.target.value as any)} className="p-2 border rounded-xl">
+                  <input value={tagFilter} onChange={(e)=>setTagFilter(e.target.value)} placeholder="Filtruj po tagach" className="p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" />
+                  <select value={sortBy} onChange={(e)=>setSortBy(e.target.value as any)} className="p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
                     <option value="newest">Najnowsze</option>
                     <option value="hot">Najgorętsze</option>
                     <option value="price">Najtańsze</option>
@@ -779,38 +787,38 @@ const Profil = () => {
                   .filter(offer => (!categoryFilter || offer.kategoria === categoryFilter) && (!tagFilter || offer.tagi.some(t=>t.toLowerCase().includes(tagFilter.toLowerCase()))))
                   .sort((a,b)=> sortBy==='hot' ? (b.votes.hot - b.votes.cold) - (a.votes.hot - a.votes.cold) : sortBy==='price' ? (a.cena||0)-(b.cena||0) : new Date(b.dataUtworzenia).getTime()-new Date(a.dataUtworzenia).getTime())
                   .map(offer => (
-                  <div key={offer.id} className="bg-white/60 rounded-2xl p-6 shadow border">
+                  <div key={offer.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="mb-2 flex justify-between items-start">
-                      <h4 className="text-lg font-bold text-gray-900">{offer.tytul}</h4>
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">{offer.kategoria}</span>
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-600 dark:bg-blue-700 text-white transition-colors">{offer.kategoria}</span>
                     </div>
-                    <p className="text-gray-700 mb-3 line-clamp-3">{offer.opis}</p>
+                    <p className="text-gray-700 dark:text-gray-300 mb-3 line-clamp-3 transition-colors">{offer.opis}</p>
                     <div className="mb-3">
                       {offer.zdjecia?.length ? (
                         <div className="flex gap-2">
                           {offer.zdjecia.slice(0,3).map((img,i)=>(
-                            <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
+                            <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border dark:border-gray-600 transition-colors" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
                           ))}
                         </div>
                       ) : (
-                        <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center">{offer.typ==='kupon'?'🎫':'🛍️'}</div>
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded border dark:border-gray-600 flex items-center justify-center transition-colors">{offer.typ==='kupon'?'🎫':'🛍️'}</div>
                       )}
                     </div>
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex gap-2">
-                        <button className={`px-3 py-1 rounded-full text-sm ${offer.userVote==='hot'?'bg-red-500 text-white':'bg-red-100 text-red-700'}`} onClick={()=>voteOffer(offer.id,'hot')} disabled={loadingList}><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</button>
-                        <button className={`px-3 py-1 rounded-full text-sm ${offer.userVote==='cold'?'bg-blue-500 text-white':'bg-blue-100 text-blue-700'}`} onClick={()=>voteOffer(offer.id,'cold')} disabled={loadingList}><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</button>
+                        <button className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${offer.userVote==='hot'?'bg-red-600 dark:bg-red-700 text-white shadow-sm':'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'}`} onClick={()=>voteOffer(offer.id,'hot')} disabled={loadingList}><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</button>
+                        <button className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${offer.userVote==='cold'?'bg-blue-600 dark:bg-blue-700 text-white shadow-sm':'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'}`} onClick={()=>voteOffer(offer.id,'cold')} disabled={loadingList}><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</button>
                       </div>
-                      <span className="text-sm text-gray-600 flex items-center"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
-                      <button className="text-red-500 text-sm" onClick={()=>{const r=prompt('Powód zgłoszenia:'); if(r) reportContent('offer', offer.id, r);}}>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center transition-colors"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
+                      <button className="text-red-500 dark:text-red-400 text-sm hover:text-red-700 dark:hover:text-red-300 transition-colors" onClick={()=>{const r=prompt('Powód zgłoszenia:'); if(r) reportContent('offer', offer.id, r);}}>
                         <Flag className="w-4 h-4 inline mr-1" />Zgłoś
                       </button>
                     </div>
-                    <input className="w-full p-2 border rounded-xl mb-3" placeholder="Dodaj komentarz..." onKeyDown={(e)=>{ if(e.key==='Enter'){ const v=(e.target as HTMLInputElement).value; addComment(offer.id, v); (e.target as HTMLInputElement).value=''; } }} />
-                    <div className="text-xs text-gray-500">Dodane: {offer.dataUtworzenia}</div>
+                    <input className="w-full p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" placeholder="Dodaj komentarz..." onKeyDown={(e)=>{ if(e.key==='Enter'){ const v=(e.target as HTMLInputElement).value; addComment(offer.id, v); (e.target as HTMLInputElement).value=''; } }} />
+                    <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors">Dodane: {offer.dataUtworzenia}</div>
                     <div className="mt-3 flex justify-end gap-2">
-                      <button className="px-3 py-1 rounded-xl bg-red-600 text-white text-sm" onClick={()=>deleteOffer(offer.id)} disabled={loadingList}>Usuń</button>
-                      <button className="px-3 py-1 rounded-xl bg-custom-blue text-white text-sm" onClick={()=>{const base=offer.typ==='kupon'?'/stworz-oferte/kupon':'/stworz-oferte/okazja'; window.location.href = `${base}?edit=${offer.id}`;}}>Edytuj</button>
+                      <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white text-sm hover:bg-red-700 dark:hover:bg-red-600 shadow-sm transition-all" onClick={()=>deleteOffer(offer.id)} disabled={loadingList}>Usuń</button>
+                      <button className="px-3 py-1 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm hover:bg-blue-700 dark:hover:bg-blue-600 shadow-sm transition-all" onClick={()=>{const base=offer.typ==='kupon'?'/stworz-oferte/kupon':'/stworz-oferte/okazja'; window.location.href = `${base}?edit=${offer.id}`;}}>Edytuj</button>
                     </div>
                   </div>
                 ))}
@@ -818,9 +826,9 @@ const Profil = () => {
 
               <div className="mt-6 flex justify-center">
                 {offersHasMore ? (
-                  <button onClick={loadMoreOffers} disabled={loadingList} className="px-5 py-2 rounded-2xl bg-white/70 border shadow">Załaduj kolejne</button>
+                  <button onClick={loadMoreOffers} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
                 ) : (
-                  <div className="text-sm text-gray-500">To już wszystkie Twoje oferty</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystkie Twoje oferty</div>
                 )}
               </div>
             </div>
@@ -829,7 +837,7 @@ const Profil = () => {
           {activeTab === 'activity' && (
             <div className="space-y-3">
               {userActivity.map(a => (
-                <div key={a.id} className="bg-white/60 rounded-2xl p-4 shadow border flex items-start gap-3">
+                <div key={a.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start gap-3">
                   <div className="text-2xl">
                     {a.typ==='oferta' && '🛍️'}
                     {a.typ==='komentarz' && '💬'}
@@ -837,19 +845,19 @@ const Profil = () => {
                     {a.typ==='odznaka' && '🏆'}
                   </div>
                   <div className="flex-1">
-                    <div className="text-gray-900">{a.opis}</div>
-                    <div className="text-xs text-gray-500 flex items-center gap-2">{a.data} {a.punkty ? (<span className="text-green-600 font-semibold">+{a.punkty} pkt</span>) : null}</div>
+                    <div className="text-gray-900 dark:text-gray-100 transition-colors">{a.opis}</div>
+                    <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2 transition-colors">{a.data} {a.punkty ? (<span className="text-green-600 dark:text-green-400 font-semibold transition-colors">+{a.punkty} pkt</span>) : null}</div>
                   </div>
                 </div>
               ))}
               {userActivity.length === 0 && (
-                <div className="text-center text-gray-600">Brak aktywności</div>
+                <div className="text-center text-gray-600 dark:text-gray-400 transition-colors">Brak aktywności</div>
               )}
               <div className="mt-6 flex justify-center">
                 {activityHasMore ? (
-                  <button onClick={()=>fetchUserActivity(false)} disabled={loadingList} className="px-5 py-2 rounded-2xl bg-white/70 border shadow">Załaduj kolejne</button>
+                  <button onClick={()=>fetchUserActivity(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
                 ) : (
-                  <div className="text-sm text-gray-500">To już wszystko</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystko</div>
                 )}
               </div>
             </div>
@@ -858,22 +866,22 @@ const Profil = () => {
           {activeTab === 'comments' && (
             <div className="space-y-3">
               {userComments.map(c => (
-                <div key={c.id} className="bg-white/60 rounded-2xl p-4 shadow border flex items-start justify-between">
+                <div key={c.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start justify-between">
                   <div>
-                    <div className="text-gray-900 mb-1">{c.tresc}</div>
-                    <div className="text-xs text-gray-500">W ofercie: <strong>{c.oferta}</strong> • {c.data}</div>
+                    <div className="text-gray-900 dark:text-gray-100 mb-1 transition-colors">{c.tresc}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors">W ofercie: <strong className="text-gray-700 dark:text-gray-300">{c.oferta}</strong> • {c.data}</div>
                   </div>
-                  <button className="text-red-500" onClick={()=>{const r=prompt('Powód zgłoszenia komentarza:'); if(r) reportContent('comment', c.id, r);}}>🚩</button>
+                  <button className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition" onClick={()=>{const r=prompt('Powód zgłoszenia komentarza:'); if(r) reportContent('comment', c.id, r);}}>🚩</button>
                 </div>
               ))}
               {userComments.length === 0 && (
-                <div className="text-center text-gray-600">Brak komentarzy</div>
+                <div className="text-center text-gray-600 dark:text-gray-400 transition-colors">Brak komentarzy</div>
               )}
               <div className="mt-6 flex justify-center">
                 {commentsHasMore ? (
-                  <button onClick={()=>fetchUserComments(false)} disabled={loadingList} className="px-5 py-2 rounded-2xl bg-white/70 border shadow">Załaduj kolejne</button>
+                  <button onClick={()=>fetchUserComments(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
                 ) : (
-                  <div className="text-sm text-gray-500">To już wszystko</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystko</div>
                 )}
               </div>
             </div>
@@ -883,18 +891,18 @@ const Profil = () => {
             <div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {savedOffers.map(offer => (
-                  <div key={offer.id} className="bg-white/60 rounded-2xl p-6 shadow border">
+                  <div key={offer.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="mb-2 flex justify-between items-start">
-                      <h4 className="text-lg font-bold text-gray-900">{offer.tytul}</h4>
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-50 text-blue-600">{offer.kategoria}</span>
+                      <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
+                      <span className="text-xs px-2 py-1 rounded-full bg-blue-600 dark:bg-blue-700 text-white transition-colors">{offer.kategoria}</span>
                     </div>
-                    <p className="text-gray-700 mb-3 line-clamp-3">{offer.opis}</p>
+                    <p className="text-gray-700 dark:text-gray-300 mb-3 line-clamp-3 transition-colors">{offer.opis}</p>
                     
                     {offer.cena && (
                       <div className="mb-3 flex items-center gap-2">
-                        <span className="text-xl font-bold text-green-600">{offer.cena}zł</span>
+                        <span className="text-xl font-bold text-green-600 dark:text-green-400 transition-colors">{offer.cena}zł</span>
                         {offer.cenaPoprzednia && (
-                          <span className="text-sm line-through text-gray-500">{offer.cenaPoprzednia}zł</span>
+                          <span className="text-sm line-through text-gray-500 dark:text-gray-400 transition-colors">{offer.cenaPoprzednia}zł</span>
                         )}
                       </div>
                     )}
@@ -903,27 +911,27 @@ const Profil = () => {
                       {offer.zdjecia?.length ? (
                         <div className="flex gap-2">
                           {offer.zdjecia.slice(0,3).map((img,i)=>(
-                            <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
+                            <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border dark:border-gray-600 transition-colors" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
                           ))}
                         </div>
                       ) : (
-                        <div className="w-16 h-16 bg-gray-100 rounded border flex items-center justify-center">{offer.typ==='kupon'?'🎫':'🛍️'}</div>
+                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded border dark:border-gray-600 flex items-center justify-center transition-colors">{offer.typ==='kupon'?'🎫':'🛍️'}</div>
                       )}
                     </div>
 
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex gap-2">
-                        <span className="px-3 py-1 rounded-full text-sm bg-red-100 text-red-700"><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</span>
-                        <span className="px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-700"><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</span>
+                        <span className="px-3 py-1 rounded-full text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 transition-colors"><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</span>
+                        <span className="px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 transition-colors"><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</span>
                       </div>
-                      <span className="text-sm text-gray-600 flex items-center"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center transition-colors"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
                     </div>
 
-                    <div className="text-xs text-gray-500 mb-3">Autor: {offer.autor} • {offer.dataUtworzenia}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 transition-colors">Autor: {offer.autor} • {offer.dataUtworzenia}</div>
                     
                     <div className="mt-3 flex justify-between gap-2">
                       <button 
-                        className="px-4 py-2 rounded-xl bg-green-600 text-white text-sm flex-1"
+                        className="px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white text-sm flex-1 hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
                         onClick={() => {
                           const link = offer.sklep;
                           const url = link.startsWith('http') ? link : `https://${link}`;
@@ -933,7 +941,7 @@ const Profil = () => {
                         Przejdź do sklepu
                       </button>
                       <button 
-                        className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm"
+                        className="px-4 py-2 rounded-lg bg-red-600 dark:bg-red-700 text-white text-sm hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
                         onClick={async () => {
                           try {
                             const res = await authorizedFetch(`${API_BASE}/api/uzytkownik/zapisane/${offer.id}`, {
@@ -957,18 +965,18 @@ const Profil = () => {
               </div>
 
               {savedOffers.length === 0 && (
-                <div className="text-center text-gray-600 py-8">
-                  <Check className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-                  <h3 className="text-lg font-semibold mb-2">Brak zapisanych ofert</h3>
+                <div className="text-center text-gray-600 dark:text-gray-400 py-8 transition-colors">
+                  <Check className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100 transition-colors">Brak zapisanych ofert</h3>
                   <p className="text-sm">Zapisane oferty będą wyświetlane tutaj</p>
                 </div>
               )}
 
               <div className="mt-6 flex justify-center">
                 {savedOffersHasMore ? (
-                  <button onClick={() => fetchSavedOffers(false)} disabled={loadingList} className="px-5 py-2 rounded-2xl bg-white/70 border shadow">Załaduj kolejne</button>
+                  <button onClick={() => fetchSavedOffers(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
                 ) : savedOffers.length > 0 ? (
-                  <div className="text-sm text-gray-500">To już wszystkie zapisane oferty</div>
+                  <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">To już wszystkie zapisane oferty</div>
                 ) : null}
               </div>
             </div>
@@ -977,78 +985,78 @@ const Profil = () => {
           {activeTab === 'modComments' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {modComments.map(c => (
-                <div key={c.idKomentarz} className="bg-white/60 rounded-2xl p-6 shadow border">
-                  <h4 className="font-bold mb-2">{c.autor}</h4>
-                  <p className="mb-2"><strong>Treść:</strong> {c.tresc}</p>
-                  <p className="mb-2"><strong>Oferta:</strong> {c.ofertaTytul}</p>
-                  <p className="mb-4 text-sm text-gray-600">{c.dataDodania} {c.zgloszen>0 && (<span className="ml-2 bg-red-100 text-red-700 px-2 py-0.5 rounded-full text-xs">Zgłoszeń: {c.zgloszen}</span>)}</p>
+                <div key={c.idKomentarz} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
+                  <h4 className="font-bold mb-2 text-gray-900 dark:text-gray-100 transition-colors">{c.autor}</h4>
+                  <p className="mb-2 text-gray-700 dark:text-gray-300 transition-colors"><strong className="text-gray-900 dark:text-gray-100">Treść:</strong> {c.tresc}</p>
+                  <p className="mb-2 text-gray-700 dark:text-gray-300 transition-colors"><strong className="text-gray-900 dark:text-gray-100">Oferta:</strong> {c.ofertaTytul}</p>
+                  <p className="mb-4 text-sm text-gray-600 dark:text-gray-400 transition-colors">{c.dataDodania} {c.zgloszen>0 && (<span className="ml-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full text-xs transition-colors">Zgłoszeń: {c.zgloszen}</span>)}</p>
                   <div className="flex gap-2">
-                    <button className="px-3 py-1 rounded bg-yellow-500 text-white" onClick={()=>warnComment(c.idKomentarz)} disabled={loadingList}>Ostrzeż</button>
-                    <button className="px-3 py-1 rounded bg-red-600 text-white" onClick={()=>deleteCommentMod(c.idKomentarz)} disabled={loadingList}>Usuń</button>
+                    <button className="px-3 py-1 rounded-lg bg-yellow-500 dark:bg-yellow-600 text-white hover:bg-yellow-600 dark:hover:bg-yellow-500 transition-colors" onClick={()=>warnComment(c.idKomentarz)} disabled={loadingList}>Ostrzeż</button>
+                    <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteCommentMod(c.idKomentarz)} disabled={loadingList}>Usuń</button>
                   </div>
                 </div>
               ))}
-              {modComments.length===0 && (<div className="text-center text-gray-600 col-span-full">Brak komentarzy do moderacji</div>)}
+              {modComments.length===0 && (<div className="text-center text-gray-600 dark:text-gray-400 col-span-full transition-colors">Brak komentarzy do moderacji</div>)}
             </div>
           )}
 
           {activeTab === 'modOffers' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {modOffers.map(o => (
-                <div key={o.idOferta} className="bg-white/60 rounded-2xl p-6 shadow border">
-                  <div className="flex justify-between items-start mb-2"><h4 className="font-bold">{o.tytul}</h4><span className={`text-xs px-2 py-1 rounded-full ${o.zatwierdzona?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}`}>{o.zatwierdzona?'Zatwierdzona':'Oczekuje'}</span></div>
-                  <p className="text-sm text-gray-700 mb-2">{o.opis}</p>
-                  <p className="text-sm text-gray-500 mb-3">Autor: {o.autor} • {o.dataDodania}</p>
+                <div key={o.idOferta} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
+                  <div className="flex justify-between items-start mb-2"><h4 className="font-bold text-gray-900 dark:text-gray-100 transition-colors">{o.tytul}</h4><span className={`text-xs px-2 py-1 rounded-full transition-colors ${o.zatwierdzona?'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{o.zatwierdzona?'Zatwierdzona':'Oczekuje'}</span></div>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 transition-colors">{o.opis}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 transition-colors">Autor: {o.autor} • {o.dataDodania}</p>
                   <div className="flex flex-wrap gap-2">
-                    {!o.zatwierdzona && <button className="px-3 py-1 rounded bg-green-600 text-white" onClick={()=>approveOfferMod(o.idOferta)} disabled={loadingList}><Check className="inline w-4 h-4 mr-1"/>Zatwierdź</button>}
-                    <button className="px-3 py-1 rounded bg-blue-600 text-white" onClick={()=>{const isKupon=o.typ==='kupon'; window.location.href = isKupon?`/stworz-oferte/kupon?edit=${o.idOferta}`:`/stworz-oferte/okazja?edit=${o.idOferta}`;}} disabled={loadingList}>Edytuj</button>
-                    <button className="px-3 py-1 rounded bg-yellow-500 text-white" onClick={()=>rejectOfferMod(o.idOferta)} disabled={loadingList}>Odrzuć</button>
-                    <button className="px-3 py-1 rounded bg-red-600 text-white" onClick={()=>deleteOfferMod(o.idOferta)} disabled={loadingList}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
+                    {!o.zatwierdzona && <button className="px-3 py-1 rounded-lg bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors" onClick={()=>approveOfferMod(o.idOferta)} disabled={loadingList}><Check className="inline w-4 h-4 mr-1"/>Zatwierdź</button>}
+                    <button className="px-3 py-1 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors" onClick={()=>{const isKupon=o.typ==='kupon'; window.location.href = isKupon?`/stworz-oferte/kupon?edit=${o.idOferta}`:`/stworz-oferte/okazja?edit=${o.idOferta}`;}} disabled={loadingList}>Edytuj</button>
+                    <button className="px-3 py-1 rounded-lg bg-yellow-500 dark:bg-yellow-600 text-white hover:bg-yellow-600 dark:hover:bg-yellow-500 transition-colors" onClick={()=>rejectOfferMod(o.idOferta)} disabled={loadingList}>Odrzuć</button>
+                    <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteOfferMod(o.idOferta)} disabled={loadingList}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
                   </div>
                 </div>
               ))}
-              {modOffers.length===0 && (<div className="text-center text-gray-600 col-span-full">Brak ofert do moderacji</div>)}
+              {modOffers.length===0 && (<div className="text-center text-gray-600 dark:text-gray-400 col-span-full transition-colors">Brak ofert do moderacji</div>)}
             </div>
           )}
 
           {activeTab === 'modReports' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {modReports.map((r:any) => (
-                <div key={r.id} className="bg-white/60 rounded-2xl p-6 shadow border">
-                  <div className="text-sm mb-2"><span className="bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full">#{r.id}</span> Zgłoszenie</div>
-                  <div className="mb-3"><strong>Treść:</strong> {r.tresc}</div>
-                  <div className="text-sm text-gray-600 mb-3">Zgłoszone przez: {r.zgloszonePrzez} • {r.dataZgloszenia}</div>
+                <div key={r.id} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
+                  <div className="text-sm mb-2"><span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 px-2 py-0.5 rounded-full transition-colors">#{r.id}</span> <span className="text-gray-900 dark:text-gray-100 transition-colors">Zgłoszenie</span></div>
+                  <div className="mb-3 text-gray-900 dark:text-gray-100 transition-colors"><strong>Treść:</strong> {r.tresc}</div>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-3 transition-colors">Zgłoszone przez: {r.zgloszonePrzez} • {r.dataZgloszenia}</div>
                   {data?.rola==='Admin' ? (
                     <div className="flex gap-2">
-                      {r.idKomentarz && <button className="px-3 py-1 rounded bg-red-600 text-white" onClick={()=>deleteReportedCommentAdmin(r.idKomentarz, r.id)} disabled={loadingList}>Usuń komentarz i zamknij</button>}
-                      <button className="px-3 py-1 rounded bg-green-600 text-white" onClick={()=>approveReportAdmin(r.id)} disabled={loadingList}>Zatwierdź</button>
-                      <button className="px-3 py-1 rounded bg-gray-600 text-white" onClick={()=>rejectReportAdmin(r.id)} disabled={loadingList}>Odrzuć</button>
+                      {r.idKomentarz && <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteReportedCommentAdmin(r.idKomentarz, r.id)} disabled={loadingList}>Usuń komentarz i zamknij</button>}
+                      <button className="px-3 py-1 rounded-lg bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors" onClick={()=>approveReportAdmin(r.id)} disabled={loadingList}>Zatwierdź</button>
+                      <button className="px-3 py-1 rounded-lg bg-gray-600 dark:bg-gray-700 text-white hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors" onClick={()=>rejectReportAdmin(r.id)} disabled={loadingList}>Odrzuć</button>
                     </div>
                   ) : (
-                    <div className="text-sm text-gray-500">Szczegóły do decyzji moderatora</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">Szczegóły do decyzji moderatora</div>
                   )}
                 </div>
               ))}
-              {modReports.length===0 && (<div className="text-center text-gray-600 col-span-full">Brak zgłoszeń</div>)}
+              {modReports.length===0 && (<div className="text-center text-gray-600 dark:text-gray-400 col-span-full transition-colors">Brak zgłoszeń</div>)}
             </div>
           )}
 
           {activeTab === 'adminUsers' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {adminUsers.map(u => (
-                <div key={u.id} className="bg-white/60 rounded-2xl p-6 shadow border">
-                  <h4 className="font-bold mb-1">{u.nick}</h4>
-                  <div className="text-sm text-gray-600 mb-2">{u.email}</div>
-                  <div className="text-sm mb-1">Rola: <span className="font-semibold">{u.rola}</span></div>
-                  <div className="text-sm mb-3">Punkty: <span className="font-semibold text-emerald-600">{u.punkty}</span></div>
+                <div key={u.id} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
+                  <h4 className="font-bold mb-1 text-gray-900 dark:text-gray-100 transition-colors">{u.nick}</h4>
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 transition-colors">{u.email}</div>
+                  <div className="text-sm mb-1 text-gray-700 dark:text-gray-300 transition-colors">Rola: <span className="font-semibold text-gray-900 dark:text-gray-100">{u.rola}</span></div>
+                  <div className="text-sm mb-3 text-gray-700 dark:text-gray-300 transition-colors">Punkty: <span className="font-semibold text-green-600 dark:text-green-400">{u.punkty}</span></div>
                   <div className="space-y-2">
-                    <input type="number" className="w-full p-2 border rounded" placeholder="Nowe punkty" onKeyDown={(e)=>{ if(e.key==='Enter'){ const v=parseInt((e.target as HTMLInputElement).value); if(!isNaN(v)) updateUserPoints(u.id, v); } }} />
-                    <select value={u.rola} onChange={(e)=>changeUserRole(u.id, e.target.value)} className="w-full p-2 border rounded">
+                    <input type="number" className="w-full p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors" placeholder="Nowe punkty" onKeyDown={(e)=>{ if(e.key==='Enter'){ const v=parseInt((e.target as HTMLInputElement).value); if(!isNaN(v)) updateUserPoints(u.id, v); } }} />
+                    <select value={u.rola} onChange={(e)=>changeUserRole(u.id, e.target.value)} className="w-full p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors">
                       <option value="Uzytkownik">Uzytkownik</option>
                       <option value="Moderator">Moderator</option>
                       <option value="Admin">Admin</option>
                     </select>
-                    <button className="w-full px-3 py-2 rounded bg-indigo-600 text-white" onClick={()=>recalcBadgesForUser(u.id)} disabled={loadingList}><Zap className="inline w-4 h-4 mr-1"/>Przelicz odznaki</button>
+                    <button className="w-full px-3 py-2 rounded-lg bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors" onClick={()=>recalcBadgesForUser(u.id)} disabled={loadingList}><Zap className="inline w-4 h-4 mr-1"/>Przelicz odznaki</button>
                   </div>
                 </div>
               ))}
@@ -1057,24 +1065,24 @@ const Profil = () => {
 
           {activeTab === 'adminBadges' && (
             <div>
-              <form onSubmit={createBadge} className="bg-white/60 p-4 rounded-xl shadow border mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-                <input value={newBadge.nazwa} onChange={e=>setNewBadge({...newBadge, nazwa:e.target.value})} placeholder="Nazwa" className="p-2 border rounded" required />
-                <input value={newBadge.opis} onChange={e=>setNewBadge({...newBadge, opis:e.target.value})} placeholder="Opis" className="p-2 border rounded" required />
-                <input value={newBadge.ikona} onChange={e=>setNewBadge({...newBadge, ikona:e.target.value})} placeholder="Ikona" className="p-2 border rounded" />
-                <button type="submit" className="px-3 py-2 rounded bg-custom-blue text-white">Utwórz</button>
+              <form onSubmit={createBadge} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border dark:border-gray-700 mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 transition-all">
+                <input value={newBadge.nazwa} onChange={e=>setNewBadge({...newBadge, nazwa:e.target.value})} placeholder="Nazwa" className="p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors" required />
+                <input value={newBadge.opis} onChange={e=>setNewBadge({...newBadge, opis:e.target.value})} placeholder="Opis" className="p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors" required />
+                <input value={newBadge.ikona} onChange={e=>setNewBadge({...newBadge, ikona:e.target.value})} placeholder="Ikona" className="p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors" />
+                <button type="submit" className="px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">Utwórz</button>
               </form>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {adminBadges.map(b => (
-                  <div key={b.idOdznaka} className="bg-white/60 p-6 rounded-2xl shadow border text-center">
+                  <div key={b.idOdznaka} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700 text-center transition-all">
                     <div className="text-4xl mb-2">{b.ikona}</div>
-                    <div className="font-bold">{b.nazwa}</div>
-                    <div className="text-sm text-gray-600 mb-3">{b.opis}</div>
-                    <button className="px-3 py-1 rounded bg-red-600 text-white" onClick={()=>deleteBadge(b.idOdznaka)}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
+                    <div className="font-bold text-gray-900 dark:text-gray-100 transition-colors">{b.nazwa}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-3 transition-colors">{b.opis}</div>
+                    <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteBadge(b.idOdznaka)}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
                   </div>
                 ))}
               </div>
               <div className="mt-4">
-                <button className="px-4 py-2 rounded bg-indigo-600 text-white" onClick={recalcBadgesForAll}><Zap className="inline w-4 h-4 mr-1"/>Przelicz wszystkim</button>
+                <button className="px-4 py-2 rounded-lg bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors" onClick={recalcBadgesForAll}><Zap className="inline w-4 h-4 mr-1"/>Przelicz wszystkim</button>
               </div>
             </div>
           )}
@@ -1082,22 +1090,22 @@ const Profil = () => {
           {activeTab === 'adminOffers' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {adminOffers.map(offer => (
-                <div key={offer.id} className="bg-white/60 rounded-2xl p-6 shadow border">
+                <div key={offer.id} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold">{offer.tytul}</h4>
-                    <span className={`px-2 py-1 rounded-full text-xs ${offer.zatwierdzona?'bg-green-100 text-green-700':'bg-yellow-100 text-yellow-700'}`}>{offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
+                    <h4 className="font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
+                    <span className={`px-2 py-1 rounded-full text-xs transition-colors ${offer.zatwierdzona?'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
                   </div>
-                  <p className="text-sm text-gray-700 mb-2">{offer.opis}</p>
-                  <p className="text-sm text-gray-500 mb-3">Autor: {offer.autor} • {offer.dataUtworzenia}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 transition-colors">{offer.opis}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 transition-colors">Autor: {offer.autor} • {offer.dataUtworzenia}</p>
                   <div className="flex flex-wrap gap-2">
-                    {!offer.zatwierdzona && <button className="px-3 py-1 rounded bg-green-600 text-white" onClick={()=>approveOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}><Check className="inline w-4 h-4 mr-1"/>Zatwierdź</button>}
-                    <button className="px-3 py-1 rounded bg-blue-600 text-white" onClick={()=>editOfferAdmin(offer.idOferta ?? offer.id, offer.typ)} disabled={loadingList}>Edytuj</button>
-                    <button className="px-3 py-1 rounded bg-yellow-500 text-white" onClick={()=>rejectOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Odrzuć</button>
-                    <button className="px-3 py-1 rounded bg-red-600 text-white" onClick={()=>deleteOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
+                    {!offer.zatwierdzona && <button className="px-3 py-1 rounded-lg bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors" onClick={()=>approveOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}><Check className="inline w-4 h-4 mr-1"/>Zatwierdź</button>}
+                    <button className="px-3 py-1 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors" onClick={()=>editOfferAdmin(offer.idOferta ?? offer.id, offer.typ)} disabled={loadingList}>Edytuj</button>
+                    <button className="px-3 py-1 rounded-lg bg-yellow-500 dark:bg-yellow-600 text-white hover:bg-yellow-600 dark:hover:bg-yellow-500 transition-colors" onClick={()=>rejectOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Odrzuć</button>
+                    <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
                   </div>
                 </div>
               ))}
-              {adminOffers.length===0 && (<div className="text-center text-gray-600 col-span-full">Brak ofert</div>)}
+              {adminOffers.length===0 && (<div className="text-center text-gray-600 dark:text-gray-400 col-span-full transition-colors">Brak ofert</div>)}
             </div>
           )}
         </div>

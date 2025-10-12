@@ -46,4 +46,9 @@ public interface ISerwisWyszukiwania
     /// Pobiera liczbę dokumentów w indeksie
     /// </summary>
     Task<long?> PobierzLiczbeOfertAsync();
+
+    /// <summary>
+    /// Pobiera podobne oferty na podstawie kategorii i nazwy
+    /// </summary>
+    Task<List<ModelWyszukiwaniaOferty>> PobierzPodobneOfertyAsync(string ofertaId, string kategoria, string nazwa, int liczbaWynikow = 5);
 }
