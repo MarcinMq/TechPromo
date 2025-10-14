@@ -493,52 +493,62 @@ namespace TechPromo.Api.Controllers
                 return NotFound("Oferta nie została znaleziona.");
             }
 
-            // Sprawdź czy użytkownik już głosował
-            var existingVote = await _context.Glosy
-                .FirstOrDefaultAsync(g => g.IdOferta == id && g.IdUzytkownik == userId);
-
-            if (existingVote != null)
+            try
             {
-                // Usuń poprzedni głos
-                if (existingVote.TypGlosu == "hot")
-                    oferta.LiczbaHot--;
-                else
-                    oferta.LiczbaCold--;
+                // Sprawdź czy użytkownik już głosował
+                var existingVote = await _context.Glosy
+                    .FirstOrDefaultAsync(g => g.IdOferta == id && g.IdUzytkownik == userId);
 
-                _context.Glosy.Remove(existingVote);
-            }
-
-            // Dodaj nowy głos jeśli różni się od poprzedniego
-            if (existingVote == null || existingVote.TypGlosu != dto.Typ)
-            {
-                var newVote = new Glos
+                if (existingVote != null)
                 {
-                    IdOferta = id,
-                    IdUzytkownik = userId,
-                    TypGlosu = dto.Typ,
-                    DataGlosu = DateTime.UtcNow
-                };
+                    // Usuń poprzedni głos
+                    if (existingVote.TypGlosu == "hot")
+                        oferta.LiczbaHot--;
+                    else
+                        oferta.LiczbaCold--;
 
-                _context.Glosy.Add(newVote);
-
-                if (dto.Typ == "hot")
-                    oferta.LiczbaHot++;
-                else
-                    oferta.LiczbaCold++;
-
-                // Dodaj punkt użytkownikowi za głosowanie
-                var user = await _userManager.FindByIdAsync(userId.ToString());
-                if (user != null)
-                {
-                    user.Punkty += 1;
-                    await _userManager.UpdateAsync(user);
+                    _context.Glosy.Remove(existingVote);
                 }
-            }
 
-            await _context.SaveChangesAsync();
-            // Odznaki (first_vote, hot_50 może po moderacji temperatury – ale policzymy tu i tak)
-            await _badgeService.EvaluateForUserAsync(userId);
-            return Ok("Głos został zapisany.");
+                // Dodaj nowy głos jeśli różni się od poprzedniego
+                if (existingVote == null || existingVote.TypGlosu != dto.Typ)
+                {
+                    var newVote = new Glos
+                    {
+                        IdOferta = id,
+                        IdUzytkownik = userId,
+                        TypGlosu = dto.Typ,
+                        DataGlosu = DateTime.UtcNow
+                    };
+
+                    _context.Glosy.Add(newVote);
+
+                    if (dto.Typ == "hot")
+                        oferta.LiczbaHot++;
+                    else
+                        oferta.LiczbaCold++;
+
+                    // Dodaj punkt użytkownikowi za głosowanie
+                    var user = await _userManager.FindByIdAsync(userId.ToString());
+                    if (user != null)
+                    {
+                        user.Punkty += 1;
+                        await _userManager.UpdateAsync(user);
+                    }
+                }
+
+                await _context.SaveChangesAsync();
+                
+                // Odznaki (first_vote, hot_50 może po moderacji temperatury – ale policzymy tu i tak)
+                await _badgeService.EvaluateForUserAsync(userId);
+                
+                return Ok("Głos został zapisany.");
+            }
+            catch (DbUpdateException ex) when (ex.InnerException?.Message.Contains("duplicate key") == true)
+            {
+                // Race condition - ktoś już dodał głos w międzyczasie
+                return Conflict("Już zagłosowałeś na tę ofertę.");
+            }
         }
 
         // POST: api/uzytkownik/oferta/{id}/komentarz

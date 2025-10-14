@@ -33,7 +33,23 @@ interface OfertaDto {
 
 // Funkcja formatowania daty
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString);
+  // Parsuj polski format daty: "dd.MM.yyyy HH:mm"
+  const parsePolishDate = (str: string) => {
+    const parts = str.match(/(\d{2})\.(\d{2})\.(\d{4})\s+(\d{2}):(\d{2})/);
+    if (parts) {
+      const [, day, month, year, hour, minute] = parts;
+      return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), parseInt(hour), parseInt(minute));
+    }
+    return new Date(str); // fallback do standardowego parsowania
+  };
+
+  const date = parsePolishDate(dateString);
+  
+  // Sprawdź czy data jest poprawna
+  if (isNaN(date.getTime())) {
+    return dateString; // zwróć oryginalny string jeśli parsowanie nie powiodło się
+  }
+
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -71,7 +87,7 @@ function OfferImage({ offer }: { offer: OfertaDto }) {
   );
 }
 
-// Prawy sidebar - najgorętsze okazje i aktywność użytkownika
+// Prawy sidebar - TOP okazje i aktywność użytkownika
 function RightSidebar() {
   const [hotOffers, setHotOffers] = useState<OfertaDto[]>([]);
   const [userActivity, setUserActivity] = useState<any[]>([]);
@@ -79,11 +95,11 @@ function RightSidebar() {
   const [loadingActivity, setLoadingActivity] = useState(true);
   const token = getAuthToken();
 
-  // Pobierz najgorętsze okazje
+  // Pobierz TOP 5 ofert z największą liczbą HOT
   useEffect(() => {
     const fetchHotOffers = async () => {
       try {
-        const response = await fetch('/api/oferta?sortBy=gorace&skip=0&take=5');
+        const response = await fetch('/api/oferta?sortBy=hot&skip=0&take=5');
         const data = await response.json();
         setHotOffers(data.items || data.Items || []);
       } catch (err) {
@@ -126,11 +142,11 @@ function RightSidebar() {
   return (
     <div className="hidden lg:block w-80 flex-shrink-0">
       <div className="sticky top-24 space-y-4 max-h-[calc(100vh-7rem)] overflow-y-auto scrollbar-thin">
-        {/* Najgorętsze okazje */}
+        {/* TOP okazje */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border dark:border-gray-700 p-4 transition-colors">
         <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
           <Flame className="w-5 h-5 text-red-600" />
-          Najgorętsze okazje
+          TOP okazje
         </h3>
         
         {loadingHot ? (
@@ -364,9 +380,19 @@ function HomePage() {
   }, [fetchSavedOffers]);
 
   // Funkcja głosowania
+  const [votingInProgress, setVotingInProgress] = useState<Set<number>>(new Set());
+
   const handleVote = async (offerId: number, voteType: 'hot' | 'cold') => {
     const token = getAuthToken();
     if (!token) { alert('Musisz być zalogowany, aby głosować'); return; }
+    
+    // Zabezpieczenie przed wielokrotnym klikaniem
+    if (votingInProgress.has(offerId)) {
+      return; // Ignoruj jeśli głosowanie jest w trakcie
+    }
+    
+    setVotingInProgress(prev => new Set(prev).add(offerId));
+    
     // Optymistyczna aktualizacja
     setOffers(prev => prev.map(o => {
       if (o.id !== offerId) return o;
@@ -394,6 +420,13 @@ function HomePage() {
       }
     } catch (e) {
       console.error('Network vote error', e);
+    } finally {
+      // Usuń z zestawu głosujących po zakończeniu
+      setVotingInProgress(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(offerId);
+        return newSet;
+      });
     }
   };
 
@@ -676,14 +709,18 @@ function HomePage() {
                           <div className="mt-auto">
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center space-x-3 text-sm text-gray-500 dark:text-gray-400">
-                                <img
-                                  src={offer.autorAvatarUrl || '/default-avatar.svg'}
-                                  alt={offer.autor}
-                                  className="w-7 h-7 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600"
-                                  onError={(e)=>{ const img=e.target as HTMLImageElement; img.onerror=null; img.src='/default-avatar.svg'; }}
-                                />
+                                <Link to={`/uzytkownik/${offer.autor}`} className="flex-shrink-0">
+                                  <img
+                                    src={offer.autorAvatarUrl || '/default-avatar.svg'}
+                                    alt={offer.autor}
+                                    className="w-7 h-7 rounded-full object-cover border-2 border-gray-200 dark:border-gray-600 hover:border-blue-400 dark:hover:border-blue-500 transition-colors"
+                                    onError={(e)=>{ const img=e.target as HTMLImageElement; img.onerror=null; img.src='/default-avatar.svg'; }}
+                                  />
+                                </Link>
                                 <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-2">
-                                  <span className="font-medium text-gray-700 dark:text-gray-300">{offer.autor}</span>
+                                  <Link to={`/uzytkownik/${offer.autor}`} className="font-medium text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                                    {offer.autor}
+                                  </Link>
                                   <div className="flex items-center space-x-2 text-xs">
                                     <span className="hidden sm:inline text-gray-400 dark:text-gray-500">•</span>
                                     <span>{formatDate(offer.dataUtworzenia)}</span>

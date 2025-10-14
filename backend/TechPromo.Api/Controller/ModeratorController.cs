@@ -182,10 +182,10 @@ namespace TechPromo.Api.Controllers
                 oferta.Aktywna = true;
                 await _context.SaveChangesAsync();
 
-                // Synchronizuj z Azure Search Index
+                // Synchronizuj z Azure Search Index - synchronicznie zeby miec pewnosc ze sie wykona
                 if (_syncService != null)
                 {
-                    _ = Task.Run(async () => await _syncService.SynchronizujOferteAsync(id));
+                    await _syncService.SynchronizujOferteAsync(id);
                 }
 
                 // Automatyczne przeliczenie odznak po zatwierdzeniu oferty

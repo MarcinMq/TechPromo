@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Search } from 'lucide-react';
 import SearchResults from '../components/search/SearchResults';
 import SearchBar from '../components/search/SearchBar';
-import { parseNaturalLanguageQuery, expandQueryWithSynonyms } from '../utils/queryParser';
+import { parseNaturalLanguageQuery } from '../utils/queryParser.simplified';
 
 interface SearchResult {
   id: number;
@@ -18,11 +18,11 @@ interface SearchResult {
 
 const SearchPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [query, setQuery] = useState('');
   const [parsedParams, setParsedParams] = useState<{ minPrice?: number; maxPrice?: number; category?: string } | null>(null);
-  const [expandedQuery, setExpandedQuery] = useState<string | null>(null);
 
   useEffect(() => {
     const searchQuery = searchParams.get('q') || '';
@@ -38,8 +38,11 @@ const SearchPage: React.FC = () => {
     setQuery(searchQuery);
 
     try {
-      // Parse zapytania w naturalnym języku
-      const parsed = parseNaturalLanguageQuery(searchQuery);
+      // Parse zapytania w naturalnym języku TYLKO jeśli wygląda na naturalne zapytanie
+      // Nie parsuj jeśli to nazwa produktu z sugestii (zawiera markę lub pełną nazwę)
+      const shouldParse = /(?:do|od|max|min|szuk|potrzeb|chc)/i.test(searchQuery);
+      
+      const parsed = shouldParse ? parseNaturalLanguageQuery(searchQuery) : { keywords: searchQuery };
       
       // Zapisz sparsowane parametry do wyświetlenia
       if (parsed.minPrice || parsed.maxPrice || parsed.category) {
@@ -55,21 +58,11 @@ const SearchPage: React.FC = () => {
       // Buduj URL z parametrami
       const params = new URLSearchParams();
       
-      // Jeśli nie wykryto cen ani kategorii, użyj rozszerzenia synonimów
-      if (!parsed.minPrice && !parsed.maxPrice && !parsed.category) {
-        const expandedQuery = expandQueryWithSynonyms(searchQuery);
-        params.append('q', expandedQuery);
-        
-        // Zapisz info o rozszerzeniu jeśli zapytanie zostało zmienione
-        if (expandedQuery !== searchQuery) {
-          setExpandedQuery(expandedQuery);
-        } else {
-          setExpandedQuery(null);
-        }
-      } else {
-        // Użyj sparsowanych słów kluczowych
-        params.append('q', parsed.keywords || searchQuery);
-        setExpandedQuery(null);
+      // Użyj sparsowanych słów kluczowych lub oryginalnego zapytania
+      // Synonimy są obsługiwane przez Azure AI Search Synonym Maps
+      const finalQuery = parsed.keywords || searchQuery;
+      if (finalQuery.trim()) {
+        params.append('q', finalQuery);
       }
       
       if (parsed.minPrice) {
@@ -78,9 +71,11 @@ const SearchPage: React.FC = () => {
       if (parsed.maxPrice) {
         params.append('MaxCena', parsed.maxPrice.toString());
       }
-      if (parsed.category) {
-        params.append('Kategoria', parsed.category);
-      }
+      // NIE dodajemy automatycznego filtra kategorii - Azure AI Search lepiej wyszukuje
+      // Uzytkownik moze recznie wybrac kategorie z filtrow
+      // if (parsed.category) {
+      //   params.append('Kategoria', parsed.category);
+      // }
 
       // Wykonaj zapytanie do backendu
       const response = await fetch(`http://localhost:5023/api/wyszukiwarka?${params.toString()}`);
@@ -117,7 +112,6 @@ const SearchPage: React.FC = () => {
       console.error('Błąd wyszukiwania:', error);
       setResults([]);
       setParsedParams(null);
-      setExpandedQuery(null);
     } finally {
       setLoading(false);
     }
@@ -127,8 +121,9 @@ const SearchPage: React.FC = () => {
     performSearch(searchQuery);
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    performSearch(suggestion);
+  const handleSuggestionClick = (suggestionId: number) => {
+    // Przekieruj bezpośrednio do oferty
+    navigate(`/okazja/${suggestionId}`);
   };
 
   return (
@@ -195,27 +190,19 @@ const SearchPage: React.FC = () => {
           </div>
         )}
 
-        {/* Rozszerzone synonimy (jeśli dodano) */}
-        {expandedQuery && expandedQuery !== query && (
+        {/* Informacja o synonimach Azure AI Search */}
+        {query && !parsedParams && (
           <div className="mb-4">
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 transition-colors">
-              <div className="flex items-start gap-3">
-                <div className="text-green-600 dark:text-green-400 mt-0.5">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 transition-colors">
+              <div className="flex items-start gap-2">
+                <div className="text-blue-600 dark:text-blue-400 mt-0.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-green-900 dark:text-green-100 mb-2">
-                    🔍 Rozszerzono wyszukiwanie o synonimy:
-                  </p>
-                  <p className="text-sm text-green-700 dark:text-green-300 bg-green-100 dark:bg-green-900/30 px-3 py-2 rounded-md font-mono">
-                    {expandedQuery}
-                  </p>
-                  <p className="text-xs text-green-600 dark:text-green-400 mt-2">
-                    Dodano synonimy aby znaleźć więcej pasujących ofert
-                  </p>
-                </div>
+                <p className="text-xs text-blue-700 dark:text-blue-300">
+                  � Azure AI Search automatycznie szuka synonimów (np. "pad" = "kontroler")
+                </p>
               </div>
             </div>
           </div>

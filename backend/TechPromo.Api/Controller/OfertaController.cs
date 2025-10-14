@@ -45,21 +45,21 @@ namespace TechPromo.Api.Controllers
             return int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
         }
 
-        // Synchronizuj ofertę z Azure Search (w tle)
-        private void SyncOfertaToAzureSearch(int ofertaId)
+        // Synchronizuj ofertę z Azure Search - synchronicznie
+        private async Task SyncOfertaToAzureSearch(int ofertaId)
         {
             if (_syncService != null)
             {
-                _ = Task.Run(async () => await _syncService.SynchronizujOferteAsync(ofertaId));
+                await _syncService.SynchronizujOferteAsync(ofertaId);
             }
         }
 
-        // Usuń ofertę z Azure Search (w tle)
-        private void RemoveOfertaFromAzureSearch(int ofertaId)
+        // Usuń ofertę z Azure Search - synchronicznie
+        private async Task RemoveOfertaFromAzureSearch(int ofertaId)
         {
             if (_syncService != null)
             {
-                _ = Task.Run(async () => await _syncService.UsunOferteZIndeksuAsync(ofertaId));
+                await _syncService.UsunOferteZIndeksuAsync(ofertaId);
             }
         }
 
@@ -662,7 +662,7 @@ namespace TechPromo.Api.Controllers
                 // Synchronizuj z Azure Search jeśli oferta jest zatwierdzona i aktywna
                 if (oferta.Zatwierdzona && oferta.Aktywna)
                 {
-                    SyncOfertaToAzureSearch(oferta.IdOferta);
+                    await SyncOfertaToAzureSearch(oferta.IdOferta);
                 }
 
                 var result = await CreateOfferResponse(oferta.IdOferta);

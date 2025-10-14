@@ -39,6 +39,8 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
                 IncludeTotalCount = true,
                 Skip = zapytanie.Offset,
                 Size = zapytanie.RozmiarStrony,
+                QueryType = SearchQueryType.Full, // wlaczamy full query z synonimami
+                SearchMode = SearchMode.Any, // dopasowuje jakiekolwiek slowo
                 // Highlight w wyniku wyszukiwania
                 HighlightPreTag = "<mark>",
                 HighlightPostTag = "</mark>"
@@ -265,6 +267,9 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
     {
         try
         {
+            // Najpierw utwórz synonym map
+            await UtworzLubAktualizujSynonymMapAsync();
+
             // Sprawdź czy indeks istnieje
             try
             {
@@ -287,6 +292,19 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
             // Dodaj suggester dla autouzupełniania
             indexDefinition.Suggesters.Add(new SearchSuggester("sg", new[] { "Nazwa", "Kategoria" }));
 
+            // Przypisz synonym map do pól Nazwa i Opis
+            var nazwaField = indexDefinition.Fields.FirstOrDefault(f => f.Name == "Nazwa");
+            if (nazwaField != null)
+            {
+                nazwaField.SynonymMapNames.Add("techpromo-synonyms");
+            }
+
+            var opisField = indexDefinition.Fields.FirstOrDefault(f => f.Name == "Opis");
+            if (opisField != null)
+            {
+                opisField.SynonymMapNames.Add("techpromo-synonyms");
+            }
+
             // Utwórz indeks
             await _indexClient.CreateIndexAsync(indexDefinition);
             _logger.LogInformation("Indeks {IndexName} został utworzony pomyślnie", _indexName);
@@ -306,13 +324,107 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
         }
     }
 
+    /// <summary>
+    /// Tworzy lub aktualizuje mapę synonimów w Azure AI Search
+    /// </summary>
+    private async Task<bool> UtworzLubAktualizujSynonymMapAsync()
+    {
+        try
+        {
+            const string synonymMapName = "techpromo-synonyms";
+
+            // Definicja synonimów w formacie Solr
+            // Format: słowo1, słowo2, słowo3 (każda linia to grupa synonimów)
+            var synonyms = string.Join("\n", new[]
+            {
+                // Telefony i smartfony
+                "telefon, smartphone, smartfon, komórka, iphone, samsung, xiaomi, nokia, motorola, oppo, realme, vivo",
+                
+                // Komputery
+                "laptop, notebook, komputer przenośny, ultrabook, chromebook, macbook",
+                "komputer, pc, desktop",
+                
+                // Gaming
+                "pad, kontroler, gamepad, joystick, dualshock, dualsense",
+                "ps5, playstation 5, playstation",
+                "xbox, microsoft xbox, xbox series",
+                "konsola, konsola do gier",
+                
+                // Audio
+                "słuchawki, headset, nauszniki, douszne, bezprzewodowe słuchawki",
+                "głośnik, speaker, bluetooth speaker, głośnik bezprzewodowy",
+                
+                // Wyświetlacze
+                "tv, telewizor, televizor, smart tv",
+                "monitor, ekran, wyświetlacz",
+                
+                // Akcesoria komputerowe
+                "klawiatura, keyboard, klawiatura mechaniczna, klawiatura bezprzewodowa",
+                "mysz, mouse, myszka, mysz bezprzewodowa, mysz gamingowa",
+                "myszka, mysz",
+                
+                // Przechowywanie danych
+                "dysk, ssd, hdd, dysk twardy, dysk ssd, pendrive, pamięć usb",
+                
+                // Smartwatche
+                "smartwatch, zegarek, smartband, opaska sportowa, apple watch",
+                
+                // Tablety
+                "tablet, ipad, tablet graficzny",
+                
+                // Fotografia
+                "aparat, kamera, lustrzanka, aparat cyfrowy, aparat bezlusterkowy",
+                
+                // Drukarki
+                "drukarka, printer, drukarka laserowa, drukarka atramentowa",
+                
+                // Routery i sieć
+                "router, router wifi, access point, modem",
+                
+                // Powerbanki
+                "powerbank, power bank, ładowarka przenośna, bateria zewnętrzna",
+                
+                // Ogólne synonimy
+                "bezprzewodowy, wireless, bluetooth",
+                "szybki, wydajny, mocny",
+                "tani, niedrogi, budżetowy, promocja",
+                "nowy, nówka",
+                "używany, poleasingowy, refurbished"
+            });
+
+            var synonymMap = new SynonymMap(synonymMapName, synonyms);
+
+            // Sprawdź czy mapa synonimów już istnieje
+            try
+            {
+                await _indexClient.GetSynonymMapAsync(synonymMapName);
+                // Istnieje - zaktualizuj
+                await _indexClient.CreateOrUpdateSynonymMapAsync(synonymMap);
+                _logger.LogInformation("Mapa synonimów '{SynonymMapName}' została zaktualizowana", synonymMapName);
+            }
+            catch (RequestFailedException ex) when (ex.Status == 404)
+            {
+                // Nie istnieje - utwórz
+                await _indexClient.CreateSynonymMapAsync(synonymMap);
+                _logger.LogInformation("Mapa synonimów '{SynonymMapName}' została utworzona", synonymMapName);
+            }
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas tworzenia/aktualizacji mapy synonimów: {Message}", ex.Message);
+            return false;
+        }
+    }
+
     /// <inheritdoc/>
-    public async Task<List<string>> PobierzSugestieAsync(string zapytanie, int liczbaWynikow = 5)
+    public async Task<List<SugestiaDto>> PobierzSugestieAsync(string zapytanie, int liczbaWynikow = 5)
     {
         try
         {
             if (string.IsNullOrWhiteSpace(zapytanie))
-                return new List<string>();
+                return new List<SugestiaDto>();
 
             var suggestOptions = new SuggestOptions
             {
@@ -326,14 +438,18 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
                 suggestOptions);
 
             return response.Value.Results
-                .Select(r => r.Text)
+                .Select(r => new SugestiaDto 
+                { 
+                    Id = int.Parse(r.Document.OfertaId),
+                    Tekst = r.Text 
+                })
                 .Distinct()
                 .ToList();
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Błąd podczas pobierania sugestii: {Message}", ex.Message);
-            return new List<string>();
+            return new List<SugestiaDto>();
         }
     }
 

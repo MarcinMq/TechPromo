@@ -42,6 +42,16 @@ namespace TechPromo.Api.Data
 
             modelBuilder.Entity<ZapisanaOferta>()
                 .HasIndex(zo => zo.DataZapisania);
+
+            // Unique constraint dla głosów - jeden użytkownik może zagłosować tylko raz na ofertę
+            modelBuilder.Entity<Glos>()
+                .HasIndex(g => new { g.IdUzytkownik, g.IdOferta })
+                .IsUnique();
+
+            // Unique constraint dla głosów na komentarze
+            modelBuilder.Entity<KomentarzGlos>()
+                .HasIndex(kg => new { kg.IdUzytkownik, kg.IdKomentarz })
+                .IsUnique();
         }
     }
 }

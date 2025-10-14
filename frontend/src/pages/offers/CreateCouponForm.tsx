@@ -17,20 +17,6 @@ interface CouponFormData {
   bezMinimalnejKwoty: boolean;
 }
 
-// Te same kategorie co na stronie głównej
-const categories = [
-  { name: 'Telefony', icon: '📱' },
-  { name: 'Laptopy', icon: '💻' },
-  { name: 'Audio', icon: '🎧' },
-  { name: 'TV', icon: '📺' },
-  { name: 'Gaming', icon: '🎮' },
-  { name: 'Foto', icon: '📷' },
-  { name: 'Smartwatche', icon: '⌚' },
-  { name: 'Tablety', icon: '📱' },
-  { name: 'PC', icon: '🖥️' },
-  { name: 'Akcesoria', icon: '🔌' },
-];
-
 const CreateCouponForm: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -38,6 +24,7 @@ const CreateCouponForm: React.FC = () => {
   const [isDragOver, setIsDragOver] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [categories, setCategories] = useState<string[]>([]);
   
   const [formData, setFormData] = useState<CouponFormData>({
     tytul: '',
@@ -45,7 +32,7 @@ const CreateCouponForm: React.FC = () => {
     cenaAktualna: '',
     cenaPoprzednia: '',
     kod: '',
-    kategoria: 'Telefony',
+    kategoria: '',
     sklep: '', // używane jako URL do sklepu / oferty
     tagi: '',
     typ: 'kupon',
@@ -72,6 +59,20 @@ const CreateCouponForm: React.FC = () => {
       setExistingImages((data||[]).map((x:any)=>({ id: x.idOfertaZdjecie ?? x.IdOfertaZdjecie, url: x.urlZdjecia ?? x.UrlZdjecia, kolejnosc: x.kolejnosc ?? x.Kolejnosc })));
     } catch { /* ignore */ }
   };
+
+  // Load categories from API
+  useEffect(() => {
+    fetch('/api/oferta/kategorie')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => {
+        setCategories(data);
+        // Set first category as default if not in edit mode
+        if (data.length > 0 && !formData.kategoria) {
+          setFormData(prev => ({ ...prev, kategoria: data[0] }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Detect edit mode
   useEffect(() => {
@@ -591,28 +592,19 @@ const CreateCouponForm: React.FC = () => {
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 transition-colors">
                     Kategoria *
                   </label>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <select
+                    name="kategoria"
+                    value={formData.kategoria}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 transition-colors"
+                  >
+                    {categories.length === 0 && <option value="">Ładowanie kategorii...</option>}
                     {categories.map((category) => (
-                      <button
-                        key={category.name}
-                        type="button"
-                        onClick={() => {
-                          setFormData(prev => ({ ...prev, kategoria: category.name }));
-                          if (fieldErrors.kategoria) {
-                            setFieldErrors(prev => ({ ...prev, kategoria: '' }));
-                          }
-                        }}
-                        className={`p-3 rounded-lg border transition-all text-center hover:scale-105 ${
-                          formData.kategoria === category.name
-                            ? 'border-blue-500 dark:border-blue-600 bg-blue-50 dark:bg-blue-900/30 shadow-sm'
-                            : 'border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 bg-white dark:bg-gray-800'
-                        }`}
-                      >
-                        <div className="text-2xl mb-1">{category.icon}</div>
-                        <div className="text-xs font-medium text-gray-700 dark:text-gray-300 transition-colors">{category.name}</div>
-                      </button>
+                      <option key={category} value={category}>
+                        {category}
+                      </option>
                     ))}
-                  </div>
+                  </select>
                   {fieldErrors.kategoria && (
                     <p className="mt-2 text-sm text-red-500 dark:text-red-400 transition-colors">{fieldErrors.kategoria}</p>
                   )}

@@ -51,6 +51,48 @@ namespace TechPromo.Api.Data
                 }
             }
             await db.SaveChangesAsync();
+
+            // Seed kategorii elektronicznych jeśli nie istnieją
+            var categories = new[]
+            {
+                "Telefony i akcesoria",
+                "Komputery i laptopy",
+                "Tablety",
+                "Smartwatche i opaski",
+                "Słuchawki i audio",
+                "Telewizory",
+                "Konsole i gaming",
+                "Akcesoria komputerowe",
+                "Drukarki i skanery",
+                "Dyski i pamięć",
+                "Monitory",
+                "Kamery i fotografia",
+                "Drony",
+                "Powerbanki i ładowarki",
+                "Kabele i adaptery",
+                "Inteligentny dom",
+                "Sieć i routery",
+                "Projektory",
+                "E-booki i czytniki",
+                "Gry i oprogramowanie",
+                "AGD małe",
+                "AGD duże",
+                "Inne"
+            };
+
+            foreach (var categoryName in categories)
+            {
+                var categoryLower = categoryName.ToLower();
+                if (!db.Kategorie.Any(k => k.Nazwa.ToLower() == categoryLower))
+                {
+                    db.Kategorie.Add(new Kategoria
+                    {
+                        Nazwa = categoryName,
+                        Opis = $"Kategoria {categoryName}"
+                    });
+                }
+            }
+            await db.SaveChangesAsync();
         }
 
         private static async Task CreateUserAsync(UserManager<Uzytkownik> userManager, string email, string password, string role, string nick)

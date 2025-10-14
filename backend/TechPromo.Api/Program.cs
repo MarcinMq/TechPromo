@@ -142,6 +142,29 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     await SeedData.InitializeAsync(services);
+    
+    // Azure AI Search - utwórz indeks jeśli nie istnieje i zsynchronizuj dane
+    try
+    {
+        var searchService = services.GetService<ISerwisWyszukiwania>();
+        var syncService = services.GetService<SerwisSync>();
+        
+        if (searchService != null)
+        {
+            await searchService.UtworzIndeksJesliNieIstniajeAsync();
+            
+            // Sprawdź czy indeks jest pusty i zsynchronizuj
+            var documentCount = await searchService.PobierzLiczbeOfertAsync();
+            if (documentCount.HasValue && documentCount.Value == 0 && syncService != null)
+            {
+                await syncService.SynchronizujWszystkieOfertyAsync();
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Azure AI Search initialization error: {ex.Message}");
+    }
 }
 
 //Swagger

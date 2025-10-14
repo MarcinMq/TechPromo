@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Rocket, Settings, LogOut, Zap, Sparkles, Moon, Sun } from 'lucide-react';
+import { Rocket, Settings, LogOut, Zap, Sparkles, Moon, Sun, ChevronDown } from 'lucide-react';
 import PanelSelector from '../ui/PanelSelector';
 import OfferTypeModal from '../modals/OfferTypeModal';
 import SearchBar from '../search/SearchBar';
@@ -14,25 +14,49 @@ interface NavbarProps {
   onLogout: () => void;
 }
 
-// Lista kategorii
-const categories = [
-  { name: 'Wszystkie', icon: '🔥', path: '/' },
-  { name: 'Telefony', icon: '📱', path: '/?kategoria=telefony' },
-  { name: 'Laptopy', icon: '💻', path: '/?kategoria=laptopy' },
-  { name: 'Audio', icon: '🎧', path: '/?kategoria=audio' },
-  { name: 'TV', icon: '📺', path: '/?kategoria=tv' },
-  { name: 'Gaming', icon: '🎮', path: '/?kategoria=gaming' },
-  { name: 'Foto', icon: '📷', path: '/?kategoria=foto' },
-  { name: 'Smartwatche', icon: '⌚', path: '/?kategoria=smartwatche' },
-  { name: 'Tablety', icon: '📱', path: '/?kategoria=tablety' },
-  { name: 'PC', icon: '🖥️', path: '/?kategoria=pc' },
-  { name: 'Akcesoria', icon: '🔌', path: '/?kategoria=akcesoria' }
+// Ikony dla kategorii - mapowanie nazwy kategorii na ikonę
+const categoryIcons: Record<string, string> = {
+  'Telefony i akcesoria': '📱',
+  'Komputery i laptopy': '💻',
+  'Tablety': '📱',
+  'Smartwatche i opaski': '⌚',
+  'Słuchawki i audio': '🎧',
+  'Telewizory': '📺',
+  'Konsole i gaming': '🎮',
+  'Akcesoria komputerowe': '⌨️',
+  'Drukarki i skanery': '🖨️',
+  'Dyski i pamięć': '💾',
+  'Monitory': '🖥️',
+  'Kamery i fotografia': '📷',
+  'Drony': '🚁',
+  'Powerbanki i ładowarki': '🔋',
+  'Kabele i adaptery': '🔌',
+  'Inteligentny dom': '🏠',
+  'Sieć i routery': '📡',
+  'Projektory': '📽️',
+  'E-booki i czytniki': '📚',
+  'Gry i oprogramowanie': '💿',
+  'AGD małe': '☕',
+  'AGD duże': '🧊',
+  'Inne': '📦',
+};
+
+// Główne kategorie do wyświetlenia bezpośrednio w navbar
+const mainCategories = [
+  'Telefony i akcesoria',
+  'Komputery i laptopy',
+  'Słuchawki i audio',
+  'Telewizory',
+  'Konsole i gaming',
+  'Kamery i fotografia',
 ];
 
 const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogout }) => {
   const [showPanelSelector, setShowPanelSelector] = useState(false);
   const [showOfferTypeModal, setShowOfferTypeModal] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [showMoreCategories, setShowMoreCategories] = useState(false);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
 
@@ -51,6 +75,14 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
   const handleCloseOfferTypeModal = () => {
     setShowOfferTypeModal(false);
   };
+
+  // Load categories from API
+  useEffect(() => {
+    fetch('/api/oferta/kategorie')
+      .then(r => r.ok ? r.json() : [])
+      .then(data => setCategories(data))
+      .catch(() => {});
+  }, []);
 
   // Fetch avatar for menubar when logged in
   useEffect(() => {
@@ -194,17 +226,86 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
         {/* Kategorie - drugi rząd */}
         <div className="border-t border-gray-200 dark:border-gray-700 py-2">
           <div className="overflow-x-auto scrollbar-hide">
-            <div className="flex items-center space-x-1 min-w-max px-2">
-              {categories.map((category) => (
-                <Link
-                  key={category.name}
-                  to={category.path}
-                  className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap"
-                >
-                  <span>{category.icon}</span>
-                  <span className="hidden sm:inline">{category.name}</span>
-                </Link>
-              ))}
+            <div className="flex items-center justify-center space-x-1 px-2">
+              {/* Tekst "Kategorie" */}
+              <div className="flex items-center px-3 py-1.5 text-sm font-semibold text-gray-900 dark:text-white whitespace-nowrap">
+                <span className="hidden sm:inline">Kategorie</span>
+                <span className="sm:hidden">Kat.</span>
+              </div>
+
+              {/* Główne kategorie */}
+              {categories
+                .filter(cat => mainCategories.includes(cat))
+                .map((category) => (
+                  <Link
+                    key={category}
+                    to={`/?kategoria=${encodeURIComponent(category)}`}
+                    className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap"
+                  >
+                    <span>{categoryIcons[category] || '📦'}</span>
+                    <span className="hidden sm:inline">{category}</span>
+                  </Link>
+                ))}
+
+              {/* Rozwijana lista "Więcej" - menu z boku */}
+              {categories.filter(cat => !mainCategories.includes(cat)).length > 0 && (
+                <div className="relative inline-block">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setShowMoreCategories(!showMoreCategories);
+                    }}
+                    className="flex items-center space-x-1 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors whitespace-nowrap"
+                  >
+                    <span>📋</span>
+                    <span className="hidden sm:inline">Więcej</span>
+                    <ChevronDown className={`w-4 h-4 transition-transform ${showMoreCategories ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {/* Backdrop do zamknięcia menu */}
+                  {showMoreCategories && (
+                    <div 
+                      className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40" 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowMoreCategories(false);
+                      }}
+                    />
+                  )}
+                      
+                  {/* Menu wysuwane z prawej strony */}
+                  <div 
+                    className={`fixed top-16 right-0 h-[calc(100vh-4rem)] w-80 bg-white dark:bg-gray-800 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto ${
+                      showMoreCategories ? 'translate-x-0' : 'translate-x-full'
+                    }`}
+                  >
+                    <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Więcej kategorii</h3>
+                    </div>
+                    <div className="py-2">
+                      {categories
+                        .filter(cat => !mainCategories.includes(cat))
+                        .map((category) => (
+                          <Link
+                            key={category}
+                            to={`/?kategoria=${encodeURIComponent(category)}`}
+                            className="flex items-center space-x-3 px-6 py-3 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors border-b border-gray-100 dark:border-gray-700/50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMoreCategories(false);
+                            }}
+                          >
+                            <span className="text-2xl">{categoryIcons[category] || '📦'}</span>
+                            <span className="font-medium">{category}</span>
+                          </Link>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

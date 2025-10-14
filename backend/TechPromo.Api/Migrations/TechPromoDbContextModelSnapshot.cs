@@ -77,7 +77,8 @@ namespace TechPromo.Api.Migrations
 
                     b.HasIndex("IdOferta");
 
-                    b.HasIndex("IdUzytkownik");
+                    b.HasIndex("IdUzytkownik", "IdOferta")
+                        .IsUnique();
 
                     b.ToTable("Glosy");
                 });
@@ -511,7 +512,8 @@ namespace TechPromo.Api.Migrations
 
                     b.HasIndex("IdKomentarz");
 
-                    b.HasIndex("IdUzytkownik");
+                    b.HasIndex("IdUzytkownik", "IdKomentarz")
+                        .IsUnique();
 
                     b.ToTable("KomentarzGlosy");
                 });

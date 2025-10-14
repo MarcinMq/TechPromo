@@ -17,11 +17,16 @@ interface SearchResultsProps {
   results: SearchResult[];
   query: string;
   loading?: boolean;
-  onSuggestionClick?: (suggestion: string) => void;
+  onSuggestionClick?: (suggestionId: number) => void;
+}
+
+interface Suggestion {
+  id: number;
+  tekst: string;
 }
 
 const SearchResults: React.FC<SearchResultsProps> = ({ results, query, loading = false, onSuggestionClick }) => {
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
 
   // Pobierz sugestie gdy brak wyników
@@ -84,10 +89,10 @@ const SearchResults: React.FC<SearchResultsProps> = ({ results, query, loading =
                 {suggestions.map((suggestion, index) => (
                   <button
                     key={index}
-                    onClick={() => onSuggestionClick && onSuggestionClick(suggestion)}
+                    onClick={() => onSuggestionClick && onSuggestionClick(suggestion.id)}
                     className="px-4 py-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 rounded-lg font-medium transition-colors border border-blue-200 dark:border-blue-800"
                   >
-                    {suggestion}
+                    {suggestion.tekst}
                   </button>
                 ))}
               </div>

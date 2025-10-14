@@ -40,7 +40,7 @@ public interface ISerwisWyszukiwania
     /// <summary>
     /// Pobiera sugestie autouzupełniania
     /// </summary>
-    Task<List<string>> PobierzSugestieAsync(string zapytanie, int liczbaWynikow = 5);
+    Task<List<SugestiaDto>> PobierzSugestieAsync(string zapytanie, int liczbaWynikow = 5);
 
     /// <summary>
     /// Pobiera liczbę dokumentów w indeksie

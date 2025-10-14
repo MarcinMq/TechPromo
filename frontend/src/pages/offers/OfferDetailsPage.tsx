@@ -61,6 +61,7 @@ export default function OfferDetailsPage() {
   const [isSaved, setIsSaved] = useState(false);
   const [similarOffers, setSimilarOffers] = useState<any[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
+  const [votingInProgress, setVotingInProgress] = useState(false);
 
   // Funkcja udostępniania - kopiuje link do schowka
   const handleShare = async () => {
@@ -247,14 +248,26 @@ export default function OfferDetailsPage() {
     if (!offer) return;
     const token = getAuthToken();
     if (!token) { alert('Zaloguj się aby głosować'); return; }
-    const res = await fetch(`/api/uzytkownik/oferta/${offer.id}/glos`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({ typ: vote })
-    });
-    if (res.ok) {
-      const refreshed = await fetch(`/api/oferta/${offer.id}`);
-      if (refreshed.ok) setOffer(await refreshed.json());
+    
+    // Zabezpieczenie przed wielokrotnym klikaniem
+    if (votingInProgress) {
+      return;
+    }
+    
+    setVotingInProgress(true);
+    
+    try {
+      const res = await fetch(`/api/uzytkownik/oferta/${offer.id}/glos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ typ: vote })
+      });
+      if (res.ok) {
+        const refreshed = await fetch(`/api/oferta/${offer.id}`);
+        if (refreshed.ok) setOffer(await refreshed.json());
+      }
+    } finally {
+      setVotingInProgress(false);
     }
   };
 
@@ -409,7 +422,12 @@ export default function OfferDetailsPage() {
   const renderComments = (nodes: CommentNode[], depth = 0) => (
     nodes.map(c => (
       <div key={c.id} className={`rounded p-3 mb-3 transition-colors ${depth === 0 ? 'bg-gray-50 dark:bg-gray-800 border dark:border-gray-700' : 'bg-white dark:bg-gray-900 border-l-2 dark:border-l-gray-600'} `} style={depth>0?{marginLeft: depth * 16}:{}}>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 transition-colors">{c.autor} • {c.data}</div>
+        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 transition-colors">
+          <Link to={`/uzytkownik/${c.autor}`} className="font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+            {c.autor}
+          </Link>
+          {' • '}{c.data}
+        </div>
         <div className="text-sm text-gray-800 dark:text-gray-300 whitespace-pre-line mb-2 transition-colors">{c.tresc}</div>
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-1 text-xs">
@@ -596,8 +614,14 @@ export default function OfferDetailsPage() {
                 )}
 
                 <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 transition-colors">
+                  <span className="mr-4">
+                    Dodane przez:{' '}
+                    <Link to={`/uzytkownik/${offer.autor}`} className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                      {offer.autor}
+                    </Link>
+                  </span>
                   <span className="mr-4">Kategoria: <strong>{offer.kategoria}</strong></span>
-                  <span>Dodane: {offer.dataUtworzenia}</span>
+                  <span>Data: {offer.dataUtworzenia}</span>
                 </div>
 
                 <div className="prose prose-sm max-w-none text-gray-800 dark:text-gray-300 whitespace-pre-line mb-6 transition-colors">
@@ -685,11 +709,11 @@ export default function OfferDetailsPage() {
                       >
                         {/* Zdjęcie */}
                         <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white dark:bg-gray-800 mb-3">
-                          {similar.zdjecia && similar.zdjecia.length > 0 ? (
+                          {similar.zdjecie ? (
                             <img
-                              src={similar.zdjecia[0]}
+                              src={similar.zdjecie}
                               alt={similar.nazwa}
-                              className="w-full h-full object-contain"
+                              className="w-full h-full object-cover"
                             />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center text-4xl">

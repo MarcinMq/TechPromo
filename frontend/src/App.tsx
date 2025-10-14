@@ -7,6 +7,7 @@ import SearchPage from './pages/SearchPage';
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import Profil from './pages/profile/Profil';
+import PublicProfilePage from './pages/user/PublicProfilePage';
 // Panele przeniesione do profilu – pełne strony wyłączone
 // Usunięto UserPanel – funkcje przeniesione do Profil
 import CreateDealForm from './pages/offers/CreateDealForm';
@@ -97,6 +98,9 @@ function App() {
           <Route path="/" element={<HomePage />} />
       <Route path="/okazja/:id" element={<OfferDetailsPage />} />
           <Route path="/search" element={<SearchPage />} />
+          {/* Specyficzne trasy przed dynamicznymi parametrami */}
+          <Route path="/uzytkownik/panel" element={<Profil />} />
+          <Route path="/uzytkownik/:nick" element={<PublicProfilePage />} />
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/register" element={<Register />} />
           <Route path="/stworz-oferte/okazja" element={
@@ -109,8 +113,6 @@ function App() {
               <CreateCouponForm />
             </ProtectedRoute>
           } />
-          {/* Back-compat: przekierowanie na profil */}
-          <Route path="/uzytkownik/panel" element={<Profil />} />
           <Route path="/konto/profil" element={
             <ProtectedRoute>
               <Profil />

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Settings, Search } from 'lucide-react';
+import { Settings, Search, Sparkles } from 'lucide-react';
 
 interface SearchBarProps {
   onSearch: (query: string, filters: SearchFilters) => void;
@@ -22,6 +22,11 @@ interface Category {
   name: string;
 }
 
+interface Suggestion {
+  id: number;
+  tekst: string;
+}
+
 const SearchBar: React.FC<SearchBarProps> = ({ 
   onSearch, 
   placeholder = "Wyszukaj okazje... (np. iPhone, laptop, słuchawki)",
@@ -36,7 +41,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const [filters, setFilters] = useState<SearchFilters>({
     sortBy: 'hot'
   });
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(-1);
   const searchContainerRef = useRef<HTMLDivElement>(null);
@@ -110,6 +115,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
   const handleSearch = () => {
     setShowSuggestions(false);
     onSearch(query, filters);
+    setQuery(''); // czyszczenie po wyszukaniu
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -117,10 +123,8 @@ const SearchBar: React.FC<SearchBarProps> = ({
       e.preventDefault();
       if (activeSuggestionIndex >= 0 && activeSuggestionIndex < suggestions.length) {
         // Wybierz aktywną sugestię
-        setQuery(suggestions[activeSuggestionIndex]);
-        setShowSuggestions(false);
-        setActiveSuggestionIndex(-1);
-        onSearch(suggestions[activeSuggestionIndex], filters);
+        const selectedSuggestion = suggestions[activeSuggestionIndex];
+        handleSuggestionClick(selectedSuggestion);
       } else {
         handleSearch();
       }
@@ -138,11 +142,9 @@ const SearchBar: React.FC<SearchBarProps> = ({
     }
   };
 
-  const handleSuggestionClick = (suggestion: string) => {
-    setQuery(suggestion);
-    setShowSuggestions(false);
-    setActiveSuggestionIndex(-1);
-    onSearch(suggestion, filters);
+  const handleSuggestionClick = (suggestion: Suggestion) => {
+    // Przekieruj bezpośrednio do oferty używając ID z sugestii
+    window.location.href = `/okazja/${suggestion.id}`;
   };
 
   const handleFilterChange = (key: keyof SearchFilters, value: any) => {
@@ -204,10 +206,11 @@ const SearchBar: React.FC<SearchBarProps> = ({
           
           {/* Przycisk - Gradient */}
           <button 
-            className="group relative overflow-hidden px-6 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-base transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl"
+            className="group relative overflow-hidden px-6 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-base transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
             onClick={handleSearch}
           >
             <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <Sparkles className="relative w-4 h-4" />
             <span className="relative">Szukaj</span>
           </button>
         </div>
@@ -215,6 +218,14 @@ const SearchBar: React.FC<SearchBarProps> = ({
         {/* Dropdown z sugestiami */}
         {showSuggestions && suggestions.length > 0 && (
           <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden transition-colors">
+            {/* Naglowek Sugestie AI */}
+            <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Sugestie AI</span>
+              </div>
+            </div>
+            
             <div className="py-2">
               {suggestions.map((suggestion, index) => (
                 <button
@@ -229,7 +240,7 @@ const SearchBar: React.FC<SearchBarProps> = ({
                 >
                   <div className="flex items-center gap-2">
                     <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                    <span>{suggestion}</span>
+                    <span>{suggestion.tekst}</span>
                   </div>
                 </button>
               ))}
