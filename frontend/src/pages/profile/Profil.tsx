@@ -89,7 +89,6 @@ const Profil = () => {
   const [message, setMessage] = useState<string>('');
   const [loadingList, setLoadingList] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string>('');
-  const [tagFilter, setTagFilter] = useState<string>('');
   const [sortBy, setSortBy] = useState<'newest' | 'hot' | 'price'>('newest');
   const API_BASE = 'http://localhost:5023';
 
@@ -158,7 +157,6 @@ const Profil = () => {
       let url = `${API_BASE}/api/uzytkownik/oferty`;
       const params = new URLSearchParams();
       if (categoryFilter) params.append('kategoria', categoryFilter);
-      if (tagFilter) params.append('tag', tagFilter);
       params.append('sortBy', sortBy);
       params.append('skip', reset ? '0' : String(offersSkip));
       params.append('take', String(pageSize));
@@ -509,7 +507,7 @@ const Profil = () => {
   useEffect(() => {
     resetAndLoadOffers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryFilter, tagFilter, sortBy]);
+  }, [categoryFilter, sortBy]);
 
   useEffect(() => {
     if (message) {
@@ -773,7 +771,6 @@ const Profil = () => {
                     <option value="Podróże">Podróże</option>
                     <option value="Inne">Inne</option>
                   </select>
-                  <input value={tagFilter} onChange={(e)=>setTagFilter(e.target.value)} placeholder="Filtruj po tagach" className="p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" />
                   <select value={sortBy} onChange={(e)=>setSortBy(e.target.value as any)} className="p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
                     <option value="newest">Najnowsze</option>
                     <option value="hot">Najgorętsze</option>
@@ -783,10 +780,7 @@ const Profil = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {offers
-                  .filter(offer => (!categoryFilter || offer.kategoria === categoryFilter) && (!tagFilter || offer.tagi.some(t=>t.toLowerCase().includes(tagFilter.toLowerCase()))))
-                  .sort((a,b)=> sortBy==='hot' ? (b.votes.hot - b.votes.cold) - (a.votes.hot - a.votes.cold) : sortBy==='price' ? (a.cena||0)-(b.cena||0) : new Date(b.dataUtworzenia).getTime()-new Date(a.dataUtworzenia).getTime())
-                  .map(offer => (
+                {offers.map(offer => (
                   <div key={offer.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="mb-2 flex justify-between items-start">
                       <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>

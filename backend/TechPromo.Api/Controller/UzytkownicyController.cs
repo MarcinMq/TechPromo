@@ -96,6 +96,8 @@ namespace TechPromo.Api.Controller
                     Sklep = o.Link,
                     Typ = o.Typ.ToString(),
                     DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                    WaznoscOd = o.WaznoscOd,
+                    WaznoscDo = o.WaznoscDo,
                     Votes = new VotesDto
                     {
                         Hot = o.LiczbaHot,

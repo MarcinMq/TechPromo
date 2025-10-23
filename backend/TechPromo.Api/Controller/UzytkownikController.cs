@@ -301,6 +301,7 @@ namespace TechPromo.Api.Controllers
                 "hot" => query.OrderByDescending(o => o.LiczbaHot - o.LiczbaCold),
                 "cold" => query.OrderBy(o => o.LiczbaHot - o.LiczbaCold),
                 "comments" => query.OrderByDescending(o => o.Komentarze.Count),
+                "price" => query.OrderBy(o => o.Cena ?? decimal.MaxValue),
                 "newest" => query.OrderByDescending(o => o.DataDodania),
                 "oldest" => query.OrderBy(o => o.DataDodania),
                 _ => query.OrderByDescending(o => o.DataDodania)
@@ -325,6 +326,8 @@ namespace TechPromo.Api.Controllers
                     Tagi = o.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
                     Autor = o.Uzytkownik.UserName ?? "Nieznany",
                     DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                    WaznoscOd = o.WaznoscOd,
+                    WaznoscDo = o.WaznoscDo,
                     Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
                     Komentarze = o.Komentarze.Count,
                     Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
@@ -366,6 +369,8 @@ namespace TechPromo.Api.Controllers
                 Tagi = o.OfertaTagi.Select(t => t.Tag.Nazwa).ToList(),
                 Autor = User.Identity?.Name ?? "Ty",
                 DataUtworzenia = o.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                WaznoscOd = o.WaznoscOd,
+                WaznoscDo = o.WaznoscDo,
                 Votes = new VotesDto { Hot = o.LiczbaHot, Cold = o.LiczbaCold },
                 Komentarze = o.Komentarze.Count,
                 Zdjecia = o.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()
@@ -399,6 +404,8 @@ namespace TechPromo.Api.Controllers
                 IdUzytkownik = userId,
                 IdKategoria = kategoria.IdKategoria,
                 DataDodania = DateTime.UtcNow,
+                WaznoscOd = dto.WaznoscOd,
+                WaznoscDo = dto.WaznoscDo,
                 Zatwierdzona = false,
                 Aktywna = true
             };
@@ -942,6 +949,8 @@ namespace TechPromo.Api.Controllers
                     Tagi = zo.Oferta.OfertaTagi.Select(ot => ot.Tag.Nazwa).ToList(),
                     Autor = zo.Oferta.Uzytkownik.UserName ?? "Nieznany",
                     DataUtworzenia = zo.Oferta.DataDodania.ToString("dd.MM.yyyy HH:mm"),
+                    WaznoscOd = zo.Oferta.WaznoscOd,
+                    WaznoscDo = zo.Oferta.WaznoscDo,
                     Votes = new VotesDto { Hot = zo.Oferta.LiczbaHot, Cold = zo.Oferta.LiczbaCold },
                     Komentarze = zo.Oferta.Komentarze.Count,
                     Zdjecia = zo.Oferta.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList()

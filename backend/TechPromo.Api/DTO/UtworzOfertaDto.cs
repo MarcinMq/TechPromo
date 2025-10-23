@@ -24,6 +24,9 @@ namespace TechPromo.Api.DTO
     public string Kategoria { get; set; } = string.Empty;
 
         public string? Tagi { get; set; } // oddzielone przecinkami
+        
+        public DateTime? WaznoscOd { get; set; } // Data rozpoczęcia ważności oferty
+        public DateTime? WaznoscDo { get; set; } // Data zakończenia ważności oferty
 
         public List<IFormFile>? Zdjecia { get; set; }
     }

@@ -14,6 +14,8 @@ interface OfferFormData {
   typ: 'okazja';
   zdjecia: File[];
   zaDarmo: boolean;
+  waznoscOd: string;
+  waznoscDo: string;
 }
 
 const CreateDealForm: React.FC = () => {
@@ -35,7 +37,9 @@ const CreateDealForm: React.FC = () => {
     tagi: '',
     typ: 'okazja',
     zdjecia: [],
-    zaDarmo: false
+    zaDarmo: false,
+    waznoscOd: '',
+    waznoscDo: ''
   });
 
   interface ExistingImage { id: number; url: string; kolejnosc: number; }
@@ -258,6 +262,14 @@ const CreateDealForm: React.FC = () => {
         formDataToSend.append('tagi', formData.tagi.trim());
       }
       formDataToSend.append('typ', formData.typ);
+      
+      // Dodaj ważność oferty jeśli wypełnione
+      if (formData.waznoscOd) {
+        formDataToSend.append('waznoscOd', new Date(formData.waznoscOd).toISOString());
+      }
+      if (formData.waznoscDo) {
+        formDataToSend.append('waznoscDo', new Date(formData.waznoscDo).toISOString());
+      }
 
       // Dodaj pliki zdjęć
       formData.zdjecia.forEach((file) => {
@@ -293,7 +305,9 @@ const CreateDealForm: React.FC = () => {
           tagi: '',
           typ: 'okazja',
           zdjecia: [],
-          zaDarmo: false
+          zaDarmo: false,
+          waznoscOd: '',
+          waznoscDo: ''
         });
 
         // Przekierowanie po 3 sekundach
@@ -619,6 +633,39 @@ const CreateDealForm: React.FC = () => {
                     <p className="mt-1 text-sm text-red-500 dark:text-red-400 transition-colors">{fieldErrors.tagi}</p>
                   )}
                   <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 transition-colors">Słowa kluczowe oddzielone przecinkami</p>
+                </div>
+
+                {/* Ważność oferty */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 transition-colors">
+                      <Clock className="w-4 h-4 inline mr-1" />
+                      Ważna od (opcjonalnie)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      name="waznoscOd"
+                      value={formData.waznoscOd}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                    />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 transition-colors">Data rozpoczęcia ważności</p>
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 transition-colors">
+                      <Clock className="w-4 h-4 inline mr-1" />
+                      Ważna do (opcjonalnie)
+                    </label>
+                    <input
+                      type="datetime-local"
+                      name="waznoscDo"
+                      value={formData.waznoscDo}
+                      onChange={handleInputChange}
+                      className="w-full px-4 py-3 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all"
+                    />
+                    <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 transition-colors">Data zakończenia ważności</p>
+                  </div>
                 </div>
 
                 {/* Zdjęcia */}

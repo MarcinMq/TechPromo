@@ -25,6 +25,9 @@ public class Oferta
     public string Opis { get; set; } = string.Empty;
     public string Link { get; set; } = string.Empty;
     public DateTime DataDodania { get; set; } = DateTime.UtcNow;
+    
+    public DateTime? WaznoscOd { get; set; } // Data rozpoczęcia ważności oferty
+    public DateTime? WaznoscDo { get; set; } // Data zakończenia ważności oferty
 
     public int LiczbaHot { get; set; } = 0;
     public int LiczbaCold { get; set; } = 0;

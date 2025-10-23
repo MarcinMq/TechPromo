@@ -12,5 +12,7 @@ namespace TechPromo.Api.DTO
         public string? Link { get; set; }
         public bool? Aktywna { get; set; }
         public bool? Zatwierdzona { get; set; }
+        public DateTime? WaznoscOd { get; set; }
+        public DateTime? WaznoscDo { get; set; }
     }
 }

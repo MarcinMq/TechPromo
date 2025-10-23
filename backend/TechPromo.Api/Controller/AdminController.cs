@@ -24,17 +24,20 @@ namespace TechPromo.Api.Controllers
         private readonly TechPromoDbContext _context;
         private readonly IBadgeService _badgeService;
         private readonly SerwisSync? _syncService;
+        private readonly ILogger<AdminController> _logger;
 
     public AdminController(
         UserManager<Uzytkownik> userManager, 
         TechPromoDbContext context, 
         IBadgeService badgeService,
+        ILogger<AdminController> logger,
         SerwisSync? syncService = null)
         {
             _userManager = userManager;
             _context = context;
             _badgeService = badgeService;
             _syncService = syncService;
+            _logger = logger;
         }
 
         // Przelicz odznaki użytkownika
@@ -321,6 +324,24 @@ namespace TechPromo.Api.Controllers
             oferta.Status = "aktywny"; // Dodatkowo ustaw status dla zgodności
             await _context.SaveChangesAsync();
 
+            // Synchronizuj z Azure Search
+            if (_syncService != null)
+            {
+                var syncResult = await _syncService.SynchronizujOferteAsync(id);
+                if (syncResult)
+                {
+                    _logger.LogInformation("Oferta {OfertaId} zsynchronizowana z Azure Search podczas zatwierdzania przez admina", id);
+                }
+                else
+                {
+                    _logger.LogWarning("UWAGA: Synchronizacja oferty {OfertaId} z Azure Search nie powiodła się!", id);
+                }
+            }
+            else
+            {
+                _logger.LogWarning("SerwisSync jest null - oferta {OfertaId} nie została zsynchronizowana z Azure Search", id);
+            }
+
             // Automatycznie przelicz odznaki po zatwierdzeniu oferty
             await _badgeService.EvaluateForUserAsync(oferta.IdUzytkownik);
 
@@ -341,6 +362,20 @@ namespace TechPromo.Api.Controllers
                 oferta.Aktywna = false;
                 oferta.Status = "odrzucony";
                 await _context.SaveChangesAsync();
+
+                // Usuń z Azure Search Index (odrzucone oferty nie powinny być wyszukiwalne)
+                if (_syncService != null)
+                {
+                    var syncResult = await _syncService.UsunOferteZIndeksuAsync(id);
+                    if (syncResult)
+                    {
+                        _logger.LogInformation("Odrzucona oferta {OfertaId} usunięta z Azure Search", id);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("UWAGA: Usunięcie odrzuconej oferty {OfertaId} z Azure Search nie powiodło się!", id);
+                    }
+                }
 
                 return Ok(new { message = "Oferta została odrzucona" });
             }
@@ -437,6 +472,16 @@ namespace TechPromo.Api.Controllers
                     if (oferta.Zatwierdzona) oferta.Aktywna = true;
                     changed = true;
                 }
+                if (dto.WaznoscOd.HasValue && dto.WaznoscOd.Value != oferta.WaznoscOd)
+                {
+                    oferta.WaznoscOd = dto.WaznoscOd.Value;
+                    changed = true;
+                }
+                if (dto.WaznoscDo.HasValue && dto.WaznoscDo.Value != oferta.WaznoscDo)
+                {
+                    oferta.WaznoscDo = dto.WaznoscDo.Value;
+                    changed = true;
+                }
 
                 if (!changed)
                     return Ok(new { message = "Brak zmian", oferta = new { oferta.IdOferta } });
@@ -456,7 +501,9 @@ namespace TechPromo.Api.Controllers
                         kod = oferta.Kod,
                         link = oferta.Link,
                         aktywna = oferta.Aktywna,
-                        zatwierdzona = oferta.Zatwierdzona
+                        zatwierdzona = oferta.Zatwierdzona,
+                        waznoscOd = oferta.WaznoscOd,
+                        waznoscDo = oferta.WaznoscDo
                     }
                 });
             }
@@ -542,6 +589,78 @@ namespace TechPromo.Api.Controllers
         {
             var role = new[] { "Admin", "Moderator", "Uzytkownik" };
             return Ok(role);
+        }
+
+        // Synchronizuj wszystkie aktywne oferty z Azure Search
+        [HttpPost("sync/azure-search")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> SynchronizujAzureSearch()
+        {
+            try
+            {
+                if (_syncService == null)
+                {
+                    return BadRequest(new { message = "Azure Search nie jest skonfigurowany" });
+                }
+
+                var aktywnOferty = await _context.Oferty
+                    .Where(o => o.Aktywna && o.Zatwierdzona)
+                    .Select(o => o.IdOferta)
+                    .ToListAsync();
+
+                int sukces = 0;
+                int blad = 0;
+
+                foreach (var ofertaId in aktywnOferty)
+                {
+                    var result = await _syncService.SynchronizujOferteAsync(ofertaId);
+                    if (result)
+                        sukces++;
+                    else
+                        blad++;
+                }
+
+                return Ok(new 
+                { 
+                    message = "Synchronizacja zakończona",
+                    zsynchronizowane = sukces,
+                    bledy = blad,
+                    lacznie = aktywnOferty.Count
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas synchronizacji", error = ex.Message });
+            }
+        }
+
+        // Synchronizuj pojedynczą ofertę
+        [HttpPost("sync/azure-search/{id}")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> SynchronizujOferte(int id)
+        {
+            try
+            {
+                if (_syncService == null)
+                {
+                    return BadRequest(new { message = "Azure Search nie jest skonfigurowany" });
+                }
+
+                var result = await _syncService.SynchronizujOferteAsync(id);
+                
+                if (result)
+                {
+                    return Ok(new { message = $"Oferta {id} zsynchronizowana z Azure Search" });
+                }
+                else
+                {
+                    return StatusCode(500, new { message = $"Nie udało się zsynchronizować oferty {id}" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd podczas synchronizacji", error = ex.Message });
+            }
         }
     }
 }

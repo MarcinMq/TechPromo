@@ -350,6 +350,12 @@ namespace TechPromo.Api.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<DateTime?>("WaznoscDo")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("WaznoscOd")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<bool>("Zatwierdzona")
                         .HasColumnType("boolean");
 

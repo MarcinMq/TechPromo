@@ -16,6 +16,8 @@ namespace TechPromo.Api.DTO
         public string Autor { get; set; } = string.Empty;
     public string? AutorAvatarUrl { get; set; }
         public string DataUtworzenia { get; set; } = string.Empty;
+        public DateTime? WaznoscOd { get; set; }
+        public DateTime? WaznoscDo { get; set; }
         public VotesDto Votes { get; set; } = new VotesDto();
         public int Komentarze { get; set; }
         public string? UserVote { get; set; } // hot, cold lub null

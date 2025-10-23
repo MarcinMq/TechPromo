@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Flame, Snowflake, ArrowLeft, ExternalLink, Share2, Gift } from 'lucide-react';
+import { Flame, Snowflake, ArrowLeft, ExternalLink, Share2, Gift, Clock } from 'lucide-react';
 import CouponCode from '../../components/CouponCode';
 import ReportCommentModal from '../../components/modals/ReportCommentModal';
 import { getAuthToken } from '../../utils/auth';
@@ -18,6 +18,8 @@ interface OfertaDto {
   tagi: string[];
   autor: string;
   dataUtworzenia: string;
+  waznoscOd?: string;
+  waznoscDo?: string;
   votes: { hot: number; cold: number };
   komentarze: number;
   zdjecia: string[];
@@ -464,21 +466,23 @@ export default function OfferDetailsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <div className="w-full max-w-5xl mx-auto px-4 py-4">
+      <div className="w-full max-w-7xl mx-auto px-4 py-6">
         {reportSuccessFlash && (
-          <div className="mb-4 px-4 py-2 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm border border-green-200 dark:border-green-800 shadow">
+          <div className="mb-6 px-4 py-3 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm border border-green-200 dark:border-green-800 shadow">
             {reportSuccessFlash}
           </div>
         )}
-        <div className="flex items-center mb-4 text-sm text-gray-600 dark:text-gray-400">
-          <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline flex items-center"><ArrowLeft className="w-4 h-4 mr-1" /> Wróć</Link>
+        <div className="flex items-center mb-6 text-sm text-gray-600 dark:text-gray-400">
+          <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline flex items-center font-medium">
+            <ArrowLeft className="w-4 h-4 mr-2" /> Wróć do strony głównej
+          </Link>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-lg shadow-sm overflow-hidden transition-colors">
-          <div className="p-4 md:p-6">
-            <div className="flex flex-col md:flex-row md:space-x-6">
+        <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow-lg overflow-hidden transition-colors">
+          <div className="p-6 md:p-8">
+            <div className="flex flex-col lg:flex-row lg:space-x-8">
               {/* Galeria */}
-              <div className="w-full md:w-80 mb-4 md:mb-0">
+              <div className="w-full lg:w-96 mb-6 lg:mb-0 flex-shrink-0">
                 {offer.zdjecia && offer.zdjecia.length > 0 ? (
                   <div className="space-y-3">
                     {/* Obraz główny / karuzela */}
@@ -554,39 +558,39 @@ export default function OfferDetailsPage() {
 
               {/* Treść */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between mb-3">
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 pr-4 leading-tight">{offer.tytul}</h1>
-                  <div className="flex flex-col items-center w-20">
-                    <div className="w-16 h-16 flex items-center justify-center rounded-lg border dark:border-gray-600 font-bold text-lg bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400">
+                <div className="flex items-start justify-between mb-6">
+                  <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-gray-100 pr-4 leading-tight">{offer.tytul}</h1>
+                  <div className="flex flex-col items-center flex-shrink-0">
+                    <div className="w-20 h-20 flex items-center justify-center rounded-xl border-2 dark:border-gray-600 font-bold text-2xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-900/40 text-red-600 dark:text-red-400 shadow-sm">
                       {temp}°
                     </div>
-                    <div className="flex items-center space-x-1 mt-2">
-                      <button onClick={() => handleVote('hot')} className={`px-2 py-1 rounded text-xs flex items-center transition-colors ${offer.userVote==='hot' ? 'bg-red-600 text-white' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'}`}><Flame className="w-3 h-3 mr-1" /> {offer.votes.hot}</button>
-                      <button onClick={() => handleVote('cold')} className={`px-2 py-1 rounded text-xs flex items-center transition-colors ${offer.userVote==='cold' ? 'bg-blue-600 text-white' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'}`}><Snowflake className="w-3 h-3 mr-1" /> {offer.votes.cold}</button>
+                    <div className="flex items-center space-x-2 mt-3">
+                      <button onClick={() => handleVote('hot')} disabled={votingInProgress} className={`px-3 py-1.5 rounded-lg text-sm flex items-center font-medium transition-all shadow-sm ${offer.userVote==='hot' ? 'bg-red-600 text-white shadow-red-200 dark:shadow-red-900/50' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'}`}><Flame className="w-4 h-4 mr-1" /> {offer.votes.hot}</button>
+                      <button onClick={() => handleVote('cold')} disabled={votingInProgress} className={`px-3 py-1.5 rounded-lg text-sm flex items-center font-medium transition-all shadow-sm ${offer.userVote==='cold' ? 'bg-blue-600 text-white shadow-blue-200 dark:shadow-blue-900/50' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'}`}><Snowflake className="w-4 h-4 mr-1" /> {offer.votes.cold}</button>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center flex-wrap gap-3 mb-4">
+                <div className="flex items-center flex-wrap gap-4 mb-6">
                   {offer.typ === 'kupon' && (
                     <>
-                      <span className="bg-purple-600 text-white text-sm font-semibold px-2 py-1 rounded">Kupon</span>
-                      <CouponCode code={offer.kod} size="sm" />
+                      <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white text-base font-semibold px-4 py-2 rounded-lg shadow-md">Kupon</span>
+                      <CouponCode code={offer.kod} size="md" />
                     </>
                   )}
                   {/* Stara cena (jeśli występuje i > aktualnej) */}
                   {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
-                    <span className="text-lg line-through text-gray-400 dark:text-gray-500">{offer.cenaPoprzednia} zł</span>
+                    <span className="text-2xl line-through text-gray-400 dark:text-gray-500 font-semibold">{offer.cenaPoprzednia} zł</span>
                   )}
                   {/* Nowa cena lub za darmo */}
                   {offer.cena === 0 ? (
-                    <span className="text-4xl font-black text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-4 py-2 rounded-lg flex items-center gap-2"><Gift className="w-8 h-8" /> ZA DARMO!</span>
+                    <span className="text-4xl font-black text-green-600 dark:text-green-400 bg-gradient-to-r from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-900/20 px-6 py-3 rounded-xl flex items-center gap-3 shadow-md border-2 border-green-200 dark:border-green-800"><Gift className="w-10 h-10" /> ZA DARMO!</span>
                   ) : offer.cena ? (
-                    <span className="text-3xl font-black text-red-600 dark:text-red-400">{offer.cena} zł</span>
+                    <span className="text-5xl font-black text-red-600 dark:text-red-400">{offer.cena} zł</span>
                   ) : null}
                   {/* Badge rabatu */}
                   {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
-                    <span className="bg-red-500 text-white text-xs font-bold px-2 py-1 rounded">
+                    <span className="bg-gradient-to-r from-red-500 to-red-600 text-white text-lg font-bold px-4 py-2 rounded-lg shadow-md">
                       -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
                     </span>
                   )}
@@ -594,12 +598,12 @@ export default function OfferDetailsPage() {
 
                 {/* Duży przycisk do sklepu */}
                 {offer.sklep && offer.sklep.trim() ? (
-                  <div className="mb-4">
+                  <div className="mb-6">
                     <a
                       href={offer.sklep.startsWith('http') ? offer.sklep : `https://${offer.sklep}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold py-3 px-6 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
+                      className="inline-flex items-center space-x-3 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold text-lg py-4 px-8 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-200 transform hover:-translate-y-1"
                     >
                       <ExternalLink className="w-5 h-5" />
                       <span>Przejdź do sklepu</span>
@@ -613,26 +617,43 @@ export default function OfferDetailsPage() {
                   </div>
                 )}
 
-                <div className="text-sm text-gray-600 dark:text-gray-400 mb-4 transition-colors">
-                  <span className="mr-4">
-                    Dodane przez:{' '}
-                    <Link to={`/uzytkownik/${offer.autor}`} className="font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                      {offer.autor}
-                    </Link>
-                  </span>
-                  <span className="mr-4">Kategoria: <strong>{offer.kategoria}</strong></span>
-                  <span>Data: {offer.dataUtworzenia}</span>
+                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-xl p-4 mb-6 border border-gray-200 dark:border-gray-700">
+                  <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-gray-600 dark:text-gray-400">
+                    <span className="flex items-center">
+                      Dodane przez:{' '}
+                      <Link to={`/uzytkownik/${offer.autor}`} className="ml-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline">
+                        {offer.autor}
+                      </Link>
+                    </span>
+                    <span>Kategoria: <strong className="text-purple-600 dark:text-purple-400">{offer.kategoria}</strong></span>
+                    <span>Data dodania: <strong>{offer.dataUtworzenia}</strong></span>
+                    {/* Ważność oferty */}
+                    {(offer.waznoscOd || offer.waznoscDo) && (
+                      <span className="flex items-center text-orange-600 dark:text-orange-400">
+                        <Clock className="w-4 h-4 mr-1.5" />
+                        Ważna: <strong className="ml-1">
+                          {offer.waznoscOd && offer.waznoscDo ? (
+                            <>{new Date(offer.waznoscOd).toLocaleDateString('pl-PL')} - {new Date(offer.waznoscDo).toLocaleDateString('pl-PL')}</>
+                          ) : offer.waznoscOd ? (
+                            <>od {new Date(offer.waznoscOd).toLocaleDateString('pl-PL')}</>
+                          ) : offer.waznoscDo ? (
+                            <>do {new Date(offer.waznoscDo).toLocaleDateString('pl-PL')}</>
+                          ) : null}
+                        </strong>
+                      </span>
+                    )}
+                  </div>
                 </div>
 
-                <div className="prose prose-sm max-w-none text-gray-800 dark:text-gray-300 whitespace-pre-line mb-6 transition-colors">
+                <div className="prose prose-base max-w-none text-gray-800 dark:text-gray-300 whitespace-pre-line mb-8 leading-relaxed transition-colors">
                   {offer.opis || 'Brak opisu.'}
                 </div>
 
                 {/* Przyciski akcji */}
-                <div className="flex items-center space-x-3 mb-6">
+                <div className="flex items-center space-x-4 mb-8 pb-6 border-b border-gray-200 dark:border-gray-700">
                   <button 
                     onClick={handleShare}
-                    className="flex items-center space-x-1 text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 text-sm transition-colors"
+                    className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium transition-colors"
                   >
                     <Share2 className="w-4 h-4" /> 
                     <span>Udostępnij</span>
@@ -640,10 +661,10 @@ export default function OfferDetailsPage() {
                   <button 
                     onClick={handleSave}
                     disabled={saveLoading}
-                    className={`flex items-center space-x-1 text-sm disabled:opacity-50 transition-colors ${
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors ${
                       isSaved 
-                        ? 'text-yellow-600 dark:text-yellow-400 hover:text-yellow-700 dark:hover:text-yellow-300' 
-                        : 'text-gray-600 dark:text-gray-400 hover:text-yellow-600 dark:hover:text-yellow-400'
+                        ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/50' 
+                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                     }`}
                   >
                     <span className={`text-lg ${isSaved ? 'text-yellow-500 dark:text-yellow-400' : 'text-gray-400 dark:text-gray-500'}`}>⭐</span>
@@ -651,9 +672,9 @@ export default function OfferDetailsPage() {
                   </button>
                 </div>
 
-                <div className="border-t dark:border-gray-700 pt-4 transition-colors">
-                  <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <h2 className="font-semibold text-gray-900 dark:text-gray-100">Komentarze ({comments.length})</h2>
+                <div className="pt-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Komentarze ({comments.length})</h2>
                     {comments.length>0 && (
                       <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1 transition-colors">
                         <span>sortowanie:</span>

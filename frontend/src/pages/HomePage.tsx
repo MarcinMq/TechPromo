@@ -1,6 +1,6 @@
 import { Link, useLocation } from 'react-router-dom';
 import CouponCode from '../components/CouponCode';
-import { Flame, Snowflake, MessageCircle, Star, Zap, Search, Flag, Share2, Gift } from 'lucide-react';
+import { Flame, Snowflake, MessageCircle, Star, Zap, Search, Flag, Share2, Gift, Clock } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth';
 import ReportOfferModal from '../components/modals/ReportOfferModal';
@@ -20,6 +20,8 @@ interface OfertaDto {
   autor: string;
   autorAvatarUrl?: string | null;
   dataUtworzenia: string;
+  waznoscOd?: string;
+  waznoscDo?: string;
   votes: {
     hot: number;
     cold: number;
@@ -734,6 +736,22 @@ function HomePage() {
                                 <span className="font-medium">{offer.liczbaKomentarzy}</span>
                               </button>
                             </div>
+
+                            {/* Ważność oferty */}
+                            {(offer.waznoscOd || offer.waznoscDo) && (
+                              <div className="mt-2 flex items-center text-xs text-orange-600 dark:text-orange-400">
+                                <Clock className="w-3.5 h-3.5 mr-1.5" />
+                                <span className="font-medium">
+                                  Ważna: {offer.waznoscOd && offer.waznoscDo ? (
+                                    <>{new Date(offer.waznoscOd).toLocaleDateString('pl-PL')} - {new Date(offer.waznoscDo).toLocaleDateString('pl-PL')}</>
+                                  ) : offer.waznoscOd ? (
+                                    <>od {new Date(offer.waznoscOd).toLocaleDateString('pl-PL')}</>
+                                  ) : offer.waznoscDo ? (
+                                    <>do {new Date(offer.waznoscDo).toLocaleDateString('pl-PL')}</>
+                                  ) : null}
+                                </span>
+                              </div>
+                            )}
                             
                             {/* Przyciski akcji - responsywny layout */}
                             <div className="flex flex-col gap-3">

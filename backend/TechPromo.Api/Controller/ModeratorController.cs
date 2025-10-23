@@ -185,7 +185,19 @@ namespace TechPromo.Api.Controllers
                 // Synchronizuj z Azure Search Index - synchronicznie zeby miec pewnosc ze sie wykona
                 if (_syncService != null)
                 {
-                    await _syncService.SynchronizujOferteAsync(id);
+                    var syncResult = await _syncService.SynchronizujOferteAsync(id);
+                    if (!syncResult)
+                    {
+                        Console.WriteLine($"UWAGA: Synchronizacja oferty {id} z Azure Search nie powiodła się!");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Oferta {id} zsynchronizowana z Azure Search");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("UWAGA: SerwisSync nie jest dostępny - oferta nie została dodana do Azure Search!");
                 }
 
                 // Automatyczne przeliczenie odznak po zatwierdzeniu oferty
@@ -195,6 +207,7 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"Błąd podczas zatwierdzania oferty {id}: {ex.Message}");
                 return StatusCode(500, new { message = "Błąd podczas zatwierdzania oferty", error = ex.Message });
             }
         }
