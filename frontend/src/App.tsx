@@ -1,19 +1,21 @@
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
-import Navbar from './components/layout/Navbar';
-import Footer from './components/layout/Footer';
-import HomePage from './pages/HomePage';
-import SearchPage from './pages/SearchPage';
-import Login from './pages/auth/Login';
-import Register from './pages/auth/Register';
+import PasekNawigacji from './components/layout/PasekNawigacji';
+import Stopka from './components/layout/Stopka';
+import StronaGlowna from './pages/StronaGlowna';
+import StronaWyszukiwania from './pages/StronaWyszukiwania';
+import Logowanie from './pages/auth/Logowanie';
+import Rejestracja from './pages/auth/Rejestracja';
+import ZapomnialemHaslaStrona from './pages/ZapomnialemHaslaStrona';
+import ResetowanieHaslaStrona from './pages/ResetowanieHaslaStrona';
 import Profil from './pages/profile/Profil';
-import PublicProfilePage from './pages/user/PublicProfilePage';
+import StronaPublicznegoProfileu from './pages/user/StronaPublicznegoProfileu';
 // Panele przeniesione do profilu – pełne strony wyłączone
 // Usunięto UserPanel – funkcje przeniesione do Profil
-import CreateDealForm from './pages/offers/CreateDealForm';
-import CreateCouponForm from './pages/offers/CreateCouponForm';
-import OfferDetailsPage from './pages/offers/OfferDetailsPage';
-import ProtectedRoute from './components/ProtectedRoute';
+import FormularzTworzeniaOkazji from './pages/offers/FormularzTworzeniaOkazji';
+import FormularzTworzeniaKuponu from './pages/offers/FormularzTworzeniaKuponu';
+import StronaSzczegolyOferty from './pages/offers/StronaSzczegolyOferty';
+import ChronionyRoute from './components/ChronionyRoute';
 import { isAuthenticated, getUserData, logout } from './utils/auth';
 
 function App() {
@@ -86,7 +88,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 font-sans transition-colors">
-      <Navbar
+      <PasekNawigacji
         isLoggedIn={isLogged}
         userName={nick}
         userRole={userRole}
@@ -95,28 +97,30 @@ function App() {
 
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
-          <Route path="/" element={<HomePage />} />
-      <Route path="/okazja/:id" element={<OfferDetailsPage />} />
-          <Route path="/search" element={<SearchPage />} />
+          <Route path="/" element={<StronaGlowna />} />
+      <Route path="/okazja/:id" element={<StronaSzczegolyOferty />} />
+          <Route path="/search" element={<StronaWyszukiwania />} />
           {/* Specyficzne trasy przed dynamicznymi parametrami */}
           <Route path="/uzytkownik/panel" element={<Profil />} />
-          <Route path="/uzytkownik/:nick" element={<PublicProfilePage />} />
-          <Route path="/auth/login" element={<Login />} />
-          <Route path="/auth/register" element={<Register />} />
+          <Route path="/uzytkownik/:nick" element={<StronaPublicznegoProfileu />} />
+          <Route path="/auth/login" element={<Logowanie />} />
+          <Route path="/auth/register" element={<Rejestracja />} />
+          <Route path="/zapomniane-haslo" element={<ZapomnialemHaslaStrona />} />
+          <Route path="/resetuj-haslo" element={<ResetowanieHaslaStrona />} />
           <Route path="/stworz-oferte/okazja" element={
-            <ProtectedRoute>
-              <CreateDealForm />
-            </ProtectedRoute>
+            <ChronionyRoute>
+              <FormularzTworzeniaOkazji />
+            </ChronionyRoute>
           } />
           <Route path="/stworz-oferte/kupon" element={
-            <ProtectedRoute>
-              <CreateCouponForm />
-            </ProtectedRoute>
+            <ChronionyRoute>
+              <FormularzTworzeniaKuponu />
+            </ChronionyRoute>
           } />
           <Route path="/konto/profil" element={
-            <ProtectedRoute>
+            <ChronionyRoute>
               <Profil />
-            </ProtectedRoute>
+            </ChronionyRoute>
           } />
           {/* Old standalone panels removed; redirect to profile */}
           <Route path="/admin" element={<Navigate to="/konto/profil" replace />} />
@@ -125,7 +129,7 @@ function App() {
       </main>
       
       {/* Stopka */}
-      <Footer />
+      <Stopka />
     </div>
   );
 }

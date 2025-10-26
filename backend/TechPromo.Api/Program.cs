@@ -67,7 +67,8 @@ builder.Services.AddDbContext<TechPromoDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 builder.Services.AddIdentity<Uzytkownik, IdentityRole<int>>()
-    .AddEntityFrameworkStores<TechPromoDbContext>();
+    .AddEntityFrameworkStores<TechPromoDbContext>()
+    .AddDefaultTokenProviders(); // Dodaje token providers dla resetowania hasła, email confirmation, etc.
 
 // JWT - konfiguracja tokenu do logowania użytkowników
 var jwtSettings = builder.Configuration.GetSection("Jwt");
@@ -105,6 +106,7 @@ builder.Services.AddAuthentication(options =>
 // Rejestruję serwis do tworzenia tokenów JWT
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IBadgeService, BadgeService>();
+builder.Services.AddScoped<IEmailService, EmailService>();
 
 // Azure AI Search - konfiguracja klientów i serwisów wyszukiwania
 var azureSearchEndpoint = builder.Configuration["AzureSearch:Endpoint"];

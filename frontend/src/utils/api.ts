@@ -3,6 +3,28 @@ import { getAuthHeaders, isAuthenticated, logout } from './auth';
 // Bazowy URL API - można przenieść do env później
 const API_BASE = 'http://localhost:5023';
 
+// Publiczny fetch bez autoryzacji (dla logowania, rejestracji, resetowania hasła)
+export const publicFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;
+
+  const response = await fetch(fullUrl, {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers
+    }
+  });
+
+  return response;
+};
+
+// Uproszczone funkcje dla publicznych endpointów
+export const publicPost = (url: string, data: any) => 
+  publicFetch(url, {
+    method: 'POST',
+    body: JSON.stringify(data)
+  });
+
 // Wrapper dla fetch z automatyczną obsługą autoryzacji
 export const authorizedFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
   if (!isAuthenticated()) {

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Rocket, Settings, LogOut, Zap, Sparkles, Moon, Sun, ChevronDown } from 'lucide-react';
-import PanelSelector from '../ui/PanelSelector';
-import OfferTypeModal from '../modals/OfferTypeModal';
-import SearchBar from '../search/SearchBar';
+import WybieraczPanelu from '../ui/WybieraczPanelu';
+import ModalTypuOferty from '../modals/ModalTypuOferty';
+import PasekWyszukiwania from '../search/PasekWyszukiwania';
 import { getAuthToken, isAuthenticated } from '../../utils/auth';
 import { useTheme } from '../../contexts/ThemeContext';
 
@@ -124,12 +124,12 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
 
             {/* Wyszukiwarka - centrum */}
             <div className="flex-1 max-w-2xl mx-4 sm:mx-8">
-              <SearchBar 
+              <PasekWyszukiwania 
                 onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)} 
                 compact={true}
                 className="block sm:hidden"
               />
-              <SearchBar 
+              <PasekWyszukiwania 
                 onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
                 className="hidden sm:block"
               />
@@ -313,7 +313,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
 
       {/* Modal panelu - tylko Moderator/Admin */}
       {isLoggedIn && (userRole === 'Moderator' || userRole === 'Admin') && (
-        <PanelSelector
+        <WybieraczPanelu
           userRole={userRole || 'User'}
           isVisible={showPanelSelector}
           onSelect={handlePanelSelect}
@@ -322,7 +322,7 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
 
       {/* Modal typu oferty */}
       {isLoggedIn && (
-        <OfferTypeModal
+        <ModalTypuOferty
           isVisible={showOfferTypeModal}
           onClose={handleCloseOfferTypeModal}
         />

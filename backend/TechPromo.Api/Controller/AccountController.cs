@@ -23,14 +23,18 @@ namespace TechPromo.Api.Controllers
         private readonly TechPromoDbContext _context;
     private readonly IJwtService _jwtService;
     private readonly IBadgeService _badgeService;
+        private readonly IEmailService _emailService;
+        private readonly IConfiguration _configuration;
 
-        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context, IJwtService jwtService, IBadgeService badgeService)
+        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context, IJwtService jwtService, IBadgeService badgeService, IEmailService emailService, IConfiguration configuration)
         {
             _userManager = userManager;
             _signInManager = signInManager;
             _context = context;
             _jwtService = jwtService;
             _badgeService = badgeService;
+            _emailService = emailService;
+            _configuration = configuration;
         }
 
         [HttpPost("register")]
@@ -276,6 +280,69 @@ namespace TechPromo.Api.Controllers
             // Oceń odznaki (avatar_set)
             await _badgeService.EvaluateForUserAsync(user.Id);
             return Ok(new { avatarUrl = url });
+        }
+
+        // POST: /konto/zapomniane-haslo - wysyła email z linkiem resetowania
+        [HttpPost("zapomniane-haslo")]
+        public async Task<IActionResult> ZapomnianeHaslo([FromBody] ZapomnianeHasloDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            
+            // ZAWSZE zwracaj sukces (security best practice - nie ujawniaj czy email istnieje)
+            // Jeśli email nie istnieje, po prostu nic nie wysyłaj
+            if (user == null)
+            {
+                return Ok(new { message = "Jeśli podany email istnieje w systemie, wyślemy link do resetowania hasła." });
+            }
+
+            // Generuj token resetowania hasła (ASP.NET Identity ma to wbudowane)
+            var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+
+            // Zakoduj token do URL (zawiera znaki specjalne)
+            var encodedToken = Uri.EscapeDataString(resetToken);
+
+            // Pobierz FrontendUrl z konfiguracji
+            var frontendUrl = _configuration["EmailSettings:FrontendUrl"] ?? "http://localhost:5174";
+            
+            // Zbuduj link resetowania (frontend będzie obsługiwał tę stronę)
+            var resetUrl = $"{frontendUrl}/resetuj-haslo?token={encodedToken}&email={Uri.EscapeDataString(user.Email ?? "")}";
+
+            // Wyślij email
+            var emailSent = await _emailService.WyslijEmailResetowaniaHaslaAsync(user.Email ?? "", resetUrl);
+
+            if (!emailSent)
+            {
+                // Loguj błąd, ale nie ujawniaj użytkownikowi że wysyłka się nie powiodła
+                Console.WriteLine($"⚠️ Nie udało się wysłać emaila resetowania hasła do {user.Email}");
+            }
+
+            return Ok(new { message = "Jeśli podany email istnieje w systemie, wyślemy link do resetowania hasła." });
+        }
+
+        // POST: /konto/resetuj-haslo - resetuje hasło używając tokenu z emaila
+        [HttpPost("resetuj-haslo")]
+        public async Task<IActionResult> ResetujHaslo([FromBody] ResetujHasloDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            var user = await _userManager.FindByEmailAsync(dto.Email);
+            if (user == null)
+                return BadRequest(new { message = "Nieprawidłowy token resetowania." });
+
+            // Zresetuj hasło używając tokenu
+            var result = await _userManager.ResetPasswordAsync(user, dto.Token, dto.NoweHaslo);
+
+            if (!result.Succeeded)
+            {
+                var errors = result.Errors.Select(e => e.Description).ToList();
+                return BadRequest(new { message = "Nie udało się zresetować hasła.", errors });
+            }
+
+            return Ok(new { message = "Hasło zostało pomyślnie zresetowane. Możesz się teraz zalogować." });
         }
     }
 }

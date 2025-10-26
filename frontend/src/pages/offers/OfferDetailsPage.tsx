@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Flame, Snowflake, ArrowLeft, ExternalLink, Share2, Gift, Clock } from 'lucide-react';
-import CouponCode from '../../components/CouponCode';
-import ReportCommentModal from '../../components/modals/ReportCommentModal';
+import KodKuponu from '../../components/KodKuponu';
+import ModalZgloszeniaKomentarza from '../../components/modals/ModalZgloszeniaKomentarza';
 import { getAuthToken } from '../../utils/auth';
 
 interface OfertaDto {
@@ -575,7 +575,7 @@ export default function OfferDetailsPage() {
                   {offer.typ === 'kupon' && (
                     <>
                       <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white text-base font-semibold px-4 py-2 rounded-lg shadow-md">Kupon</span>
-                      <CouponCode code={offer.kod} size="md" />
+                      <KodKuponu code={offer.kod} size="md" />
                     </>
                   )}
                   {/* Stara cena (jeśli występuje i > aktualnej) */}
@@ -788,7 +788,7 @@ export default function OfferDetailsPage() {
 
       </div>
       {/* Modal zgłoszenia komentarza */}
-      <ReportCommentModal
+      <ModalZgloszeniaKomentarza
         isVisible={reportingCommentId !== null}
         commentId={reportingCommentId}
         onClose={() => !reportLoading && setReportingCommentId(null)}

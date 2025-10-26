@@ -1,4 +1,4 @@
-export { default as Button } from './Button';
-export { default as Input } from './Input';
-export { default as Card } from './Card';
-export { default as PanelSelector } from './PanelSelector';
+export { default as Przycisk } from './Przycisk';
+export { default as PoleWprowadzania } from './PoleWprowadzania';
+export { default as Karta } from './Karta';
+export { default as WybieraczPanelu } from './WybieraczPanelu';

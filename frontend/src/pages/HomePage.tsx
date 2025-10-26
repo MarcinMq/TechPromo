@@ -1,9 +1,9 @@
 import { Link, useLocation } from 'react-router-dom';
-import CouponCode from '../components/CouponCode';
+import KodKuponu from '../components/KodKuponu';
 import { Flame, Snowflake, MessageCircle, Star, Zap, Search, Flag, Share2, Gift, Clock } from 'lucide-react';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { getAuthToken } from '../utils/auth';
-import ReportOfferModal from '../components/modals/ReportOfferModal';
+import ModalZgloszeniaOferty from '../components/modals/ModalZgloszeniaOferty';
 
 // Typy dla prawdziwych danych z API
 interface OfertaDto {
@@ -685,7 +685,7 @@ function HomePage() {
                             {offer.typ === 'kupon' ? (
                               <div className="flex items-center flex-wrap gap-3">
                                 <span className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold px-3 py-1.5 rounded-lg shadow-sm">🎫 KUPON</span>
-                                <CouponCode code={offer.kod} size="sm" />
+                                <KodKuponu code={offer.kod} size="sm" />
                                 {offer.cena === 0 && <span className="text-2xl font-semibold text-green-600 dark:text-green-400 bg-green-100 dark:bg-green-900/30 px-3 py-1 rounded-lg flex items-center gap-1"><Gift className="w-5 h-5" /> ZA DARMO!</span>}
                                 {offer.cena && offer.cena > 0 && <span className="text-2xl font-semibold text-purple-600 dark:text-purple-400">{offer.cena} zł</span>}
                                 {!offer.cena && <span className="text-base text-gray-600 dark:text-gray-400 font-medium">Sprawdź cenę</span>}
@@ -842,7 +842,7 @@ function HomePage() {
       )}
 
       {reportingOfferId !== null && (
-        <ReportOfferModal
+        <ModalZgloszeniaOferty
           isVisible={reportingOfferId !== null}
           offerId={reportingOfferId}
           onClose={() => !reportLoading && setReportingOfferId(null)}
