@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { saveUserSession } from '../../utils/auth';
 import { UserPlus, Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
+import logo from '../../assets/images/Logo.png';
 
 const Rejestracja = () => {
   const [nick, setNick] = useState('');
@@ -77,7 +78,13 @@ const Rejestracja = () => {
         <div className="w-full">
           <form onSubmit={handleRegister} className="relative bg-white/80 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/30 p-8 md:p-10 overflow-hidden">
             <div className="absolute -top-24 -right-24 w-72 h-72 bg-gradient-to-br from-indigo-500/20 to-purple-500/20 rounded-full blur-3xl" />
-            <h2 className="text-3xl font-bold mb-8 text-gray-900 flex items-center gap-3"><UserPlus className="w-8 h-8 text-indigo-600" /> Rejestracja</h2>
+            
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <img src={logo} alt="TechPromo" className="h-20 w-auto rounded-xl" />
+            </div>
+            
+            <h2 className="text-3xl font-bold mb-8 text-gray-900 flex items-center justify-center gap-3"><UserPlus className="w-8 h-8 text-indigo-600" /> Rejestracja</h2>
             <div className="space-y-6">
               <div className="relative group">
                 <User className="w-5 h-5 absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors" />

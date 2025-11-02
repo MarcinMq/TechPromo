@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Rocket, Heart, Mail } from 'lucide-react';
+import { Heart, Mail } from 'lucide-react';
+import logo from '../../assets/images/Logo.png';
 
 const Stopka: React.FC = () => {
   const currentYear = new Date().getFullYear();
@@ -14,8 +15,7 @@ const Stopka: React.FC = () => {
           {/* Logo i opis */}
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-3 mb-4">
-              <Rocket className="w-8 h-8 text-blue-600 dark:text-blue-400 transition-colors" />
-              <span className="text-2xl font-bold text-gray-900 dark:text-gray-100 transition-colors">TechPromo</span>
+              <img src={logo} alt="TechPromo" className="h-10 w-auto rounded-lg" />
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm leading-relaxed transition-colors">
               Najlepsze okazje i promocje technologiczne w jednym miejscu. 
@@ -27,11 +27,51 @@ const Stopka: React.FC = () => {
           <div>
             <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100 transition-colors">Popularne kategorie</h3>
             <ul className="space-y-2 text-sm">
-              <li><span className="text-gray-600 dark:text-gray-400 transition-colors">📱 Smartwatche</span></li>
-              <li><span className="text-gray-600 dark:text-gray-400 transition-colors">📱 Tablety</span></li>
-              <li><span className="text-gray-600 dark:text-gray-400 transition-colors">🖥️ Komputery PC</span></li>
-              <li><span className="text-gray-600 dark:text-gray-400 transition-colors">🎧 Audio</span></li>
-              <li><span className="text-gray-600 dark:text-gray-400 transition-colors">🎮 Gaming</span></li>
+              <li>
+                <Link 
+                  to="/?kategoria=Smartwatche" 
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  📱 Smartwatche
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/?kategoria=Tablety" 
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  📱 Tablety
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/?kategoria=Komputery PC" 
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  🖥️ Komputery PC
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/?kategoria=Audio" 
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  🎧 Audio
+                </Link>
+              </li>
+              <li>
+                <Link 
+                  to="/?kategoria=Gaming" 
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                >
+                  🎮 Gaming
+                </Link>
+              </li>
             </ul>
           </div>
 

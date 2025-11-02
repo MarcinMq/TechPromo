@@ -1,9 +1,10 @@
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import KodKuponu from '../components/KodKuponu';
-import { Flame, Snowflake, MessageCircle, Star, Zap, Search, Flag, Share2, Gift, Clock } from 'lucide-react';
-import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Flame, Snowflake, MessageCircle, Star, Zap, Search, Flag, Share2, Gift, Clock, Smartphone, Laptop, Headphones, Watch, Gamepad2, Monitor, Cpu, HardDrive } from 'lucide-react';
 import { getAuthToken } from '../utils/auth';
 import ModalZgloszeniaOferty from '../components/modals/ModalZgloszeniaOferty';
+import baner from '../assets/images/Baner.png';
 
 // Typy dla prawdziwych danych z API
 interface OfertaDto {
@@ -251,6 +252,69 @@ function RightSidebar() {
     </div>
   );
 }
+
+// Komponent spadających ikonek elektroniki
+const FallingIcons: React.FC = () => {
+  const icons = [Smartphone, Laptop, Headphones, Watch, Gamepad2, Monitor, Cpu, HardDrive];
+  const [particles, setParticles] = useState<Array<{
+    id: number;
+    Icon: any;
+    left: number;
+    animationDuration: number;
+    size: number;
+    delay: number;
+    opacity: number;
+  }>>([]);
+
+  useEffect(() => {
+    const newParticles = Array.from({ length: 20 }, (_, i) => ({
+      id: i,
+      Icon: icons[Math.floor(Math.random() * icons.length)],
+      left: Math.random() * 100,
+      animationDuration: 15 + Math.random() * 15, // 15-30s
+      size: 20 + Math.random() * 30, // 20-50px
+      delay: Math.random() * 10, // 0-10s opóźnienia
+      opacity: 0.1 + Math.random() * 0.15, // 0.1-0.25 opacity
+    }));
+    setParticles(newParticles);
+  }, []);
+
+  return (
+    <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+      {particles.map((particle) => (
+        <div
+          key={particle.id}
+          className="absolute animate-fall"
+          style={{
+            left: `${particle.left}%`,
+            animationDuration: `${particle.animationDuration}s`,
+            animationDelay: `${particle.delay}s`,
+            top: '-100px',
+          }}
+        >
+          <particle.Icon
+            size={particle.size}
+            className="text-blue-500 dark:text-blue-400"
+            style={{ opacity: particle.opacity }}
+          />
+        </div>
+      ))}
+      <style>{`
+        @keyframes fall {
+          0% {
+            transform: translateY(0) rotate(0deg);
+          }
+          100% {
+            transform: translateY(100vh) rotate(360deg);
+          }
+        }
+        .animate-fall {
+          animation: fall linear infinite;
+        }
+      `}</style>
+    </div>
+  );
+};
 
 function StronaGlowna() {
   const location = useLocation();
@@ -561,9 +625,12 @@ function StronaGlowna() {
   }, [offers, selectedCategory, searchDebounced]);
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800 transition-colors relative">
+      {/* Falling icons background */}
+      <FallingIcons />
+      
       {/* Top banner */}
-      <div className="bg-blue-600 dark:bg-blue-700 text-white py-2.5">
+      <div className="bg-blue-600 dark:bg-blue-700 text-white py-2.5 relative z-10">
         <div className="px-4 text-center">
           <p className="text-sm font-medium">
             <Star className="inline w-4 h-4 mr-1.5" />
@@ -572,36 +639,41 @@ function StronaGlowna() {
         </div>
       </div>
 
-      {/* Main hero - Clean and minimal */}
-      <div className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 transition-colors">
-        <div className="max-w-[1800px] mx-auto px-4 py-12 text-center">
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4">
-            TechPromo
-          </h1>
+      {/* Banner Image with overlay content */}
+      <div className="relative bg-white dark:bg-gray-800 border-b dark:border-gray-700 transition-colors z-10">
+        <div className="max-w-[1800px] mx-auto px-4 py-6">
+          <img 
+            src={baner} 
+            alt="TechPromo Banner" 
+            className="w-full h-auto rounded-xl shadow-lg"
+          />
           
-          <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 mb-6 max-w-2xl mx-auto">
-            Odkrywaj setki okazji publikowanych przez łowców okazji, takich jak Ty!
-          </p>
-          
-          <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
-            <Link
-              to="/auth/register"
-              className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
-            >
-              <Zap className="w-5 h-5 inline mr-2" />
-              Dołącz za darmo
-            </Link>
+          {/* Overlay content */}
+          <div className="absolute inset-0 flex flex-col items-center justify-end pb-12 px-4">
+            <p className="text-lg sm:text-xl text-gray-900 mb-6 max-w-2xl text-center font-bold bg-white/80 backdrop-blur-sm px-6 py-3 rounded-lg shadow-xl">
+              Odkrywaj setki okazji publikowanych przez łowców okazji, takich jak Ty!
+            </p>
             
-            <Link
-              to="#oferty"
-              onClick={(e) => {
-                e.preventDefault();
-                document.querySelector('.offers-section')?.scrollIntoView({ behavior: 'smooth' });
-              }}
-              className="px-6 py-3 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-200 border border-gray-300 dark:border-gray-600 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-            >
-              Przeglądaj okazje
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center items-center">
+              <Link
+                to="/auth/register"
+                className="px-6 py-3 bg-blue-600 dark:bg-blue-700 text-white rounded-lg font-semibold hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors shadow-lg"
+              >
+                <Zap className="w-5 h-5 inline mr-2" />
+                Dołącz za darmo
+              </Link>
+              
+              <Link
+                to="#oferty"
+                onClick={(e) => {
+                  e.preventDefault();
+                  document.querySelector('.offers-section')?.scrollIntoView({ behavior: 'smooth' });
+                }}
+                className="px-6 py-3 bg-white text-gray-700 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition-colors shadow-lg"
+              >
+                Przeglądaj okazje
+              </Link>
+            </div>
           </div>
         </div>
       </div>
@@ -642,7 +714,7 @@ function StronaGlowna() {
         </div>
       </div>
 
-      <div className="max-w-[1800px] mx-auto px-4 py-6 offers-section">
+      <div className="max-w-[1800px] mx-auto px-4 py-6 offers-section relative z-10">
         <div className="flex gap-6">
           {/* Główna lista ofert */}
           <div className="flex-1 min-w-0">

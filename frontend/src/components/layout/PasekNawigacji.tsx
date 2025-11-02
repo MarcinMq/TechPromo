@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Rocket, Settings, LogOut, Zap, Sparkles, Moon, Sun, ChevronDown } from 'lucide-react';
+import { Settings, LogOut, Zap, Sparkles, Moon, Sun, ChevronDown } from 'lucide-react';
 import WybieraczPanelu from '../ui/WybieraczPanelu';
 import ModalTypuOferty from '../modals/ModalTypuOferty';
 import PasekWyszukiwania from '../search/PasekWyszukiwania';
 import { getAuthToken, isAuthenticated } from '../../utils/auth';
 import { useTheme } from '../../contexts/ThemeContext';
+import logo from '../../assets/images/Logo.png';
 
 interface NavbarProps {
   isLoggedIn: boolean;
@@ -110,16 +111,12 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
         <div className="w-full max-w-none px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
-            <Link to="/" className="flex items-center space-x-2 text-xl font-bold flex-shrink-0">
-              <div className="bg-blue-600 p-2 rounded-lg">
-                <Rocket className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-gray-900 dark:text-white hidden sm:inline">
-                TechPromo
-              </span>
-              <span className="text-gray-900 dark:text-white sm:hidden">
-                TP
-              </span>
+            <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
+              <img 
+                src={logo} 
+                alt="TechPromo" 
+                className="h-12 sm:h-14 w-auto rounded-lg"
+              />
             </Link>
 
             {/* Wyszukiwarka - centrum */}

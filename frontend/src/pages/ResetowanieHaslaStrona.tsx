@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { publicPost } from '../utils/api';
+import logo from '../assets/images/Logo.png';
 
 const ResetowanieHaslaStrona: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -84,6 +85,11 @@ const ResetowanieHaslaStrona: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center px-4 py-12">
       <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8">
+        {/* Logo */}
+        <div className="flex justify-center mb-6">
+          <img src={logo} alt="TechPromo" className="h-20 w-auto rounded-xl" />
+        </div>
+        
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
             Resetuj hasło
