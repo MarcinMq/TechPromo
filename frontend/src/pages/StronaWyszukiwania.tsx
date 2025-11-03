@@ -127,16 +127,16 @@ const StronaWyszukiwania: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
-      <div className="max-w-[1800px] mx-auto px-4 py-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors pb-20 lg:pb-0">
+      <div className="max-w-[1800px] mx-auto px-2 sm:px-4 py-4 sm:py-6">
         {/* Nagłówek wyszukiwania */}
-        <div className="mb-6">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6 transition-colors">
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-3 transition-colors">
-              <Search className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+        <div className="mb-4 sm:mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-4 sm:p-6 transition-colors">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2 sm:gap-3 transition-colors">
+              <Search className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-400" />
               Wyszukiwanie okazji
             </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 transition-colors">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 transition-colors">
               Znajdź najlepsze promocje z tysięcy sklepów internetowych
             </p>
           </div>

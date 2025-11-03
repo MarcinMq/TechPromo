@@ -122,16 +122,10 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
               </span>
             </Link>
 
-            {/* Wyszukiwarka - centrum */}
-            <div className="flex-1 max-w-2xl mx-4 sm:mx-8">
-              <PasekWyszukiwania 
-                onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)} 
-                compact={true}
-                className="block sm:hidden"
-              />
+            {/* Wyszukiwarka - centrum - ukryta na mobile (mamy dedykowaną stronę search) */}
+            <div className="hidden md:flex flex-1 max-w-2xl mx-4 sm:mx-8">
               <PasekWyszukiwania 
                 onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
-                className="hidden sm:block"
               />
             </div>
 
@@ -152,31 +146,31 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
 
               {isLoggedIn ? (
                 <>
-                  {/* Przycisk publikuj */}
+                  {/* Przycisk publikuj - ukryty na mobile (mamy w bottom nav) */}
                   <button 
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm" 
+                    className="hidden lg:flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm" 
                     onClick={handlePublish}
                   >
                     <Sparkles className="w-4 h-4" />
-                    <span className="hidden sm:inline">Publikuj</span>
+                    <span>Publikuj</span>
                   </button>
 
-                  {/* Menu użytkownika */}
+                  {/* Menu użytkownika - uproszczone na mobile */}
                   <div className="flex items-center space-x-2">
-                    {/* Panel - tylko Moderator/Admin */}
+                    {/* Panel - tylko Moderator/Admin - ukryty na mobile */}
                     {(userRole === 'Moderator' || userRole === 'Admin') && (
                       <button 
                         onClick={handlePanelClick} 
-                        className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                        className="hidden lg:block p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                       >
                         <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
                       </button>
                     )}
 
-                    {/* Profil */}
+                    {/* Profil - uproszczony na mobile */}
                     <Link 
                       to="/konto/profil" 
-                      className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                      className="hidden lg:flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
                       <span className="relative inline-block w-8 h-8">
                         {avatarUrl ? (
@@ -185,31 +179,31 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
                           <img src="/default-avatar.svg" alt="default avatar" className="w-full h-full rounded-full object-cover border-2 border-gray-300 dark:border-gray-600" />
                         )}
                       </span>
-                      <span className="hidden lg:inline text-sm font-medium text-gray-700 dark:text-gray-300">{userName || 'Profil'}</span>
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{userName || 'Profil'}</span>
                     </Link>
 
-                    {/* Wyloguj */}
+                    {/* Wyloguj - ukryty na mobile (dostępny przez profil) */}
                     <button 
                       onClick={onLogout} 
-                      className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                      className="hidden lg:block p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                     >
                       <LogOut className="w-5 h-5 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors" />
                     </button>
                   </div>
                 </>
               ) : (
-                /* Przyciski logowania */
+                /* Przyciski logowania - uproszczone na mobile */
                 <div className="flex items-center space-x-2">
                   <Link 
                     to="/auth/login" 
-                    className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm text-gray-700 dark:text-gray-300"
+                    className="px-3 sm:px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm text-gray-700 dark:text-gray-300"
                   >
                     <span className="hidden sm:inline">Zaloguj się</span>
                     <span className="sm:hidden">Login</span>
                   </Link>
                   <Link 
                     to="/auth/register" 
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                    className="px-3 sm:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm"
                   >
                     <span className="flex items-center gap-1">
                       <Zap className="w-4 h-4 hidden sm:inline" />
@@ -223,8 +217,8 @@ const Navbar: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogou
           </div>
         </div>
         
-        {/* Kategorie - drugi rząd */}
-        <div className="border-t border-gray-200 dark:border-gray-700 py-2">
+        {/* Kategorie - drugi rząd - ukryty na mobile (przeciążałby UI) */}
+        <div className="hidden lg:block border-t border-gray-200 dark:border-gray-700 py-2">{/* Tekst "Kategorie" */}
           <div className="overflow-x-auto scrollbar-hide">
             <div className="flex items-center justify-center space-x-1 px-2">
               {/* Tekst "Kategorie" */}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getAuthHeaders, isAuthenticated, logout, saveUserSession, getAuthToken } from '../../utils/auth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { authorizedFetch, apiPost, apiPut, apiDelete } from '../../utils/api';
 import { MessageCircle, ShoppingBag, BarChart3, Flag, Filter, Flame, Snowflake, Users, Trophy, Clipboard, Trash2, Zap, Check } from 'lucide-react';
 
@@ -70,6 +70,7 @@ const Profil = () => {
   const [saving, setSaving] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   // Sekcje przeniesione z Panelu Użytkownika
   const [activeTab, setActiveTab] = useState<'offers' | 'activity' | 'comments' | 'zapisane' | 'modComments' | 'modOffers' | 'modReports' | 'adminUsers' | 'adminBadges' | 'adminOffers'>('offers');
@@ -502,6 +503,18 @@ const Profil = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.rola]);
+
+  // Obsługa navigation state dla automatycznego przełączenia zakładki
+  useEffect(() => {
+    if (location.state && (location.state as any).activeTab) {
+      const tab = (location.state as any).activeTab;
+      setActiveTab(tab);
+      // Załaduj dane dla odpowiedniej zakładki
+      if (tab === 'zapisane') {
+        fetchSavedOffers();
+      }
+    }
+  }, [location.state]);
 
   // Re-load offers when filters change
   useEffect(() => {
