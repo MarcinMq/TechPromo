@@ -1,7 +1,7 @@
 import { Routes, Route, useNavigate, Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import PasekNawigacji from './components/layout/PasekNawigacji';
-import MobileBottomNav from './components/layout/MobileBottomNav';
+import DolnyPasekMobilny from './components/layout/DolnyPasekMobilny';
 import Stopka from './components/layout/Stopka';
 import StronaGlowna from './pages/StronaGlowna';
 import StronaWyszukiwania from './pages/StronaWyszukiwania';
@@ -130,7 +130,7 @@ function App() {
       </main>
       
       {/* Mobile Bottom Navigation */}
-      <MobileBottomNav isLoggedIn={isLogged} />
+      <DolnyPasekMobilny isLoggedIn={isLogged} />
       
       {/* Stopka */}
       <Stopka />

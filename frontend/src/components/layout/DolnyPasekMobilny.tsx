@@ -3,11 +3,11 @@ import { Link, useLocation } from 'react-router-dom';
 import { Home, Search, PlusCircle, Bookmark, User } from 'lucide-react';
 import ModalTypuOferty from '../modals/ModalTypuOferty';
 
-interface MobileBottomNavProps {
+interface DolnyPasekMobilnyProps {
   isLoggedIn: boolean;
 }
 
-const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ isLoggedIn }) => {
+const DolnyPasekMobilny: React.FC<DolnyPasekMobilnyProps> = ({ isLoggedIn }) => {
   const location = useLocation();
   const [showOfferTypeModal, setShowOfferTypeModal] = useState(false);
 
@@ -158,4 +158,4 @@ const MobileBottomNav: React.FC<MobileBottomNavProps> = ({ isLoggedIn }) => {
   );
 };
 
-export default MobileBottomNav;
+export default DolnyPasekMobilny;

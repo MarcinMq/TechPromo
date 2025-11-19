@@ -107,6 +107,7 @@ builder.Services.AddAuthentication(options =>
 builder.Services.AddScoped<IJwtService, JwtService>();
 builder.Services.AddScoped<IBadgeService, BadgeService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
+builder.Services.AddScoped<ISerwisWykrywaniaDuplikatow, SerwisWykrywaniaDuplikatow>();
 
 // Azure AI Search - konfiguracja klientów i serwisów wyszukiwania
 var azureSearchEndpoint = builder.Configuration["AzureSearch:Endpoint"];

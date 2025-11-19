@@ -23,17 +23,20 @@ namespace TechPromo.Api.Controllers
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly IBadgeService _badgeService;
         private readonly SerwisSync? _syncService;
+        private readonly ISerwisWykrywaniaDuplikatow _serwisWykrywaniaDuplikatow;
 
         public OfertaController(
             TechPromoDbContext context, 
             UserManager<Uzytkownik> userManager, 
             IBadgeService badgeService,
+            ISerwisWykrywaniaDuplikatow serwisWykrywaniaDuplikatow,
             SerwisSync? syncService = null)
         {
             _context = context;
             _userManager = userManager;
             _badgeService = badgeService;
             _syncService = syncService;
+            _serwisWykrywaniaDuplikatow = serwisWykrywaniaDuplikatow;
         }
 
         #region Metody pomocnicze
@@ -605,6 +608,33 @@ namespace TechPromo.Api.Controllers
         }
 
         #endregion
+
+        // POST: api/oferta/sprawdz-duplikaty
+        [HttpPost("sprawdz-duplikaty")]
+        [Authorize]
+        public async Task<ActionResult<WynikSprawdzaniaDuplikatow>> SprawdzDuplikaty([FromBody] SprawdzDuplikatyRequest request)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(request.Nazwa))
+                {
+                    return BadRequest("Nazwa oferty jest wymagana.");
+                }
+
+                var wynik = await _serwisWykrywaniaDuplikatow.SprawdzDuplikatyAsync(
+                    nazwa: request.Nazwa,
+                    link: request.Link,
+                    sklep: null, // Brak pola sklep w modelu
+                    cena: request.Cena
+                );
+
+                return Ok(wynik);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { error = "Błąd podczas sprawdzania duplikatów", details = ex.Message });
+            }
+        }
 
         // POST: api/oferta
         [HttpPost]

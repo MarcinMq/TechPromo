@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Rocket, Clock, Tag, Store, FileText, Upload, Image, X, Gift } from 'lucide-react';
 import { getAuthToken, getUserData } from '../../utils/auth';
+import ModalOstrzezeniaDuplikatow from '../../components/modals/ModalOstrzezeniaDuplikatow';
 
 interface OfferFormData {
   tytul: string;
@@ -26,6 +27,10 @@ const FormularzTworzeniaOkazji: React.FC = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<string[]>([]);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [duplicateCheckResult, setDuplicateCheckResult] = useState<any>(null);
+  const [skipDuplicateCheck, setSkipDuplicateCheck] = useState(false);
+  const linkCheckTimeoutRef = React.useRef<number | null>(null);
   
   const [formData, setFormData] = useState<OfferFormData>({
     tytul: '',
@@ -130,6 +135,54 @@ const FormularzTworzeniaOkazji: React.FC = () => {
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
+
+    // Sprawdź duplikaty po wklejeniu/wpisaniu linku
+    if (name === 'sklep' && value.trim().length > 10) {
+      // Debounce - sprawdź po 500ms od ostatniej zmiany
+      if (linkCheckTimeoutRef.current) clearTimeout(linkCheckTimeoutRef.current);
+      linkCheckTimeoutRef.current = setTimeout(() => {
+        checkForDuplicatesInBackground(value.trim());
+      }, 500);
+    }
+  };
+
+  const checkForDuplicatesInBackground = async (link: string) => {
+    // Sprawdź tylko jeśli mamy tytuł (min 10 znaków) lub link
+    if (!formData.tytul.trim() && !link) return;
+    
+    try {
+      const token = getAuthToken();
+      if (!token) return;
+
+      let url = link;
+      if (url && !/^https?:\/\//i.test(url)) {
+        url = 'https://' + url;
+      }
+
+      const response = await fetch('/api/oferta/sprawdz-duplikaty', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nazwa: formData.tytul.trim() || 'Sprawdzanie...',
+          link: url || null,
+          cena: formData.zaDarmo ? 0 : (formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null)
+        })
+      });
+
+      if (!response.ok) return;
+
+      const result = await response.json();
+      
+      if (result.czyPotencjalnyDuplikat && result.potencjalneDuplikaty && result.potencjalneDuplikaty.length > 0) {
+        setDuplicateCheckResult(result);
+        setShowDuplicateModal(true);
+      }
+    } catch (error) {
+      // Cicho ignoruj błędy sprawdzania w tle
+    }
   };
 
   const validateForm = (): boolean => {
@@ -158,6 +211,47 @@ const FormularzTworzeniaOkazji: React.FC = () => {
     
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
+  };
+
+  const checkForDuplicates = async (): Promise<boolean> => {
+    try {
+      const token = getAuthToken();
+      if (!token) return true;
+
+      let url = formData.sklep.trim();
+      if (url && !/^https?:\/\//i.test(url)) {
+        url = 'https://' + url;
+      }
+
+      const response = await fetch('/api/oferta/sprawdz-duplikaty', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          nazwa: formData.tytul.trim(),
+          link: url || null,
+          cena: formData.zaDarmo ? 0 : (formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null)
+        })
+      });
+
+      if (!response.ok) {
+        return true; // Kontynuuj w przypadku błędu API
+      }
+
+      const result = await response.json();
+      setDuplicateCheckResult(result);
+
+      if (result.czyPotencjalnyDuplikat && result.potencjalneDuplikaty && result.potencjalneDuplikaty.length > 0) {
+        setShowDuplicateModal(true);
+        return false; // Zatrzymaj wysyłanie formularza
+      }
+
+      return true; // Brak duplikatów, kontynuuj
+    } catch (error) {
+      return true; // Kontynuuj w przypadku błędu
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -234,6 +328,19 @@ const FormularzTworzeniaOkazji: React.FC = () => {
         // Nie przekierowujemy od razu – użytkownik może dalej edytować zdjęcia
         return;
       }
+
+      // Sprawdź duplikaty przed utworzeniem nowej oferty (pomijamy jeśli użytkownik już potwierdził)
+      if (!skipDuplicateCheck) {
+        const canContinue = await checkForDuplicates();
+        if (!canContinue) {
+          setLoading(false);
+          return; // Użytkownik zobaczy modal z ostrzeżeniem
+        }
+      }
+
+      // Reset flagi po użyciu
+      setSkipDuplicateCheck(false);
+
       // Przygotuj dane do wysłania jako FormData
       const formDataToSend = new FormData();
       formDataToSend.append('tytul', formData.tytul.trim());
@@ -780,6 +887,30 @@ const FormularzTworzeniaOkazji: React.FC = () => {
           </form>
         </div>
       </div>
+
+      {/* Modal ostrzeżenia o duplikatach */}
+      {duplicateCheckResult && (
+        <ModalOstrzezeniaDuplikatow
+          isOpen={showDuplicateModal}
+          onClose={() => {
+            setShowDuplicateModal(false);
+            setDuplicateCheckResult(null);
+          }}
+          onContinue={() => {
+            setShowDuplicateModal(false);
+            setSkipDuplicateCheck(true);
+            // Automatycznie wyślij formularz ponownie
+            setTimeout(() => {
+              const form = document.querySelector('form');
+              if (form) {
+                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+              }
+            }, 100);
+          }}
+          duplicates={duplicateCheckResult.potencjalneDuplikaty || []}
+          message={duplicateCheckResult.wiadomosc || 'Znaleziono podobne oferty w bazie danych.'}
+        />
+      )}
     </div>
   );
 };
