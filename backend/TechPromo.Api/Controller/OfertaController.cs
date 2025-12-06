@@ -24,12 +24,14 @@ namespace TechPromo.Api.Controllers
         private readonly IBadgeService _badgeService;
         private readonly SerwisSync? _syncService;
         private readonly ISerwisWykrywaniaDuplikatow _serwisWykrywaniaDuplikatow;
+        private readonly ISerwisModeracjiTresci _serwisModeracjiTresci;
 
         public OfertaController(
             TechPromoDbContext context, 
             UserManager<Uzytkownik> userManager, 
             IBadgeService badgeService,
             ISerwisWykrywaniaDuplikatow serwisWykrywaniaDuplikatow,
+            ISerwisModeracjiTresci serwisModeracjiTresci,
             SerwisSync? syncService = null)
         {
             _context = context;
@@ -37,6 +39,7 @@ namespace TechPromo.Api.Controllers
             _badgeService = badgeService;
             _syncService = syncService;
             _serwisWykrywaniaDuplikatow = serwisWykrywaniaDuplikatow;
+            _serwisModeracjiTresci = serwisModeracjiTresci;
         }
 
         #region Metody pomocnicze
@@ -445,6 +448,13 @@ namespace TechPromo.Api.Controllers
         {
             if (string.IsNullOrWhiteSpace(request.Tresc))
                 return BadRequest("Treść komentarza jest wymagana.");
+
+            // Sprawdź czy treść zawiera nieodpowiednie słowa (Azure Content Safety)
+            var wynikModeracji = await _serwisModeracjiTresci.ModerujTekstAsync(request.Tresc);
+            if (wynikModeracji.CzyZablokowany)
+            {
+                return BadRequest(wynikModeracji.KomunikatDlaUzytkownika);
+            }
 
             var userId = GetCurrentUserId();
             if (userId == 0) return Unauthorized();

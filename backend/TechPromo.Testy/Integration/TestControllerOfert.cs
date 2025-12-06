@@ -77,10 +77,10 @@ namespace TechPromo.Testy.Integration
             // Arrange
             var nowaOferta = new UtworzOfertaDto
             {
-                Nazwa = "Testowa oferta",
+                Tytul = "Testowa oferta",
                 Opis = "Opis testowej oferty",
-                Link = "https://sklep.pl/produkt",
-                KategoriaId = 1
+                Sklep = "https://sklep.pl/produkt",
+                Kategoria = "Elektronika"
             };
 
             // Act

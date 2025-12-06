@@ -109,6 +109,9 @@ builder.Services.AddScoped<IBadgeService, BadgeService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISerwisWykrywaniaDuplikatow, SerwisWykrywaniaDuplikatow>();
 
+// Azure Content Safety - automatyczne wykrywanie wulgarnych/obraźliwych treści
+builder.Services.AddSingleton<ISerwisModeracjiTresci, SerwisModeracjiTresci>();
+
 // Azure AI Search - konfiguracja klientów i serwisów wyszukiwania
 var azureSearchEndpoint = builder.Configuration["AzureSearch:Endpoint"];
 var azureSearchApiKey = builder.Configuration["AzureSearch:ApiKey"];

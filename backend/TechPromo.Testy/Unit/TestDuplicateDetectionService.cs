@@ -32,29 +32,35 @@ namespace TechPromo.Testy.Unit
             _context.Dispose();
         }
 
+        private async Task<Uzytkownik> DodajTestowegoUzytkownikaAsync(string userName)
+        {
+            var uzytkownik = new Uzytkownik 
+            { 
+                UserName = userName,
+                Email = $"{userName}@test.pl",
+                NormalizedUserName = userName.ToUpper(),
+                NormalizedEmail = $"{userName}@test.pl".ToUpper()
+            };
+            await _context.Users.AddAsync(uzytkownik);
+            await _context.SaveChangesAsync();
+            return uzytkownik;
+        }
+
         [Fact]
         public async Task SprawdzDuplikaty_IdentycznyLink_ZwracaDuplikat()
         {
             // Arrange - Przygotowanie
-            var uzytkownik = new Uzytkownik 
-            { 
-                IdUzytkownik = Guid.NewGuid(),
-                UserName = "testowy_uzytkownik",
-                Email = "test@test.pl",
-                PasswordHash = "hash123"
-            };
-            await _context.Uzytkownicy.AddAsync(uzytkownik);
+            var uzytkownik = await DodajTestowegoUzytkownikaAsync("testowy_uzytkownik");
 
             var istniejacaOferta = new Oferta
             {
-                IdOferta = 1,
                 Nazwa = "iPhone 15 Pro Max 256GB",
                 Link = "https://www.mediaexpert.pl/telefony/iphone-15-pro-max",
                 Cena = 5999.99m,
                 Opis = "Najnowszy iPhone",
                 Aktywna = true,
                 DataDodania = DateTime.UtcNow,
-                UzytkownikId = uzytkownik.IdUzytkownik
+                IdUzytkownik = uzytkownik.Id
             };
             await _context.Oferty.AddAsync(istniejacaOferta);
             await _context.SaveChangesAsync();
@@ -78,25 +84,17 @@ namespace TechPromo.Testy.Unit
         public async Task SprawdzDuplikaty_LinkZParametramiUTM_ZwracaDuplikat()
         {
             // Arrange
-            var uzytkownik = new Uzytkownik 
-            { 
-                IdUzytkownik = Guid.NewGuid(),
-                UserName = "user1",
-                Email = "user1@test.pl",
-                PasswordHash = "hash"
-            };
-            await _context.Uzytkownicy.AddAsync(uzytkownik);
+            var uzytkownik = await DodajTestowegoUzytkownikaAsync("user1");
 
             var oferta = new Oferta
             {
-                IdOferta = 1,
                 Nazwa = "Samsung Galaxy S24",
                 Link = "https://euro.com.pl/samsung-s24",
                 Cena = 3999.00m,
                 Opis = "Opis",
                 Aktywna = true,
                 DataDodania = DateTime.UtcNow,
-                UzytkownikId = uzytkownik.IdUzytkownik
+                IdUzytkownik = uzytkownik.Id
             };
             await _context.Oferty.AddAsync(oferta);
             await _context.SaveChangesAsync();
@@ -118,25 +116,17 @@ namespace TechPromo.Testy.Unit
         public async Task SprawdzDuplikaty_LinkZWWW_ZwracaDuplikat()
         {
             // Arrange
-            var uzytkownik = new Uzytkownik 
-            { 
-                IdUzytkownik = Guid.NewGuid(),
-                UserName = "user2",
-                Email = "user2@test.pl",
-                PasswordHash = "hash"
-            };
-            await _context.Uzytkownicy.AddAsync(uzytkownik);
+            var uzytkownik = await DodajTestowegoUzytkownikaAsync("user2");
 
             var oferta = new Oferta
             {
-                IdOferta = 1,
                 Nazwa = "MacBook Pro M3",
                 Link = "https://apple.pl/macbook-pro",
                 Cena = 9999.00m,
                 Opis = "Opis",
                 Aktywna = true,
                 DataDodania = DateTime.UtcNow,
-                UzytkownikId = uzytkownik.IdUzytkownik
+                IdUzytkownik = uzytkownik.Id
             };
             await _context.Oferty.AddAsync(oferta);
             await _context.SaveChangesAsync();
@@ -157,25 +147,17 @@ namespace TechPromo.Testy.Unit
         public async Task SprawdzDuplikaty_PodobnyTytul_ZwracaDuplikat()
         {
             // Arrange
-            var uzytkownik = new Uzytkownik 
-            { 
-                IdUzytkownik = Guid.NewGuid(),
-                UserName = "user3",
-                Email = "user3@test.pl",
-                PasswordHash = "hash"
-            };
-            await _context.Uzytkownicy.AddAsync(uzytkownik);
+            var uzytkownik = await DodajTestowegoUzytkownikaAsync("user3");
 
             var oferta = new Oferta
             {
-                IdOferta = 1,
                 Nazwa = "PlayStation 5 Slim Digital Edition 1TB Biala",
                 Link = "https://mediamarkt.pl/ps5-slim",
                 Cena = 1999.00m,
                 Opis = "Opis",
                 Aktywna = true,
                 DataDodania = DateTime.UtcNow,
-                UzytkownikId = uzytkownik.IdUzytkownik
+                IdUzytkownik = uzytkownik.Id
             };
             await _context.Oferty.AddAsync(oferta);
             await _context.SaveChangesAsync();
@@ -190,32 +172,24 @@ namespace TechPromo.Testy.Unit
 
             // Assert
             wynik.CzyPotencjalnyDuplikat.Should().BeTrue();
-            wynik.PotencjalneDuplikaty.First().WynikPodobienstwa.Should().BeGreaterOrEqualTo(0.75);
+            wynik.PotencjalneDuplikaty.First().WynikPodobienstwa.Should().BeGreaterThanOrEqualTo(0.75);
         }
 
         [Fact]
         public async Task SprawdzDuplikaty_ZupelnieInnyProdukt_NieZwracaDuplikatu()
         {
             // Arrange
-            var uzytkownik = new Uzytkownik 
-            { 
-                IdUzytkownik = Guid.NewGuid(),
-                UserName = "user4",
-                Email = "user4@test.pl",
-                PasswordHash = "hash"
-            };
-            await _context.Uzytkownicy.AddAsync(uzytkownik);
+            var uzytkownik = await DodajTestowegoUzytkownikaAsync("user4");
 
             var oferta = new Oferta
             {
-                IdOferta = 1,
                 Nazwa = "Lodowka Samsung 380L NoFrost",
                 Link = "https://rtv.pl/lodowka",
                 Cena = 2499.00m,
                 Opis = "Opis",
                 Aktywna = true,
                 DataDodania = DateTime.UtcNow,
-                UzytkownikId = uzytkownik.IdUzytkownik
+                IdUzytkownik = uzytkownik.Id
             };
             await _context.Oferty.AddAsync(oferta);
             await _context.SaveChangesAsync();
@@ -237,25 +211,17 @@ namespace TechPromo.Testy.Unit
         public async Task SprawdzDuplikaty_OfertaStarsza30Dni_NieZwracaDuplikatu()
         {
             // Arrange
-            var uzytkownik = new Uzytkownik 
-            { 
-                IdUzytkownik = Guid.NewGuid(),
-                UserName = "user5",
-                Email = "user5@test.pl",
-                PasswordHash = "hash"
-            };
-            await _context.Uzytkownicy.AddAsync(uzytkownik);
+            var uzytkownik = await DodajTestowegoUzytkownikaAsync("user5");
 
             var staraOferta = new Oferta
             {
-                IdOferta = 1,
                 Nazwa = "Xbox Series X 1TB",
                 Link = "https://sklep.pl/xbox",
                 Cena = 2199.00m,
                 Opis = "Opis",
                 Aktywna = true,
                 DataDodania = DateTime.UtcNow.AddDays(-35), // Starsza niz 30 dni
-                UzytkownikId = uzytkownik.IdUzytkownik
+                IdUzytkownik = uzytkownik.Id
             };
             await _context.Oferty.AddAsync(staraOferta);
             await _context.SaveChangesAsync();
@@ -276,25 +242,17 @@ namespace TechPromo.Testy.Unit
         public async Task SprawdzDuplikaty_OfertaNieaktywna_NieZwracaDuplikatu()
         {
             // Arrange
-            var uzytkownik = new Uzytkownik 
-            { 
-                IdUzytkownik = Guid.NewGuid(),
-                UserName = "user6",
-                Email = "user6@test.pl",
-                PasswordHash = "hash"
-            };
-            await _context.Uzytkownicy.AddAsync(uzytkownik);
+            var uzytkownik = await DodajTestowegoUzytkownikaAsync("user6");
 
             var nieaktywnaOferta = new Oferta
             {
-                IdOferta = 1,
                 Nazwa = "Nintendo Switch OLED",
                 Link = "https://sklep.pl/switch",
                 Cena = 1499.00m,
                 Opis = "Opis",
                 Aktywna = false, // Nieaktywna
                 DataDodania = DateTime.UtcNow,
-                UzytkownikId = uzytkownik.IdUzytkownik
+                IdUzytkownik = uzytkownik.Id
             };
             await _context.Oferty.AddAsync(nieaktywnaOferta);
             await _context.SaveChangesAsync();

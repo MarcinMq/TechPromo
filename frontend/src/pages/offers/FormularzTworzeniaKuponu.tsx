@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Ticket, Clock, Tag, Store, FileText, Upload, Image, X, ShoppingBag } from 'lucide-react';
+import { Ticket, Clock, Tag, Store, FileText, Upload, Image, X, ShoppingBag, Clipboard } from 'lucide-react';
 import { getAuthToken, getUserData } from '../../utils/auth';
 
 interface CouponFormData {
@@ -383,6 +383,38 @@ const FormularzTworzeniaKuponu: React.FC = () => {
   const onDragOver = (e:React.DragEvent<HTMLDivElement>, idx:number) => { e.preventDefault(); if (dragIndex===null||dragIndex===idx) return; setExistingImages(prev => { const arr=[...prev]; const [m]=arr.splice(dragIndex,1); arr.splice(idx,0,m); return arr; }); setDragIndex(idx); };
   const onDragEnd = () => { setDragIndex(null); };
 
+  // Obsługa wklejania zdjęć przez Ctrl+V
+  const handlePaste = useCallback((e: ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageFiles: File[] = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          // Nadaj nazwę pliku z datą
+          const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+          const newFile = new File([file], `wklejone-${timestamp}.${file.type.split('/')[1]}`, { type: file.type });
+          imageFiles.push(newFile);
+        }
+      }
+    }
+
+    if (imageFiles.length > 0) {
+      e.preventDefault();
+      handleFileSelect(imageFiles);
+      setMessage({ type: 'success', text: `📋 Wklejono ${imageFiles.length} zdjęcie(cia) ze schowka!` });
+      setTimeout(() => setMessage(null), 3000);
+    }
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, [handlePaste]);
+
   return (
     <div className="min-h-screen py-8 bg-gray-50 dark:bg-gray-900 transition-colors">
       <div className="max-w-4xl mx-auto px-4">
@@ -718,7 +750,10 @@ const FormularzTworzeniaKuponu: React.FC = () => {
                     <div className="text-center">
                       <Image className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4 transition-colors" />
                       <p className="text-gray-600 dark:text-gray-400 mb-2 transition-colors">
-                        Przeciągnij i upuść zdjęcia tutaj lub
+                        Przeciągnij i upuść zdjęcia tutaj
+                      </p>
+                      <p className="text-gray-500 dark:text-gray-500 text-sm mb-3 flex items-center justify-center gap-1">
+                        <Clipboard className="w-4 h-4" /> lub wklej ze schowka <kbd className="px-1.5 py-0.5 bg-gray-200 dark:bg-gray-700 rounded text-xs font-mono">Ctrl+V</kbd>
                       </p>
                       <label className="inline-flex items-center px-4 py-2 bg-indigo-500 dark:bg-indigo-600 text-white rounded-lg hover:bg-indigo-600 dark:hover:bg-indigo-700 transition-all cursor-pointer">
                         <Upload className="w-4 h-4 mr-2" />

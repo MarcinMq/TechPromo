@@ -55,7 +55,7 @@ namespace TechPromo.Testy.Integration
             // Arrange
             var daneRejestracji = new RegisterDto
             {
-                UserName = $"TestowyUser_{Guid.NewGuid():N}",
+                Nick = $"TestowyUser_{Guid.NewGuid():N}",
                 Email = $"test_{Guid.NewGuid():N}@example.com",
                 Password = "SilneHaslo123!"
             };
@@ -73,7 +73,7 @@ namespace TechPromo.Testy.Integration
             // Arrange
             var daneRejestracji = new RegisterDto
             {
-                UserName = "", // Pusta nazwa
+                Nick = "", // Pusta nazwa
                 Email = "niepoprawny-email",
                 Password = "123" // Za krotkie haslo
             };
@@ -109,7 +109,7 @@ namespace TechPromo.Testy.Integration
             var unikalnyEmail = $"test_{Guid.NewGuid():N}@example.com";
             var daneRejestracji = new RegisterDto
             {
-                UserName = $"User_{Guid.NewGuid():N}",
+                Nick = $"User_{Guid.NewGuid():N}",
                 Email = unikalnyEmail,
                 Password = "PoprawneHaslo123!"
             };

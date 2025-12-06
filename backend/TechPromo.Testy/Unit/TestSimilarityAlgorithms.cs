@@ -243,7 +243,7 @@ namespace TechPromo.Testy.Unit
             var kombinacja = (levenshtein * 0.4) + (jaccard * 0.6);
 
             // Assert
-            kombinacja.Should().BeGreaterOrEqualTo(0.6);
+            kombinacja.Should().BeGreaterThanOrEqualTo(0.6);
         }
 
         [Fact]
