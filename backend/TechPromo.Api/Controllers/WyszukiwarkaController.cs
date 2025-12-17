@@ -244,4 +244,40 @@ public class WyszukiwarkaController : ControllerBase
             return StatusCode(500, new { message = "Wystąpił błąd podczas pobierania statystyk" });
         }
     }
+
+    /// <summary>
+    /// Czyści indeks i synchronizuje od nowa wszystkie oferty
+    /// POST /api/wyszukiwarka/resynchronizuj
+    /// </summary>
+    [HttpPost("resynchronizuj")]
+    public async Task<IActionResult> ResynchronizujIndeks()
+    {
+        try
+        {
+            _logger.LogInformation("Rozpoczynam pełną resynchronizację indeksu...");
+            
+            // 1. Usuń wszystkie dokumenty z indeksu
+            var usuniete = await _searchService.UsunWszystkieOfertyAsync();
+            _logger.LogInformation("Usunięto {Count} dokumentów z indeksu", usuniete);
+            
+            // 2. Poczekaj chwilę na propagację usunięcia
+            await Task.Delay(1000);
+            
+            // 3. Zsynchronizuj wszystkie oferty z bazy
+            var (sukces, bledy) = await _syncService.SynchronizujWszystkieOfertyAsync();
+            
+            return Ok(new 
+            { 
+                message = "Resynchronizacja zakończona",
+                usunietychZIndeksu = usuniete,
+                zsynchronizowanych = sukces,
+                bledow = bledy
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas resynchronizacji: {Message}", ex.Message);
+            return StatusCode(500, new { message = "Wystąpił błąd podczas resynchronizacji", error = ex.Message });
+        }
+    }
 }

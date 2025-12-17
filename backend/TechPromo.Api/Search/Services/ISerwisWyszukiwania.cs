@@ -51,4 +51,9 @@ public interface ISerwisWyszukiwania
     /// Pobiera podobne oferty na podstawie kategorii i nazwy
     /// </summary>
     Task<List<ModelWyszukiwaniaOferty>> PobierzPodobneOfertyAsync(string ofertaId, string kategoria, string nazwa, int liczbaWynikow = 5);
+
+    /// <summary>
+    /// Usuwa wszystkie dokumenty z indeksu
+    /// </summary>
+    Task<int> UsunWszystkieOfertyAsync();
 }

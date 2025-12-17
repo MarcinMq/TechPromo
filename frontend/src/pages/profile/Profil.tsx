@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { getAuthHeaders, isAuthenticated, logout, saveUserSession, getAuthToken } from '../../utils/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authorizedFetch, apiPost, apiPut, apiDelete } from '../../utils/api';
-import { MessageCircle, ShoppingBag, BarChart3, Flag, Filter, Flame, Snowflake, Users, Trophy, Clipboard, Trash2, Zap, Check } from 'lucide-react';
+import { MessageCircle, ShoppingBag, BarChart3, Flag, Flame, Snowflake, Trash2, Zap, Check, Shield, Settings, AlertTriangle, BookmarkCheck, Eye, UserCog, Award, FileText } from 'lucide-react';
 
 type OdznakaData = {
   idOdznaka: number;
@@ -684,7 +684,7 @@ const Profil = () => {
                   {data.odznaki.map((odznaka) => (
                     <div
                       key={odznaka.idOdznaka}
-                      className="overflow-hidden rounded-lg border dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-md hover:scale-105 transition-all">
+                      className="overflow-hidden rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 p-4 hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-md hover:scale-105 transition-all">
                       <div className="flex items-center gap-4">
                         <div className="text-3xl">{odznaka.ikona || '🏆'}</div>
                         <div className="flex-1">
@@ -707,94 +707,124 @@ const Profil = () => {
           </div>
         </div>
 
-  {/* Sekcja: funkcje z Panelu Użytkownika */}
-        <div className="mt-8 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm p-6 transition-colors">
-          {message && (
-            <div className={`p-3 rounded-lg mb-4 text-center font-semibold transition-colors ${
-              message.includes('Błąd') ? 'bg-red-100 dark:bg-red-900/30 border border-red-300 dark:border-red-800 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-800 text-green-700 dark:text-green-400'
-            }`}>
-              {message}
+        {/* Powiadomienia */}
+        {message && (
+          <div className={`mt-6 p-3 rounded-lg text-center font-medium text-sm ${
+            message.includes('Błąd') ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+          }`}>
+            {message}
+          </div>
+        )}
+
+        {/* Panel z nawigacją boczną */}
+        <div className="mt-8 flex flex-col lg:flex-row gap-6">
+          {/* Sidebar - Nawigacja */}
+          <div className="lg:w-64 flex-shrink-0">
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-4">
+              {/* Sekcja użytkownika */}
+              <div className="px-4 py-3 bg-blue-200 dark:bg-blue-700 border-b border-blue-300 dark:border-blue-600">
+                <span className="text-sm font-bold text-blue-900 dark:text-white uppercase">Twoje konto</span>
+              </div>
+              <nav>
+                <button onClick={() => setActiveTab('offers')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'offers' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                  <ShoppingBag className="w-5 h-5" /> Moje oferty <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{offers.length}</span>
+                </button>
+                <button onClick={() => setActiveTab('activity')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'activity' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                  <BarChart3 className="w-5 h-5" /> Aktywność <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{userActivity.length}</span>
+                </button>
+                <button onClick={() => setActiveTab('comments')} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'comments' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                  <MessageCircle className="w-5 h-5" /> Komentarze <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{userComments.length}</span>
+                </button>
+                <button onClick={() => { setActiveTab('zapisane'); fetchSavedOffers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${activeTab === 'zapisane' ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                  <BookmarkCheck className="w-5 h-5" /> Zapisane <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{savedOffers.length}</span>
+                </button>
+              </nav>
+
+              {/* Sekcja moderatora */}
+              {(data?.rola === 'Moderator' || data?.rola === 'Admin') && (
+                <>
+                  <div className="px-4 py-3 bg-yellow-300 dark:bg-yellow-700 border-y border-yellow-400 dark:border-yellow-600">
+                    <span className="text-sm font-bold text-yellow-900 dark:text-white uppercase flex items-center gap-1"><Shield className="w-4 h-4" /> Moderacja</span>
+                  </div>
+                  <nav>
+                    <button onClick={()=>{ setActiveTab('modComments'); fetchModComments(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'modComments' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <MessageCircle className="w-5 h-5" /> Komentarze <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{modComments.length}</span>
+                    </button>
+                    <button onClick={()=>{ setActiveTab('modOffers'); fetchModOffers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${data?.rola !== 'Admin' ? 'border-b border-gray-100 dark:border-gray-700' : ''} ${activeTab === 'modOffers' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <Eye className="w-5 h-5" /> Oferty <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{modOffers.filter(o => !o.zatwierdzona).length}</span>
+                    </button>
+                    {data?.rola !== 'Admin' && (
+                      <button onClick={()=>{ setActiveTab('modReports'); fetchModReports(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${activeTab === 'modReports' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                        <AlertTriangle className="w-5 h-5" /> Zgłoszenia {modReports.length > 0 && <span className="ml-auto px-1.5 py-0.5 text-xs bg-red-500 text-white rounded">{modReports.length}</span>}
+                      </button>
+                    )}
+                  </nav>
+                </>
+              )}
+
+              {/* Sekcja admina */}
+              {data?.rola === 'Admin' && (
+                <>
+                  <div className="px-4 py-3 bg-red-300 dark:bg-red-700 border-y border-red-400 dark:border-red-600">
+                    <span className="text-sm font-bold text-red-900 dark:text-white uppercase flex items-center gap-1"><Settings className="w-4 h-4" /> Administracja</span>
+                  </div>
+                  <nav>
+                    <button onClick={()=>{ setActiveTab('adminUsers'); fetchAdminUsers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminUsers' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <UserCog className="w-5 h-5" /> Użytkownicy <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{adminUsers.length}</span>
+                    </button>
+                    <button onClick={()=>{ setActiveTab('adminBadges'); fetchAdminBadges(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminBadges' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <Award className="w-5 h-5" /> Odznaki <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{adminBadges.length}</span>
+                    </button>
+                    <button onClick={()=>{ setActiveTab('adminOffers'); fetchAdminOffers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminOffers' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <FileText className="w-5 h-5" /> Oferty <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{adminOffers.length}</span>
+                    </button>
+                    <button onClick={()=>{ setActiveTab('modReports'); fetchAdminReports(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${activeTab === 'modReports' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <AlertTriangle className="w-5 h-5" /> Zgłoszenia {modReports.length > 0 && <span className="ml-auto px-1.5 py-0.5 text-xs bg-red-500 text-white rounded">{modReports.length}</span>}
+                    </button>
+                  </nav>
+                </>
+              )}
             </div>
-          )}
-          <div className="flex flex-wrap gap-3 justify-center mb-6">
-            <button 
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'offers' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              onClick={() => setActiveTab('offers')}
-            >
-              <ShoppingBag className="w-5 h-5 inline mr-1" /> Moje oferty ({offers.length})
-            </button>
-            <button 
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'activity' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              onClick={() => setActiveTab('activity')}
-            >
-              <BarChart3 className="w-5 h-5 inline mr-1" /> Aktywność ({userActivity.length})
-            </button>
-            <button 
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'comments' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              onClick={() => setActiveTab('comments')}
-            >
-              <MessageCircle className="w-5 h-5 inline mr-1" /> Komentarze ({userComments.length})
-            </button>
-            <button 
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${activeTab === 'zapisane' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`}
-              onClick={() => { setActiveTab('zapisane'); fetchSavedOffers(); }}
-            >
-              <Check className="w-5 h-5 inline mr-1" /> Zapisane ({savedOffers.length})
-            </button>
           </div>
 
-          {(data?.rola === 'Moderator' || data?.rola === 'Admin') && (
-            <div className="mt-2 border-t dark:border-gray-700 pt-4 transition-colors">
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-3 transition-colors">Moderacja</div>
-              <div className="flex flex-wrap gap-3 mb-6">
-                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='modComments'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('modComments'); fetchModComments(); }}><MessageCircle className="inline w-4 h-4 mr-1"/>Komentarze ({modComments.length})</button>
-                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='modOffers'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('modOffers'); fetchModOffers(); }}><ShoppingBag className="inline w-4 h-4 mr-1"/>Oferty</button>
-                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='modReports'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('modReports'); data?.rola==='Admin'?fetchAdminReports():fetchModReports(); }}><Clipboard className="inline w-4 h-4 mr-1"/>Zgłoszenia</button>
-              </div>
-            </div>
-          )}
-
-          {data?.rola === 'Admin' && (
-            <div className="mt-2 border-t dark:border-gray-700 pt-4 transition-colors">
-              <div className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-3 transition-colors">Administracja</div>
-              <div className="flex flex-wrap gap-3 mb-6">
-                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='adminUsers'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('adminUsers'); fetchAdminUsers(); }}><Users className="inline w-4 h-4 mr-1"/>Użytkownicy ({adminUsers.length})</button>
-                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='adminBadges'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('adminBadges'); fetchAdminBadges(); }}><Trophy className="inline w-4 h-4 mr-1"/>Odznaki ({adminBadges.length})</button>
-                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='adminOffers'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('adminOffers'); fetchAdminOffers(); }}><ShoppingBag className="inline w-4 h-4 mr-1"/>Oferty (admin)</button>
-                <button className={`px-4 py-2 rounded-lg transition-all ${activeTab==='modReports'?'bg-blue-600 dark:bg-blue-700 text-white':'bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600'}`} onClick={()=>{ setActiveTab('modReports'); fetchAdminReports(); }}><Clipboard className="inline w-4 h-4 mr-1"/>Zgłoszenia</button>
-              </div>
-            </div>
-          )}
+          {/* Główna zawartość */}
+          <div className="flex-1 min-w-0">
+            <div className={`rounded-lg border p-6 ${
+              activeTab.startsWith('admin') || (activeTab === 'modReports' && data?.rola === 'Admin') 
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700' 
+                : (activeTab === 'modComments' || activeTab === 'modOffers' || (activeTab === 'modReports' && data?.rola !== 'Admin'))
+                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700' 
+                  : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+            }`}>
 
           {activeTab === 'offers' && (
             <div>
-              <div className="mb-6">
-                <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-gray-100 flex items-center transition-colors"><Filter className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" /> Filtry</h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <select value={categoryFilter} onChange={(e)=>setCategoryFilter(e.target.value)} className="p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
-                    <option value="">Wszystkie kategorie</option>
-                    <option value="Elektronika">Elektronika</option>
-                    <option value="Moda">Moda</option>
-                    <option value="Dom i Ogród">Dom i Ogród</option>
-                    <option value="Sport">Sport</option>
-                    <option value="Książki">Książki</option>
-                    <option value="Gry">Gry</option>
-                    <option value="Kosmetyki">Kosmetyki</option>
-                    <option value="Jedzenie">Jedzenie</option>
-                    <option value="Podróże">Podróże</option>
-                    <option value="Inne">Inne</option>
-                  </select>
-                  <select value={sortBy} onChange={(e)=>setSortBy(e.target.value as any)} className="p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 outline-none transition-colors">
-                    <option value="newest">Najnowsze</option>
-                    <option value="hot">Najgorętsze</option>
-                    <option value="price">Najtańsze</option>
-                  </select>
-                </div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Moje oferty</h3>
+              
+              <div className="mb-4 flex flex-wrap gap-2">
+                <select value={categoryFilter} onChange={(e)=>setCategoryFilter(e.target.value)} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                  <option value="">Wszystkie kategorie</option>
+                  <option value="Elektronika">Elektronika</option>
+                  <option value="Moda">Moda</option>
+                  <option value="Dom i Ogród">Dom i Ogród</option>
+                  <option value="Sport">Sport</option>
+                  <option value="Książki">Książki</option>
+                  <option value="Gry">Gry</option>
+                  <option value="Kosmetyki">Kosmetyki</option>
+                  <option value="Jedzenie">Jedzenie</option>
+                  <option value="Podróże">Podróże</option>
+                  <option value="Inne">Inne</option>
+                </select>
+                <select value={sortBy} onChange={(e)=>setSortBy(e.target.value as any)} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                  <option value="newest">Najnowsze</option>
+                  <option value="hot">Najgorętsze</option>
+                  <option value="price">Najtańsze</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {offers.map(offer => (
-                  <div key={offer.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
+                  <div key={offer.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="mb-2 flex justify-between items-start">
                       <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
                       <span className="text-xs px-2 py-1 rounded-full bg-blue-600 dark:bg-blue-700 text-white transition-colors">{offer.kategoria}</span>
@@ -842,7 +872,8 @@ const Profil = () => {
           )}
 
           {activeTab === 'activity' && (
-            <div className="space-y-3">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Historia aktywności</h3>
               {userActivity.map(a => (
                 <div key={a.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start gap-3">
                   <div className="text-2xl">
@@ -871,7 +902,8 @@ const Profil = () => {
           )}
 
           {activeTab === 'comments' && (
-            <div className="space-y-3">
+            <div className="space-y-2">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Twoje komentarze</h3>
               {userComments.map(c => (
                 <div key={c.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start justify-between">
                   <div>
@@ -896,7 +928,8 @@ const Profil = () => {
 
           {activeTab === 'zapisane' && (
             <div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Zapisane oferty</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {savedOffers.map(offer => (
                   <div key={offer.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
                     <div className="mb-2 flex justify-between items-start">
@@ -990,131 +1023,211 @@ const Profil = () => {
           )}
 
           {activeTab === 'modComments' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {modComments.map(c => (
-                <div key={c.idKomentarz} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
-                  <h4 className="font-bold mb-2 text-gray-900 dark:text-gray-100 transition-colors">{c.autor}</h4>
-                  <p className="mb-2 text-gray-700 dark:text-gray-300 transition-colors"><strong className="text-gray-900 dark:text-gray-100">Treść:</strong> {c.tresc}</p>
-                  <p className="mb-2 text-gray-700 dark:text-gray-300 transition-colors"><strong className="text-gray-900 dark:text-gray-100">Oferta:</strong> {c.ofertaTytul}</p>
-                  <p className="mb-4 text-sm text-gray-600 dark:text-gray-400 transition-colors">{c.dataDodania} {c.zgloszen>0 && (<span className="ml-2 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 px-2 py-0.5 rounded-full text-xs transition-colors">Zgłoszeń: {c.zgloszen}</span>)}</p>
-                  <div className="flex gap-2">
-                    <button className="px-3 py-1 rounded-lg bg-yellow-500 dark:bg-yellow-600 text-white hover:bg-yellow-600 dark:hover:bg-yellow-500 transition-colors" onClick={()=>warnComment(c.idKomentarz)} disabled={loadingList}>Ostrzeż</button>
-                    <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteCommentMod(c.idKomentarz)} disabled={loadingList}>Usuń</button>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Komentarze do moderacji</h3>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{modComments.length} komentarzy</span>
+              </div>
+              <div className="space-y-3">
+                {modComments.map(c => (
+                  <div key={c.idKomentarz} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{c.autor}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{c.dataDodania}</span>
+                          {c.zgloszen > 0 && <span className="px-2 py-0.5 rounded text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">{c.zgloszen} zgł.</span>}
+                        </div>
+                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">{c.tresc}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Oferta: {c.ofertaTytul || '-'}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={()=>warnComment(c.idKomentarz)} disabled={loadingList}>Ostrzeż</button>
+                        <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteCommentMod(c.idKomentarz)} disabled={loadingList}>Usuń</button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {modComments.length===0 && (<div className="text-center text-gray-600 dark:text-gray-400 col-span-full transition-colors">Brak komentarzy do moderacji</div>)}
+                ))}
+                {modComments.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak komentarzy do moderacji</div>}
+              </div>
             </div>
           )}
 
           {activeTab === 'modOffers' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {modOffers.map(o => (
-                <div key={o.idOferta} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
-                  <div className="flex justify-between items-start mb-2"><h4 className="font-bold text-gray-900 dark:text-gray-100 transition-colors">{o.tytul}</h4><span className={`text-xs px-2 py-1 rounded-full transition-colors ${o.zatwierdzona?'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{o.zatwierdzona?'Zatwierdzona':'Oczekuje'}</span></div>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 transition-colors">{o.opis}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 transition-colors">Autor: {o.autor} • {o.dataDodania}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {!o.zatwierdzona && <button className="px-3 py-1 rounded-lg bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors" onClick={()=>approveOfferMod(o.idOferta)} disabled={loadingList}><Check className="inline w-4 h-4 mr-1"/>Zatwierdź</button>}
-                    <button className="px-3 py-1 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors" onClick={()=>{const isKupon=o.typ==='kupon'; window.location.href = isKupon?`/stworz-oferte/kupon?edit=${o.idOferta}`:`/stworz-oferte/okazja?edit=${o.idOferta}`;}} disabled={loadingList}>Edytuj</button>
-                    <button className="px-3 py-1 rounded-lg bg-yellow-500 dark:bg-yellow-600 text-white hover:bg-yellow-600 dark:hover:bg-yellow-500 transition-colors" onClick={()=>rejectOfferMod(o.idOferta)} disabled={loadingList}>Odrzuć</button>
-                    <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteOfferMod(o.idOferta)} disabled={loadingList}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Oferty do zatwierdzenia</h3>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{modOffers.filter(o => !o.zatwierdzona).length} oczekujących</span>
+              </div>
+              <div className="space-y-3">
+                {modOffers.map(o => (
+                  <div key={o.idOferta} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{o.tytul}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${o.zatwierdzona ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{o.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 line-clamp-2">{o.opis}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Autor: {o.autor} • {o.dataDodania}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+                        {!o.zatwierdzona && <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={()=>approveOfferMod(o.idOferta)} disabled={loadingList}>Zatwierdź</button>}
+                        <button className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700" onClick={()=>{const isKupon=o.typ==='kupon'; window.location.href = isKupon?`/stworz-oferte/kupon?edit=${o.idOferta}`:`/stworz-oferte/okazja?edit=${o.idOferta}`;}} disabled={loadingList}>Edytuj</button>
+                        <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={()=>rejectOfferMod(o.idOferta)} disabled={loadingList}>Odrzuć</button>
+                        <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteOfferMod(o.idOferta)} disabled={loadingList}>Usuń</button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
-              {modOffers.length===0 && (<div className="text-center text-gray-600 dark:text-gray-400 col-span-full transition-colors">Brak ofert do moderacji</div>)}
+                ))}
+                {modOffers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak ofert do moderacji</div>}
+              </div>
             </div>
           )}
 
           {activeTab === 'modReports' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {modReports.map((r:any) => (
-                <div key={r.id} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
-                  <div className="text-sm mb-2"><span className="bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400 px-2 py-0.5 rounded-full transition-colors">#{r.id}</span> <span className="text-gray-900 dark:text-gray-100 transition-colors">Zgłoszenie</span></div>
-                  <div className="mb-3 text-gray-900 dark:text-gray-100 transition-colors"><strong>Treść:</strong> {r.tresc}</div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-3 transition-colors">Zgłoszone przez: {r.zgloszonePrzez} • {r.dataZgloszenia}</div>
-                  {data?.rola==='Admin' ? (
-                    <div className="flex gap-2">
-                      {r.idKomentarz && <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteReportedCommentAdmin(r.idKomentarz, r.id)} disabled={loadingList}>Usuń komentarz i zamknij</button>}
-                      <button className="px-3 py-1 rounded-lg bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors" onClick={()=>approveReportAdmin(r.id)} disabled={loadingList}>Zatwierdź</button>
-                      <button className="px-3 py-1 rounded-lg bg-gray-600 dark:bg-gray-700 text-white hover:bg-gray-700 dark:hover:bg-gray-600 transition-colors" onClick={()=>rejectReportAdmin(r.id)} disabled={loadingList}>Odrzuć</button>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zgłoszenia</h3>
+                {modReports.length > 0 && <span className="text-sm text-red-500 font-medium">{modReports.length} do rozpatrzenia</span>}
+              </div>
+              <div className="space-y-3">
+                {modReports.map((r:any) => (
+                  <div key={r.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">#{r.id}</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">{r.dataZgloszenia}</span>
+                        </div>
+                        <p className="text-sm text-gray-900 dark:text-gray-100 mb-1">{r.tresc}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Zgłosił: {r.zgloszonePrzez}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0">
+                        {data?.rola==='Admin' ? (
+                          <>
+                            {r.idKomentarz && <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteReportedCommentAdmin(r.idKomentarz, r.id)} disabled={loadingList}>Usuń kom.</button>}
+                            <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={()=>approveReportAdmin(r.id)} disabled={loadingList}>Zatwierdź</button>
+                            <button className="px-2 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700" onClick={()=>rejectReportAdmin(r.id)} disabled={loadingList}>Odrzuć</button>
+                          </>
+                        ) : (
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Brak akcji</span>
+                        )}
+                      </div>
                     </div>
-                  ) : (
-                    <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">Szczegóły do decyzji moderatora</div>
-                  )}
-                </div>
-              ))}
-              {modReports.length===0 && (<div className="text-center text-gray-600 dark:text-gray-400 col-span-full transition-colors">Brak zgłoszeń</div>)}
+                  </div>
+                ))}
+                {modReports.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak zgłoszeń</div>}
+              </div>
             </div>
           )}
 
           {activeTab === 'adminUsers' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {adminUsers.map(u => (
-                <div key={u.id} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
-                  <h4 className="font-bold mb-1 text-gray-900 dark:text-gray-100 transition-colors">{u.nick}</h4>
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 transition-colors">{u.email}</div>
-                  <div className="text-sm mb-1 text-gray-700 dark:text-gray-300 transition-colors">Rola: <span className="font-semibold text-gray-900 dark:text-gray-100">{u.rola}</span></div>
-                  <div className="text-sm mb-3 text-gray-700 dark:text-gray-300 transition-colors">Punkty: <span className="font-semibold text-green-600 dark:text-green-400">{u.punkty}</span></div>
-                  <div className="space-y-2">
-                    <input type="number" className="w-full p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors" placeholder="Nowe punkty" onKeyDown={(e)=>{ if(e.key==='Enter'){ const v=parseInt((e.target as HTMLInputElement).value); if(!isNaN(v)) updateUserPoints(u.id, v); } }} />
-                    <select value={u.rola} onChange={(e)=>changeUserRole(u.id, e.target.value)} className="w-full p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors">
-                      <option value="Uzytkownik">Uzytkownik</option>
-                      <option value="Moderator">Moderator</option>
-                      <option value="Admin">Admin</option>
-                    </select>
-                    <button className="w-full px-3 py-2 rounded-lg bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors" onClick={()=>recalcBadgesForUser(u.id)} disabled={loadingList}><Zap className="inline w-4 h-4 mr-1"/>Przelicz odznaki</button>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zarządzanie użytkownikami</h3>
+                <span className="text-sm text-gray-500 dark:text-gray-400">{adminUsers.length} użytkowników</span>
+              </div>
+              <div className="space-y-3">
+                {adminUsers.map(u => (
+                  <div key={u.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{u.nick}</span>
+                          <span className={`text-xs ${u.emailConfirmed ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{u.emailConfirmed ? '✓' : '✗'}</span>
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{u.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <select value={u.rola} onChange={(e)=>changeUserRole(u.id, e.target.value)} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded">
+                          <option value="Uzytkownik">Użytkownik</option>
+                          <option value="Moderator">Moderator</option>
+                          <option value="Admin">Admin</option>
+                        </select>
+                        <div className="flex items-center gap-1">
+                          <span className="text-xs text-gray-500 dark:text-gray-400">Pkt:</span>
+                          <input type="number" defaultValue={u.punkty} className="w-16 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" onKeyDown={(e)=>{ if(e.key==='Enter'){ const v=parseInt((e.target as HTMLInputElement).value); if(!isNaN(v)) updateUserPoints(u.id, v); } }} />
+                        </div>
+                        <button className="px-2 py-1 text-xs rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-800/40" onClick={()=>recalcBadgesForUser(u.id)} disabled={loadingList}>Przelicz</button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+                {adminUsers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak użytkowników</div>}
+              </div>
             </div>
           )}
 
           {activeTab === 'adminBadges' && (
             <div>
-              <form onSubmit={createBadge} className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border dark:border-gray-700 mb-4 grid grid-cols-1 md:grid-cols-4 gap-3 transition-all">
-                <input value={newBadge.nazwa} onChange={e=>setNewBadge({...newBadge, nazwa:e.target.value})} placeholder="Nazwa" className="p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors" required />
-                <input value={newBadge.opis} onChange={e=>setNewBadge({...newBadge, opis:e.target.value})} placeholder="Opis" className="p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors" required />
-                <input value={newBadge.ikona} onChange={e=>setNewBadge({...newBadge, ikona:e.target.value})} placeholder="Ikona" className="p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg transition-colors" />
-                <button type="submit" className="px-3 py-2 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">Utwórz</button>
-              </form>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zarządzanie odznakami</h3>
+                <button className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700" onClick={recalcBadgesForAll}>Przelicz wszystkim</button>
+              </div>
+              
+              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600 mb-4">
+                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Nowa odznaka</h4>
+                <form onSubmit={createBadge} className="flex flex-wrap gap-2">
+                  <input value={newBadge.nazwa} onChange={e=>setNewBadge({...newBadge, nazwa:e.target.value})} placeholder="Nazwa" className="flex-1 min-w-[120px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" required />
+                  <input value={newBadge.opis} onChange={e=>setNewBadge({...newBadge, opis:e.target.value})} placeholder="Opis" className="flex-1 min-w-[150px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" required />
+                  <input value={newBadge.ikona} onChange={e=>setNewBadge({...newBadge, ikona:e.target.value})} placeholder="🏆" className="w-16 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-center" />
+                  <button type="submit" className="px-4 py-2 text-sm rounded bg-yellow-500 text-white hover:bg-yellow-600">Utwórz</button>
+                </form>
+              </div>
+              
+              <div className="space-y-2">
                 {adminBadges.map(b => (
-                  <div key={b.idOdznaka} className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-sm border dark:border-gray-700 text-center transition-all">
-                    <div className="text-4xl mb-2">{b.ikona}</div>
-                    <div className="font-bold text-gray-900 dark:text-gray-100 transition-colors">{b.nazwa}</div>
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-3 transition-colors">{b.opis}</div>
-                    <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteBadge(b.idOdznaka)}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
+                  <div key={b.idOdznaka} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 flex items-center gap-3">
+                    <span className="text-2xl">{b.ikona}</span>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{b.nazwa}</span>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">{b.opis}</p>
+                    </div>
+                    <button className="p-1.5 rounded text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={()=>deleteBadge(b.idOdznaka)}><Trash2 className="w-4 h-4"/></button>
                   </div>
                 ))}
-              </div>
-              <div className="mt-4">
-                <button className="px-4 py-2 rounded-lg bg-indigo-600 dark:bg-indigo-700 text-white hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors" onClick={recalcBadgesForAll}><Zap className="inline w-4 h-4 mr-1"/>Przelicz wszystkim</button>
+                {adminBadges.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak odznak</div>}
               </div>
             </div>
           )}
 
           {activeTab === 'adminOffers' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {adminOffers.map(offer => (
-                <div key={offer.id} className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border dark:border-gray-700 transition-all">
-                  <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
-                    <span className={`px-2 py-1 rounded-full text-xs transition-colors ${offer.zatwierdzona?'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400':'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
-                  </div>
-                  <p className="text-sm text-gray-700 dark:text-gray-300 mb-2 transition-colors">{offer.opis}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-3 transition-colors">Autor: {offer.autor} • {offer.dataUtworzenia}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {!offer.zatwierdzona && <button className="px-3 py-1 rounded-lg bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-600 transition-colors" onClick={()=>approveOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}><Check className="inline w-4 h-4 mr-1"/>Zatwierdź</button>}
-                    <button className="px-3 py-1 rounded-lg bg-blue-600 dark:bg-blue-700 text-white hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors" onClick={()=>editOfferAdmin(offer.idOferta ?? offer.id, offer.typ)} disabled={loadingList}>Edytuj</button>
-                    <button className="px-3 py-1 rounded-lg bg-yellow-500 dark:bg-yellow-600 text-white hover:bg-yellow-600 dark:hover:bg-yellow-500 transition-colors" onClick={()=>rejectOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Odrzuć</button>
-                    <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white hover:bg-red-700 dark:hover:bg-red-600 transition-colors" onClick={()=>deleteOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}><Trash2 className="inline w-4 h-4 mr-1"/>Usuń</button>
-                  </div>
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Wszystkie oferty</h3>
+                <div className="flex gap-3 text-sm">
+                  <span className="text-green-600 dark:text-green-400">{adminOffers.filter(o => o.zatwierdzona).length} zatwierdzonych</span>
+                  <span className="text-yellow-600 dark:text-yellow-400">{adminOffers.filter(o => !o.zatwierdzona).length} oczekujących</span>
                 </div>
-              ))}
-              {adminOffers.length===0 && (<div className="text-center text-gray-600 dark:text-gray-400 col-span-full transition-colors">Brak ofert</div>)}
+              </div>
+              <div className="space-y-3">
+                {adminOffers.map(offer => (
+                  <div key={offer.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{offer.tytul}</span>
+                          <span className={`px-2 py-0.5 rounded text-xs ${offer.zatwierdzona ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
+                        </div>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 line-clamp-2">{offer.opis}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Autor: {offer.autor} • {offer.dataUtworzenia}</p>
+                      </div>
+                      <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+                        {!offer.zatwierdzona && <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={()=>approveOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Zatwierdź</button>}
+                        <button className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700" onClick={()=>editOfferAdmin(offer.idOferta ?? offer.id, offer.typ)} disabled={loadingList}>Edytuj</button>
+                        <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={()=>rejectOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Odrzuć</button>
+                        <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Usuń</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {adminOffers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak ofert w systemie</div>}
+              </div>
             </div>
           )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

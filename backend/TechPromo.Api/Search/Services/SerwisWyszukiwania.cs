@@ -519,4 +519,46 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
             return new List<ModelWyszukiwaniaOferty>();
         }
     }
+
+    /// <inheritdoc/>
+    public async Task<int> UsunWszystkieOfertyAsync()
+    {
+        try
+        {
+            // Pobierz wszystkie ID dokumentów z indeksu
+            var searchOptions = new SearchOptions
+            {
+                Size = 1000, // Maksymalna liczba dokumentów do pobrania
+                Select = { "OfertaId" }
+            };
+
+            var response = await _searchClient.SearchAsync<ModelWyszukiwaniaOferty>("*", searchOptions);
+            var ids = new List<string>();
+            
+            await foreach (var result in response.Value.GetResultsAsync())
+            {
+                ids.Add(result.Document.OfertaId);
+            }
+
+            if (ids.Count == 0)
+            {
+                _logger.LogInformation("Indeks jest już pusty");
+                return 0;
+            }
+
+            // Usuń wszystkie dokumenty
+            var batch = IndexDocumentsBatch.Delete("OfertaId", ids);
+            var deleteResult = await _searchClient.IndexDocumentsAsync(batch);
+            
+            var deletedCount = deleteResult.Value.Results.Count(r => r.Succeeded);
+            _logger.LogInformation("Usunięto {Count} dokumentów z indeksu", deletedCount);
+            
+            return deletedCount;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Błąd podczas usuwania wszystkich ofert: {Message}", ex.Message);
+            return -1;
+        }
+    }
 }
