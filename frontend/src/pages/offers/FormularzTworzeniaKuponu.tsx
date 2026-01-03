@@ -152,9 +152,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
     if (formData.cenaPoprzednia && formData.cenaAktualna && parseFloat(formData.cenaPoprzednia) <= parseFloat(formData.cenaAktualna)) {
       errors.cenaPoprzednia = 'Kwota poprzednia powinna być wyższa od aktualnej';
     }
-    if (formData.sklep && !formData.sklep.match(/^https?:\/\/.+/)) {
-      errors.sklep = 'Link musi zaczynać się od http:// lub https://';
-    }
+    // Link jest opcjonalny, jeśli podany zostanie automatycznie uzupełniony o https://
     
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;

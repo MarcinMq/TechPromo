@@ -67,12 +67,21 @@ namespace TechPromo.Api.Services
             var hasIt = await _context.UzytkownikOdznaki.AnyAsync(uo => uo.IdUzytkownik == userId && uo.IdOdznaka == badge.IdOdznaka, ct);
             if (hasIt) return;
 
+            // Dodaj odznakę
             _context.UzytkownikOdznaki.Add(new UzytkownikOdznaka
             {
                 IdUzytkownik = userId,
                 IdOdznaka = badge.IdOdznaka,
                 DataPrzyznania = DateTime.UtcNow
             });
+
+            // Dodaj 50 punktów użytkownikowi za otrzymanie odznaki
+            var user = await _context.Users.FindAsync(userId);
+            if (user != null)
+            {
+                user.Punkty += 50;
+            }
+
             await _context.SaveChangesAsync(ct);
         }
     }

@@ -448,6 +448,19 @@ const Profil = () => {
     catch { setMessage('Błąd przeliczania odznak dla wszystkich'); } finally { setLoadingList(false); }
   };
 
+  const recalcPointsForAll = async () => {
+    if (!confirm('Przeliczyć punkty dla wszystkich użytkowników?\n\nPunkty będą obliczone na podstawie:\n- 10 pkt za ofertę\n- 2 pkt za komentarz\n- 1 pkt za głos\n- 50 pkt za odznakę')) return;
+    setLoadingList(true);
+    try { 
+      const res = await apiPost(`/admin/punkty/przelicz-wszystkich`, {}); 
+      const data = await res.json();
+      setMessage(`Przeliczono punkty dla ${data.przeliczono} użytkowników`);
+      // Odśwież listę użytkowników
+      fetchAdminUsers();
+    }
+    catch { setMessage('Błąd przeliczania punktów'); } finally { setLoadingList(false); }
+  };
+
   useEffect(() => {
     const fetchProfil = async () => {
       // Sprawdź czy użytkownik jest zalogowany
@@ -1163,7 +1176,10 @@ const Profil = () => {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zarządzanie odznakami</h3>
-                <button className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700" onClick={recalcBadgesForAll}>Przelicz wszystkim</button>
+                <div className="flex gap-2">
+                  <button className="px-3 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700" onClick={recalcPointsForAll}>Przelicz punkty</button>
+                  <button className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700" onClick={recalcBadgesForAll}>Przelicz odznaki</button>
+                </div>
               </div>
               
               <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600 mb-4">

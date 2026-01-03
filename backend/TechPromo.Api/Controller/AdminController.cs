@@ -63,6 +63,64 @@ namespace TechPromo.Api.Controllers
             return Ok(new { przeliczono = ids.Count });
         }
 
+        /// <summary>
+        /// Przelicza punkty dla wszystkich użytkowników na podstawie ich aktywności:
+        /// - 10 punktów za każdą opublikowaną ofertę
+        /// - 2 punkty za każdy komentarz
+        /// - 1 punkt za każdy oddany głos
+        /// - 50 punktów za każdą posiadaną odznakę
+        /// </summary>
+        [HttpPost("punkty/przelicz-wszystkich")]
+        public async Task<IActionResult> PrzeliczPunktyWszystkim()
+        {
+            var users = await _context.Users.ToListAsync();
+            var wyniki = new List<object>();
+
+            foreach (var user in users)
+            {
+                // Zlicz oferty użytkownika (opublikowane)
+                var ofertyCount = await _context.Oferty
+                    .CountAsync(o => o.IdUzytkownik == user.Id && o.Status == "opublikowana");
+
+                // Zlicz komentarze użytkownika
+                var komentarzeCount = await _context.Komentarze
+                    .CountAsync(k => k.IdUzytkownik == user.Id);
+
+                // Zlicz oddane głosy
+                var glosyCount = await _context.Glosy
+                    .CountAsync(g => g.IdUzytkownik == user.Id);
+
+                // Zlicz posiadane odznaki
+                var odznakiCount = await _context.UzytkownikOdznaki
+                    .CountAsync(uo => uo.IdUzytkownik == user.Id);
+
+                // Oblicz punkty: 10 za ofertę, 2 za komentarz, 1 za głos, 50 za odznakę
+                var starePunkty = user.Punkty;
+                var nowePunkty = (ofertyCount * 10) + (komentarzeCount * 2) + (glosyCount * 1) + (odznakiCount * 50);
+                
+                user.Punkty = nowePunkty;
+
+                wyniki.Add(new
+                {
+                    userId = user.Id,
+                    userName = user.UserName,
+                    starePunkty,
+                    nowePunkty,
+                    oferty = ofertyCount,
+                    komentarze = komentarzeCount,
+                    glosy = glosyCount,
+                    odznaki = odznakiCount
+                });
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { 
+                przeliczono = users.Count,
+                wyniki 
+            });
+        }
+
         [HttpGet("odznaki")]
         public async Task<IActionResult> PobierzWszystkieOdznaki()
         {
