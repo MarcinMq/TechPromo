@@ -597,7 +597,7 @@ const Profil = () => {
   );
 
   return (
-    <div className="py-10 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="py-10 min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors pb-20 lg:pb-10">
       <div className="mx-auto w-full max-w-6xl px-4">
         {/* Header */}
         <div className="overflow-hidden rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm transition-colors">
@@ -1106,22 +1106,23 @@ const Profil = () => {
               </div>
               <div className="space-y-3">
                 {modReports.map((r:any) => (
-                  <div key={r.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                  <div key={r.idZgloszenie || r.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">#{r.id}</span>
+                          <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">#{r.idZgloszenie || r.id}</span>
                           <span className="text-xs text-gray-500 dark:text-gray-400">{r.dataZgloszenia}</span>
                         </div>
                         <p className="text-sm text-gray-900 dark:text-gray-100 mb-1">{r.tresc}</p>
                         <p className="text-xs text-gray-500 dark:text-gray-400">Zgłosił: {r.zgloszonePrzez}</p>
                       </div>
                       <div className="flex gap-1 flex-shrink-0">
-                        {data?.rola==='Admin' ? (
+                        {(data?.rola==='Admin' || data?.rola==='Moderator') ? (
                           <>
-                            {r.idKomentarz && <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteReportedCommentAdmin(r.idKomentarz, r.id)} disabled={loadingList}>Usuń kom.</button>}
-                            <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={()=>approveReportAdmin(r.id)} disabled={loadingList}>Zatwierdź</button>
-                            <button className="px-2 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700" onClick={()=>rejectReportAdmin(r.id)} disabled={loadingList}>Odrzuć</button>
+                            {r.idKomentarz && <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteReportedCommentAdmin(r.idKomentarz, r.idZgloszenie || r.id)} disabled={loadingList}>Usuń kom.</button>}
+                            {r.idOferta && <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteOfferMod(r.idOferta)} disabled={loadingList}>Usuń ofertę</button>}
+                            <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={()=>approveReportAdmin(r.idZgloszenie || r.id)} disabled={loadingList}>Zatwierdź</button>
+                            <button className="px-2 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700" onClick={()=>rejectReportAdmin(r.idZgloszenie || r.id)} disabled={loadingList}>Odrzuć</button>
                           </>
                         ) : (
                           <span className="text-xs text-gray-500 dark:text-gray-400">Brak akcji</span>

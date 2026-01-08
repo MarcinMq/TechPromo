@@ -21,8 +21,8 @@ const ModalTypuOferty: React.FC<OfferTypeModalProps> = ({ isVisible, onClose }) 
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50">
-      <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 w-96 max-w-sm">
+    <div className="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-50 p-4">
+      <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-6 sm:p-8 w-full max-w-sm">
         <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center">Co chcesz opublikować?</h2>
 
         <div className="flex flex-col space-y-4 mb-6">

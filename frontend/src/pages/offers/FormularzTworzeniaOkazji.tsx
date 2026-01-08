@@ -523,7 +523,7 @@ const FormularzTworzeniaOkazji: React.FC = () => {
   }, [handlePaste]);
 
   return (
-    <div className="min-h-screen py-8 bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen py-8 bg-gray-50 dark:bg-gray-900 transition-colors pb-24 lg:pb-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-8 transition-all">
           <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-gray-100 text-center transition-colors">

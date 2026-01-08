@@ -2,6 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Prevent horizontal overflow on mobile */
+@media (max-width: 640px) {
+  html, body {
+    overflow-x: hidden;
+  }
+}
+
 /* Ukryj scrollbar dla przeglądarek Webkit */
 @layer utilities {
   .scrollbar-hide::-webkit-scrollbar {

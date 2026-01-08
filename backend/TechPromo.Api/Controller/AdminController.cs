@@ -78,9 +78,9 @@ namespace TechPromo.Api.Controllers
 
             foreach (var user in users)
             {
-                // Zlicz oferty użytkownika (opublikowane)
+                // Zlicz oferty użytkownika (aktywne/opublikowane)
                 var ofertyCount = await _context.Oferty
-                    .CountAsync(o => o.IdUzytkownik == user.Id && o.Status == "opublikowana");
+                    .CountAsync(o => o.IdUzytkownik == user.Id && (o.Status == "opublikowana" || o.Status == "aktywny"));
 
                 // Zlicz komentarze użytkownika
                 var komentarzeCount = await _context.Komentarze

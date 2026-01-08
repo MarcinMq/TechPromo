@@ -25,9 +25,9 @@ const ModalZgloszeniaKomentarza: React.FC<ReportCommentModalProps> = ({ isVisibl
   const disabled = loading || reason.trim().length < 5;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 w-full max-w-md p-6 transform transition-all">
+      <div className="relative bg-white/90 backdrop-blur-md rounded-2xl shadow-2xl border border-white/20 w-full max-w-md p-5 sm:p-6 transform transition-all">
         <h3 className="text-2xl font-bold mb-6 text-center text-gray-900 flex items-center justify-center">
           <Flag className="w-6 h-6 mr-2 text-red-600" />
           Zgłoś komentarz

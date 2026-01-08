@@ -63,8 +63,8 @@ const DolnyPasekMobilny: React.FC<DolnyPasekMobilnyProps> = ({ isLoggedIn }) => 
   return (
     <>
       {/* Bottom Navigation Bar - tylko mobile */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-lg lg:hidden">
-        <div className="flex items-center justify-around h-16 px-2">
+      <nav className="fixed bottom-0 left-0 right-0 z-[9999] bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] lg:hidden safe-area-bottom">
+        <div className="flex items-center h-16 pb-safe w-full">
           {navItems.map((item, index) => {
             if (!item.show) return null;
 
@@ -76,7 +76,7 @@ const DolnyPasekMobilny: React.FC<DolnyPasekMobilnyProps> = ({ isLoggedIn }) => 
                 <button
                   key={index}
                   onClick={item.onClick}
-                  className="flex flex-col items-center justify-center relative -mt-8"
+                  className="flex flex-col items-center justify-center flex-1 relative -mt-8"
                 >
                   <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-full p-4 shadow-lg hover:shadow-xl transition-all transform hover:scale-105 active:scale-95">
                     <Icon className="w-7 h-7 text-white" />
@@ -151,9 +151,6 @@ const DolnyPasekMobilny: React.FC<DolnyPasekMobilnyProps> = ({ isLoggedIn }) => 
           onClose={() => setShowOfferTypeModal(false)}
         />
       )}
-
-      {/* Spacer dla bottom nav - tylko mobile */}
-      <div className="h-16 lg:hidden" />
     </>
   );
 };

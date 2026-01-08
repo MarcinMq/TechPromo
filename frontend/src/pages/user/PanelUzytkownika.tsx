@@ -253,7 +253,7 @@ const PanelUzytkownika = () => {
   }, [message]);
 
   return (
-    <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50">
+    <div className="min-h-screen py-8 bg-gradient-to-br from-blue-50/50 to-purple-50/50 pb-24 lg:pb-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8 mb-8">
           <h1 className="text-4xl font-bold mb-4 text-gray-900 text-center flex items-center justify-center">

@@ -119,16 +119,11 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
               />
             </Link>
 
-            {/* Wyszukiwarka - centrum */}
-            <div className="flex-1 max-w-2xl mx-4 sm:mx-8">
-              <PasekWyszukiwania 
-                onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)} 
-                compact={true}
-                className="block sm:hidden"
-              />
+            {/* Wyszukiwarka - centrum - tylko na większych ekranach */}
+            <div className="hidden sm:flex flex-1 max-w-2xl mx-4 sm:mx-8">
               <PasekWyszukiwania 
                 onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
-                className="hidden sm:block"
+                className="w-full"
               />
             </div>
 
@@ -196,22 +191,22 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
                 </>
               ) : (
                 /* Przyciski logowania */
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-col xs:flex-row items-center gap-1 xs:gap-2">
                   <Link 
                     to="/auth/login" 
-                    className="px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-sm text-gray-700 dark:text-gray-300"
+                    className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-xs xs:text-sm text-gray-700 dark:text-gray-300 text-center"
                   >
                     <span className="hidden sm:inline">Zaloguj się</span>
                     <span className="sm:hidden">Login</span>
                   </Link>
                   <Link 
                     to="/auth/register" 
-                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-sm"
+                    className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-xs xs:text-sm text-center"
                   >
-                    <span className="flex items-center gap-1">
-                      <Zap className="w-4 h-4 hidden sm:inline" />
+                    <span className="flex items-center justify-center gap-1">
+                      <Zap className="w-3 h-3 xs:w-4 xs:h-4 hidden sm:inline" />
                       <span className="hidden sm:inline">Zarejestruj się</span>
-                      <span className="sm:hidden">Rejestr.</span>
+                      <span className="sm:hidden">Rejestruj</span>
                     </span>
                   </Link>
                 </div>

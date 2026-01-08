@@ -130,7 +130,7 @@ const StronaPublicznegoProfileu: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 pb-20 lg:pb-8">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header profilu */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 mb-6">
@@ -168,29 +168,29 @@ const StronaPublicznegoProfileu: React.FC = () => {
               </div>
 
               {/* Statystyki */}
-              <div className="grid grid-cols-3 gap-4">
-                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+              <div className="grid grid-cols-1 xs:grid-cols-3 gap-3 sm:gap-4">
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2 sm:p-3">
                   <div className="flex items-center space-x-2 mb-1">
-                    <ShoppingBag className="w-5 h-5 text-blue-600" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Oferty</span>
+                    <ShoppingBag className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Oferty</span>
                   </div>
-                  <p className="text-2xl font-bold text-blue-600">{profile.liczbaDodanychOfert || 0}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-blue-600">{profile.liczbaDodanychOfert || 0}</p>
                 </div>
 
-                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-3">
+                <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 sm:p-3">
                   <div className="flex items-center space-x-2 mb-1">
-                    <MessageSquare className="w-5 h-5 text-green-600" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Komentarze</span>
+                    <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Komentarze</span>
                   </div>
-                  <p className="text-2xl font-bold text-green-600">{profile.liczbaKomentarzy || 0}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-green-600">{profile.liczbaKomentarzy || 0}</p>
                 </div>
 
-                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-3">
+                <div className="bg-purple-50 dark:bg-purple-900/20 rounded-lg p-2 sm:p-3">
                   <div className="flex items-center space-x-2 mb-1">
-                    <ThumbsUp className="w-5 h-5 text-purple-600" />
-                    <span className="text-sm text-gray-600 dark:text-gray-400">Głosy</span>
+                    <ThumbsUp className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
+                    <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Głosy</span>
                   </div>
-                  <p className="text-2xl font-bold text-purple-600">{profile.liczbaGlosow || 0}</p>
+                  <p className="text-xl sm:text-2xl font-bold text-purple-600">{profile.liczbaGlosow || 0}</p>
                 </div>
               </div>
             </div>

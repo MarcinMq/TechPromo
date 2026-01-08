@@ -465,7 +465,7 @@ export default function StronaSzczegolyOferty() {
   // Rabat obliczany inline w renderze (usunieto zmienna discount)
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors pb-20 lg:pb-0">
       <div className="w-full max-w-7xl mx-auto px-4 py-6">
         {reportSuccessFlash && (
           <div className="mb-6 px-4 py-3 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm border border-green-200 dark:border-green-800 shadow">
