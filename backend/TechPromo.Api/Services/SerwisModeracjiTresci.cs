@@ -19,6 +19,13 @@ namespace TechPromo.Api.Services
         Task<WynikModeracjiTresci> ModerujTekstAsync(string text);
 
         /// <summary>
+        /// Sprawdza czy obraz zawiera nieodpowiednie treści.
+        /// </summary>
+        /// <param name="imageBytes">Bajty obrazu do sprawdzenia</param>
+        /// <returns>Wynik moderacji z informacją czy obraz jest bezpieczny</returns>
+        Task<WynikModeracjiTresci> ModerujObrazAsync(byte[] imageBytes);
+
+        /// <summary>
         /// Inicjalizuje blocklist z polskimi wulgaryzmami w Azure Content Safety.
         /// Wywoływane automatycznie przy starcie aplikacji.
         /// </summary>
@@ -295,6 +302,90 @@ namespace TechPromo.Api.Services
                 return WynikModeracjiTresci.Bezpieczny();
             }
         }
+
+        /// <summary>
+        /// Sprawdza czy obraz zawiera nieodpowiednie treści używając Azure Content Safety Image API.
+        /// </summary>
+        public async Task<WynikModeracjiTresci> ModerujObrazAsync(byte[] imageBytes)
+        {
+            if (imageBytes == null || imageBytes.Length == 0)
+            {
+                return WynikModeracjiTresci.Bezpieczny();
+            }
+
+            if (!_isConfigured)
+            {
+                _logger.LogDebug("Azure Content Safety nie skonfigurowany - moderacja obrazów wyłączona");
+                return WynikModeracjiTresci.Bezpieczny();
+            }
+
+            try
+            {
+                var base64Image = Convert.ToBase64String(imageBytes);
+                
+                var requestBody = new
+                {
+                    image = new { content = base64Image },
+                    categories = new[] { "Hate", "Violence", "SelfHarm", "Sexual" },
+                    outputType = "FourSeverityLevels"
+                };
+
+                var json = JsonSerializer.Serialize(requestBody);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var url = $"{_endpoint.TrimEnd('/')}/contentsafety/image:analyze?api-version=2024-09-01";
+                var response = await _httpClient.PostAsync(url, content);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError("Błąd Azure Content Safety Image API: {StatusCode} - {Error}", 
+                        response.StatusCode, errorContent);
+                    return WynikModeracjiTresci.Bezpieczny();
+                }
+
+                var responseJson = await response.Content.ReadAsStringAsync();
+                _logger.LogDebug("Odpowiedź Azure Content Safety (obraz): {Response}", responseJson);
+                
+                var result = JsonSerializer.Deserialize<OdpowiedzContentSafety>(responseJson);
+
+                if (result?.CategoriesAnalysis != null)
+                {
+                    var violations = new List<string>();
+
+                    foreach (var category in result.CategoriesAnalysis)
+                    {
+                        var threshold = category.Category switch
+                        {
+                            "Hate" => HATE_THRESHOLD,
+                            "Violence" => VIOLENCE_THRESHOLD,
+                            "SelfHarm" => SELF_HARM_THRESHOLD,
+                            "Sexual" => SEXUAL_THRESHOLD,
+                            _ => 2
+                        };
+
+                        if (category.Severity >= threshold)
+                        {
+                            violations.Add(category.Category);
+                            _logger.LogWarning("Wykryto nieodpowiednią treść w obrazie: {Category} (poziom: {Severity})", 
+                                category.Category, category.Severity);
+                        }
+                    }
+
+                    if (violations.Count > 0)
+                    {
+                        return WynikModeracjiTresci.ZablokowanyObraz(violations);
+                    }
+                }
+
+                return WynikModeracjiTresci.Bezpieczny();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Wyjątek podczas moderacji obrazu");
+                return WynikModeracjiTresci.Bezpieczny();
+            }
+        }
     }
 
     /// <summary>
@@ -328,6 +419,24 @@ namespace TechPromo.Api.Services
 
             // Generuj przyjazny komunikat dla użytkownika
             wynik.KomunikatDlaUzytkownika = GenerujKomunikat(kategorie);
+            return wynik;
+        }
+
+        public static WynikModeracjiTresci ZablokowanyObraz(List<string> kategorie)
+        {
+            var wynik = new WynikModeracjiTresci
+            {
+                CzyBezpieczny = false,
+                NaruszonKategorie = kategorie,
+                ZnalezioneSlowa = new List<string>()
+            };
+
+            // Komunikat dla nieodpowiednich obrazów
+            wynik.KomunikatDlaUzytkownika = kategorie.Contains("Sexual") 
+                ? "🚫 Zdjęcie zawiera nieodpowiednie treści dla dorosłych i nie może zostać dodane."
+                : kategorie.Contains("Violence")
+                    ? "🚫 Zdjęcie zawiera treści przemocowe i nie może zostać dodane."
+                    : "🚫 Zdjęcie zawiera nieodpowiednie treści i nie może zostać dodane.";
             return wynik;
         }
 

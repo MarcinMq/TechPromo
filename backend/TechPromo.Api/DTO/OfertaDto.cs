@@ -22,6 +22,7 @@ namespace TechPromo.Api.DTO
         public int Komentarze { get; set; }
         public string? UserVote { get; set; } // hot, cold lub null
         public List<string> Zdjecia { get; set; } = new List<string>();
+        public bool ZatwierdzeniePrzezAI { get; set; } // Oznacza że oferta przeszła automatyczną moderację AI
     }
 
     public class VotesDto

@@ -356,6 +356,9 @@ namespace TechPromo.Api.Migrations
                     b.Property<DateTime?>("WaznoscOd")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<bool>("ZatwierdzeniePrzezAI")
+                        .HasColumnType("boolean");
+
                     b.Property<bool>("Zatwierdzona")
                         .HasColumnType("boolean");
 

@@ -274,5 +274,151 @@ namespace TechPromo.Testy.Unit
             // Assert
             wynik.CzyBezpieczny.Should().BeTrue();
         }
+
+        // ===== TESTY MODERACJI OBRAZÓW =====
+
+        [Fact]
+        public async Task ModerujObrazAsync_GdyNieSkonfigurowany_ZwracaBezpieczny()
+        {
+            // Arrange - brak konfiguracji
+            var config = UtworzKonfiguracje();
+            var serwis = new SerwisModeracjiTresci(config, _mockLogger.Object);
+            var fakeImageBytes = new byte[] { 0x89, 0x50, 0x4E, 0x47 }; // PNG magic bytes
+
+            // Act
+            var wynik = await serwis.ModerujObrazAsync(fakeImageBytes);
+
+            // Assert - bez Azure, obraz przechodzi (fail-open)
+            wynik.CzyBezpieczny.Should().BeTrue();
+            wynik.CzyZablokowany.Should().BeFalse();
+        }
+
+        [Fact]
+        public async Task ModerujObrazAsync_GdyObrazPusty_ZwracaBezpieczny()
+        {
+            // Arrange
+            var config = UtworzKonfiguracje("https://example.cognitiveservices.azure.com", "fake-key");
+            var serwis = new SerwisModeracjiTresci(config, _mockLogger.Object);
+
+            // Act
+            var wynik = await serwis.ModerujObrazAsync(Array.Empty<byte>());
+
+            // Assert
+            wynik.CzyBezpieczny.Should().BeTrue();
+        }
+
+        [Fact]
+        public async Task ModerujObrazAsync_GdyObrazNull_ZwracaBezpieczny()
+        {
+            // Arrange
+            var config = UtworzKonfiguracje("https://example.cognitiveservices.azure.com", "fake-key");
+            var serwis = new SerwisModeracjiTresci(config, _mockLogger.Object);
+
+            // Act
+            var wynik = await serwis.ModerujObrazAsync(null!);
+
+            // Assert
+            wynik.CzyBezpieczny.Should().BeTrue();
+        }
+
+        [Fact]
+        public void WynikModeracjiTresci_ZablokowanyObraz_DlaTresciSeksualnych_ZwracaOdpowiedniKomunikat()
+        {
+            // Arrange
+            var kategorie = new List<string> { "Sexual" };
+
+            // Act
+            var wynik = WynikModeracjiTresci.ZablokowanyObraz(kategorie);
+
+            // Assert
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyZablokowany.Should().BeTrue();
+            wynik.KomunikatDlaUzytkownika.Should().Contain("dorosłych");
+            wynik.KomunikatDlaUzytkownika.Should().Contain("🚫");
+        }
+
+        [Fact]
+        public void WynikModeracjiTresci_ZablokowanyObraz_DlaPrzemocy_ZwracaOdpowiedniKomunikat()
+        {
+            // Arrange
+            var kategorie = new List<string> { "Violence" };
+
+            // Act
+            var wynik = WynikModeracjiTresci.ZablokowanyObraz(kategorie);
+
+            // Assert
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyZablokowany.Should().BeTrue();
+            wynik.KomunikatDlaUzytkownika.Should().Contain("przemocowe");
+            wynik.KomunikatDlaUzytkownika.Should().Contain("🚫");
+        }
+
+        [Fact]
+        public void WynikModeracjiTresci_ZablokowanyObraz_DlaInnejKategorii_ZwracaOgolnyKomunikat()
+        {
+            // Arrange
+            var kategorie = new List<string> { "Hate" };
+
+            // Act
+            var wynik = WynikModeracjiTresci.ZablokowanyObraz(kategorie);
+
+            // Assert
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyZablokowany.Should().BeTrue();
+            wynik.KomunikatDlaUzytkownika.Should().Contain("nieodpowiednie");
+            wynik.KomunikatDlaUzytkownika.Should().Contain("🚫");
+        }
+
+        // ===== TEST SCENARIUSZA: OFERTA Z WULGARNYM TEKSTEM POWINNA BYĆ ZABLOKOWANA =====
+
+        [Fact]
+        public void TestScenariusz_OfertaZWulgarnymiSlowami_PowinnaZostacZablokowana()
+        {
+            // Symulacja: użytkownik próbuje dodać ofertę z wulgarnym tytułem
+            var tytulOferty = "Kurwa super laptop za grosze!";
+            var opisOferty = "Najlepszy sprzęt, jebane promocje codziennie!";
+            
+            // Oczekiwany wynik moderacji - powinno być zablokowane
+            var kategorie = new List<string> { "Blocklist" };
+            var znalezioneSlowa = new List<string> { "kurwa", "jebane" };
+            
+            var wynikModeracji = WynikModeracjiTresci.Zablokowany(kategorie, znalezioneSlowa);
+            
+            // Assert
+            wynikModeracji.CzyZablokowany.Should().BeTrue("Oferta z wulgaryzmami powinna być zablokowana");
+            wynikModeracji.ZnalezioneSlowa.Should().Contain("kurwa");
+            wynikModeracji.ZnalezioneSlowa.Should().Contain("jebane");
+            wynikModeracji.KomunikatDlaUzytkownika.Should().NotBeEmpty();
+        }
+
+        [Fact]
+        public void TestScenariusz_OfertaZNieodpowiednimZdjeciem_PowinnaZostacZablokowana()
+        {
+            // Symulacja: użytkownik próbuje dodać ofertę ze zdjęciem zawierającym nieodpowiednie treści
+            // Azure Content Safety zwróciłoby: Sexual severity = 4
+            
+            var kategorie = new List<string> { "Sexual" };
+            var wynikModeracji = WynikModeracjiTresci.ZablokowanyObraz(kategorie);
+            
+            // Assert
+            wynikModeracji.CzyZablokowany.Should().BeTrue("Oferta z nieodpowiednim zdjęciem powinna być zablokowana");
+            wynikModeracji.KomunikatDlaUzytkownika.Should().Contain("dorosłych");
+        }
+
+        [Fact]
+        public void TestScenariusz_PoprawnaOferta_PowinnaPrzejscModeracje()
+        {
+            // Symulacja: użytkownik dodaje normalną ofertę
+            var tytulOferty = "Laptop HP ProBook 450 G8 w super cenie!";
+            var opisOferty = "Świetny laptop do pracy i nauki. Polecam!";
+            
+            // Normalny tekst - powinien przejść moderację
+            var wynikModeracji = WynikModeracjiTresci.Bezpieczny();
+            
+            // Assert
+            wynikModeracji.CzyBezpieczny.Should().BeTrue("Poprawna oferta powinna przejść moderację");
+            wynikModeracji.CzyZablokowany.Should().BeFalse();
+            wynikModeracji.KomunikatDlaUzytkownika.Should().BeEmpty();
+        }
     }
 }

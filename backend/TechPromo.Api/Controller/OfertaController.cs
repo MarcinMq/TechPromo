@@ -167,7 +167,8 @@ namespace TechPromo.Api.Controllers
                 Komentarze = oferta.Komentarze.Count,
                 UserVote = currentUserId != 0 ? oferta.Glosy.Where(g => g.IdUzytkownik == currentUserId).Select(g => g.TypGlosu).FirstOrDefault() : null,
                 Zdjecia = oferta.Zdjecia.OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToList(),
-                AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(oferta.IdUzytkownik)
+                AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(oferta.IdUzytkownik),
+                ZatwierdzeniePrzezAI = oferta.ZatwierdzeniePrzezAI
             };
         }
 
@@ -752,6 +753,31 @@ namespace TechPromo.Api.Controllers
                 if (!string.IsNullOrEmpty(priceValidation))
                     return BadRequest(priceValidation);
 
+                // Moderacja treści tekstowych (tytuł + opis)
+                var tekstDoModeracji = $"{formData.Tytul} {formData.Opis}";
+                var wynikModeracjiTekstu = await _serwisModeracjiTresci.ModerujTekstAsync(tekstDoModeracji);
+                if (wynikModeracjiTekstu.CzyZablokowany)
+                {
+                    return BadRequest($"Treść oferty zawiera nieodpowiednie słowa. {wynikModeracjiTekstu.KomunikatDlaUzytkownika}");
+                }
+
+                // Moderacja obrazów
+                if (formData.Zdjecia.Count > 0)
+                {
+                    foreach (var zdjecie in formData.Zdjecia)
+                    {
+                        using var memoryStream = new MemoryStream();
+                        await zdjecie.CopyToAsync(memoryStream);
+                        var imageBytes = memoryStream.ToArray();
+                        
+                        var wynikModeracjiObrazu = await _serwisModeracjiTresci.ModerujObrazAsync(imageBytes);
+                        if (wynikModeracjiObrazu.CzyZablokowany)
+                        {
+                            return BadRequest($"Zdjęcie '{zdjecie.FileName}' zostało odrzucone. {wynikModeracjiObrazu.KomunikatDlaUzytkownika}");
+                        }
+                    }
+                }
+
                 var typ = NormalizeOfferType(formData.Typ);
                 var kategoriaEntity = await GetOrCreateCategory(formData.Kategoria);
 
@@ -759,6 +785,7 @@ namespace TechPromo.Api.Controllers
                 var isModerator = User.IsInRole("Moderator");
                 var isAdmin = User.IsInRole("Admin");
 
+                // Oferta przeszła moderację AI - automatycznie zatwierdzona
                 var oferta = new Oferta
                 {
                     Nazwa = formData.Tytul,
@@ -774,7 +801,8 @@ namespace TechPromo.Api.Controllers
                     LiczbaHot = 0,
                     LiczbaCold = 0,
                     Aktywna = true,
-                    Zatwierdzona = isModerator || isAdmin // Moderatorzy i admini mają auto-zatwierdzenie
+                    Zatwierdzona = true, // Automatycznie zatwierdzona przez AI
+                    ZatwierdzeniePrzezAI = !(isModerator || isAdmin) // True jeśli zwykły użytkownik (AI zatwierdził)
                 };
 
                 _context.Oferty.Add(oferta);

@@ -38,6 +38,7 @@ public class Oferta
     // Właściwości dla moderacji
     public bool Aktywna { get; set; } = true;
     public bool Zatwierdzona { get; set; } = false;
+    public bool ZatwierdzeniePrzezAI { get; set; } = false; // Oznacza że oferta przeszła automatyczną moderację AI
 
     [ForeignKey("Uzytkownik")]
     public int IdUzytkownik { get; set; }

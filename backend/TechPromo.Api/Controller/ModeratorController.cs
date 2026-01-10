@@ -156,7 +156,8 @@ namespace TechPromo.Api.Controllers
                         autor = o.Uzytkownik.UserName ?? "Nieznany",
                         kategoria = o.Kategoria != null ? (o.Kategoria.Nazwa ?? "Brak") : "Brak",
                         aktywna = o.Aktywna,
-                        zatwierdzona = o.Zatwierdzona
+                        zatwierdzona = o.Zatwierdzona,
+                        zatwierdzeniePrzezAI = o.ZatwierdzeniePrzezAI
                     })
                     .ToListAsync();
 

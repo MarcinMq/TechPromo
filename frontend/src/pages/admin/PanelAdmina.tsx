@@ -32,6 +32,7 @@ type Oferta = {
   status: string;
   aktywna: boolean;
   zatwierdzona: boolean;
+  zatwierdzeniePrzezAI?: boolean; // Oznacza że oferta przeszła automatyczną moderację AI
   cena: number;
   cenaPoprzednia?: number; // dodane dla wyświetlenia rabatu
   link: string;
@@ -57,11 +58,11 @@ const PanelAdmina = () => {
   const [offers, setOffers] = useState<Oferta[]>([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<string>('');
-  
+
 
   // Formularz nowej odznaki
   const [newBadge, setNewBadge] = useState({ nazwa: '', opis: '', ikona: '🏆' });
-  
+
   // Przeliczanie odznak – bez ręcznego przyznawania
 
   const API_BASE = 'http://localhost:5023';
@@ -142,7 +143,7 @@ const PanelAdmina = () => {
 
   const deleteBadge = async (id: number) => {
     if (!confirm('Czy na pewno chcesz usunąć tę odznakę?')) return;
-    
+
     setLoading(true);
     try {
       // apiDelete też ma wbudowany JWT
@@ -201,7 +202,7 @@ const PanelAdmina = () => {
   };
 
   // === NOWE FUNKCJE ZGODNIE Z DIAGRAMEM ===
-  
+
   // Pobieranie zgłoszeń
   const fetchReports = async () => {
     try {
@@ -361,7 +362,7 @@ const PanelAdmina = () => {
   // Usuwanie oferty
   const deleteOffer = async (offerId: number) => {
     if (!confirm('Czy na pewno chcesz usunąć tę ofertę?')) return;
-    
+
     setLoading(true);
     try {
       const res = await apiDelete(`/admin/oferta/${offerId}`);
@@ -424,63 +425,58 @@ const PanelAdmina = () => {
         </div>
         <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-6 mb-8">
           <div className="flex flex-wrap gap-3 justify-center">
-            <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
-                activeTab === 'users' 
-                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+            <button
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${activeTab === 'users'
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm'
                   : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
-              }`}
+                }`}
               onClick={() => setActiveTab('users')}
             >
               <Users className="w-5 h-5 inline mr-2" />
               Użytkownicy ({users.length})
             </button>
-            <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
-                activeTab === 'badges' 
-                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+            <button
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${activeTab === 'badges'
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm'
                   : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
-              }`}
+                }`}
               onClick={() => setActiveTab('badges')}
             >
               <Trophy className="w-5 h-5 inline mr-2" />
               Odznaki ({badges.length})
             </button>
-            <button 
+            <button
               className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30`}
               onClick={recalcBadgesForAll}
             >
               <Zap className="inline w-5 h-5 mr-2" />
               Przelicz odznaki wszystkim
             </button>
-            <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
-                activeTab === 'reports' 
-                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+            <button
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${activeTab === 'reports'
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm'
                   : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
-              }`}
+                }`}
               onClick={() => setActiveTab('reports')}
             >
               <Clipboard className="inline w-5 h-5 mr-2" />
               Zgłoszenia ({reports.length})
             </button>
-            <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
-                activeTab === 'comments' 
-                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+            <button
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${activeTab === 'comments'
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm'
                   : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
-              }`}
+                }`}
               onClick={() => setActiveTab('comments')}
             >
               <MessageCircle className="w-5 h-5 inline mr-2" />
               Komentarze ({comments.length})
             </button>
-            <button 
-              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${
-                activeTab === 'offers' 
-                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm' 
+            <button
+              className={`px-6 py-3 rounded-2xl font-semibold transition-all transform hover:scale-105 ${activeTab === 'offers'
+                  ? 'bg-custom-blue text-white shadow-lg backdrop-blur-sm'
                   : 'bg-white/50 backdrop-blur-sm text-gray-700 hover:bg-white/70 border border-white/30'
-              }`}
+                }`}
               onClick={() => setActiveTab('offers')}
             >
               <ShoppingBag className="w-5 h-5 inline mr-2" />
@@ -502,15 +498,14 @@ const PanelAdmina = () => {
                   <p className="mb-2"><strong>Email:</strong> {user.email}</p>
                   <p className="mb-2"><strong>Punkty:</strong> <span className="text-green-600 font-bold">{user.punkty}</span></p>
                   <p className="mb-2"><strong>Rejestracja:</strong> {user.dataRejestracji}</p>
-                  <p className="mb-4"><strong>Rola:</strong> <span className={`inline-block px-3 py-1 rounded-full text-white text-sm font-semibold ${
-                    user.rola === 'Admin' ? 'bg-red-500' : 
-                    user.rola === 'Moderator' ? 'bg-yellow-500' : 
-                    'bg-blue-500'
-                  }`}>{user.rola}</span></p>
+                  <p className="mb-4"><strong>Rola:</strong> <span className={`inline-block px-3 py-1 rounded-full text-white text-sm font-semibold ${user.rola === 'Admin' ? 'bg-red-500' :
+                      user.rola === 'Moderator' ? 'bg-yellow-500' :
+                        'bg-blue-500'
+                    }`}>{user.rola}</span></p>
                   <div className="space-y-3 mt-4 border-t border-gray-200 pt-4">
                     <div>
-                      <input 
-                        type="number" 
+                      <input
+                        type="number"
                         placeholder="Nowe punkty"
                         className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-custom-blue focus:border-custom-blue outline-none transition-all"
                         onKeyDown={(e) => {
@@ -523,14 +518,14 @@ const PanelAdmina = () => {
                         }}
                       />
                     </div>
-                    <button 
+                    <button
                       className="w-full px-4 py-2 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 transition disabled:opacity-50"
                       onClick={() => recalcBadgesForUser(user.id)}
                       disabled={loading}
                     >
                       Przelicz odznaki dla użytkownika
                     </button>
-                    <select 
+                    <select
                       value={user.rola}
                       onChange={(e) => changeUserRole(user.id, e.target.value)}
                       className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-custom-blue focus:border-custom-blue outline-none bg-white transition-all"
@@ -552,7 +547,7 @@ const PanelAdmina = () => {
               <Trophy className="w-7 h-7 mr-2" />
               Zarządzanie Odznakami
             </h2>
-            
+
             <div className="bg-white/70 rounded-xl p-6 shadow-lg mb-8">
               <form onSubmit={createBadge} className="space-y-4">
                 <h3 className="text-xl font-bold mb-4 text-center">✨ Utwórz Nową Odznakę</h3>
@@ -561,7 +556,7 @@ const PanelAdmina = () => {
                     type="text"
                     placeholder="Nazwa odznaki"
                     value={newBadge.nazwa}
-                    onChange={e => setNewBadge({...newBadge, nazwa: e.target.value})}
+                    onChange={e => setNewBadge({ ...newBadge, nazwa: e.target.value })}
                     required
                     className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-custom-blue focus:border-custom-blue outline-none transition-all"
                   />
@@ -571,7 +566,7 @@ const PanelAdmina = () => {
                     type="text"
                     placeholder="Opis odznaki"
                     value={newBadge.opis}
-                    onChange={e => setNewBadge({...newBadge, opis: e.target.value})}
+                    onChange={e => setNewBadge({ ...newBadge, opis: e.target.value })}
                     required
                     className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-custom-blue focus:border-custom-blue outline-none transition-all"
                   />
@@ -581,13 +576,13 @@ const PanelAdmina = () => {
                     type="text"
                     placeholder="Ikona (emoji)"
                     value={newBadge.ikona}
-                    onChange={e => setNewBadge({...newBadge, ikona: e.target.value})}
+                    onChange={e => setNewBadge({ ...newBadge, ikona: e.target.value })}
                     className="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-custom-blue focus:border-custom-blue outline-none transition-all"
                   />
                 </div>
                 <div className="text-center">
-                  <button 
-                    type="submit" 
+                  <button
+                    type="submit"
                     disabled={loading}
                     className="px-6 py-2 bg-custom-blue text-white rounded-lg hover:bg-custom-blue-dark transition-colors font-semibold disabled:opacity-50"
                   >
@@ -603,7 +598,7 @@ const PanelAdmina = () => {
                   <div className="text-5xl mb-3">{badge.ikona}</div>
                   <h4 className="text-xl font-bold mb-2">{badge.nazwa}</h4>
                   <p className="text-gray-700 mb-4">{badge.opis}</p>
-                  <button 
+                  <button
                     className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
                     onClick={() => deleteBadge(badge.idOdznaka)}
                     disabled={loading}
@@ -617,10 +612,10 @@ const PanelAdmina = () => {
           </div>
         )}
 
-  {/* Usunięto zakładkę ręcznego przyznawania odznak */}
+        {/* Usunięto zakładkę ręcznego przyznawania odznak */}
 
         {/* Nowe zakładki */}
-        
+
         {activeTab === 'reports' && (
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
@@ -653,21 +648,21 @@ const PanelAdmina = () => {
                       </div>
                     )}
                     <div className="flex gap-3">
-                    <button 
-                      className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium disabled:opacity-50"
-                      onClick={() => approveReport(report.id)}
-                      disabled={loading}
-                    >
-                      <Check className="w-4 h-4 inline mr-1" />
-                      Zatwierdź
-                    </button>
-                    <button 
-                      className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
-                      onClick={() => rejectReport(report.id)}
-                      disabled={loading}
-                    >
-                      ❌ Odrzuć
-                    </button>
+                      <button
+                        className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-medium disabled:opacity-50"
+                        onClick={() => approveReport(report.id)}
+                        disabled={loading}
+                      >
+                        <Check className="w-4 h-4 inline mr-1" />
+                        Zatwierdź
+                      </button>
+                      <button
+                        className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors font-medium disabled:opacity-50"
+                        onClick={() => rejectReport(report.id)}
+                        disabled={loading}
+                      >
+                        ❌ Odrzuć
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -686,7 +681,7 @@ const PanelAdmina = () => {
           <div className="bg-white/70 backdrop-blur-md rounded-3xl shadow-2xl border border-white/30 p-8">
             <h2 className="text-2xl font-bold mb-6 text-gray-900 text-center flex items-center justify-center">
               <MessageCircle className="w-6 h-6 mr-2 text-blue-600" />
-              Moderacja komentarzy 
+              Moderacja komentarzy
             </h2>
             {comments.length === 0 ? (
               <div className="text-center p-12 bg-white/40 rounded-xl border-2 border-dashed border-gray-300">
@@ -738,12 +733,18 @@ const PanelAdmina = () => {
                 <div key={offer.id} className="bg-white/60 rounded-xl p-6 shadow-md hover:shadow-lg transition-all border-l-4 border-custom-blue">
                   <div className="flex justify-between items-start mb-3">
                     <h4 className="text-lg font-bold">{offer.tytul}</h4>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      offer.zatwierdzona ? 'bg-green-100 text-green-800' : 
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}
-                    </span>
+                    <div className="flex gap-2 items-center">
+                      {offer.zatwierdzeniePrzezAI && (
+                        <span className="px-3 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
+                          🤖 Zatwierdzone przez AI
+                        </span>
+                      )}
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${offer.zatwierdzona ? 'bg-green-100 text-green-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                        {offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}
+                      </span>
+                    </div>
                   </div>
                   <div className="bg-white/70 p-4 rounded-lg mb-4">
                     <p className="text-gray-800">{offer.opis}</p>

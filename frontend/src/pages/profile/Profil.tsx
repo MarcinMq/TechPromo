@@ -114,6 +114,7 @@ const Profil = () => {
     status: string;
     aktywna: boolean;
     zatwierdzona: boolean;
+    zatwierdzeniePrzezAI?: boolean; // Oznacza że oferta przeszła automatyczną moderację AI
     cena: number;
     cenaPoprzednia?: number;
     link: string;
@@ -142,10 +143,10 @@ const Profil = () => {
         body: form
       });
       if (!res.ok) throw new Error(await res.text());
-  const json = await res.json();
-  setData(d => d ? { ...d, avatarUrl: json.avatarUrl as string } : d);
-  window.dispatchEvent(new Event('profileChanged'));
-    } catch (e:any) {
+      const json = await res.json();
+      setData(d => d ? { ...d, avatarUrl: json.avatarUrl as string } : d);
+      window.dispatchEvent(new Event('profileChanged'));
+    } catch (e: any) {
       alert(e.message || 'Nie udało się wgrać zdjęcia');
     } finally {
       setUploadingAvatar(false);
@@ -168,7 +169,7 @@ const Profil = () => {
         const items: Oferta[] = data.items ?? data.Items ?? [];
         const total: number = data.total ?? data.Total ?? 0;
         const skip: number = data.skip ?? data.Skip ?? 0;
-  // page size from server is optional; we always request pageSize
+        // page size from server is optional; we always request pageSize
         if (reset) {
           setOffers(items);
           setOffersSkip(skip + items.length);
@@ -427,7 +428,7 @@ const Profil = () => {
   };
   const createBadge = async (e: React.FormEvent) => {
     e.preventDefault(); setLoadingList(true);
-    try { const res = await apiPost('/admin/utworz-odznake', newBadge); setMessage(await res.text()); if (res.ok) { setNewBadge({ nazwa:'', opis:'', ikona:'🏆' }); fetchAdminBadges(); } }
+    try { const res = await apiPost('/admin/utworz-odznake', newBadge); setMessage(await res.text()); if (res.ok) { setNewBadge({ nazwa: '', opis: '', ikona: '🏆' }); fetchAdminBadges(); } }
     catch { setMessage('Błąd tworzenia odznaki'); } finally { setLoadingList(false); }
   };
   const deleteBadge = async (id: number) => {
@@ -451,8 +452,8 @@ const Profil = () => {
   const recalcPointsForAll = async () => {
     if (!confirm('Przeliczyć punkty dla wszystkich użytkowników?\n\nPunkty będą obliczone na podstawie:\n- 10 pkt za ofertę\n- 2 pkt za komentarz\n- 1 pkt za głos\n- 50 pkt za odznakę')) return;
     setLoadingList(true);
-    try { 
-      const res = await apiPost(`/admin/punkty/przelicz-wszystkich`, {}); 
+    try {
+      const res = await apiPost(`/admin/punkty/przelicz-wszystkich`, {});
       const data = await res.json();
       setMessage(`Przeliczono punkty dla ${data.przeliczono} użytkowników`);
       // Odśwież listę użytkowników
@@ -474,7 +475,7 @@ const Profil = () => {
         const res = await fetch('http://localhost:5023/konto/profil', {
           headers: getAuthHeaders()
         });
-        
+
         if (res.status === 401) {
           // Token wygasł lub jest nieprawidłowy
           logout();
@@ -498,9 +499,9 @@ const Profil = () => {
 
   useEffect(() => {
     // Załaduj sekcje panelu użytkownika
-  resetAndLoadOffers();
-  fetchUserActivity(true);
-  fetchUserComments(true);
+    resetAndLoadOffers();
+    fetchUserActivity(true);
+    fetchUserComments(true);
     // Moderator/Admin preload
     if (data?.rola === 'Moderator' || data?.rola === 'Admin') {
       fetchModComments();
@@ -514,7 +515,7 @@ const Profil = () => {
         fetchModReports();
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data?.rola]);
 
   // Obsługa navigation state dla automatycznego przełączenia zakładki
@@ -555,7 +556,7 @@ const Profil = () => {
     if (!data) return;
     setSaving(true);
     try {
-      const body:any = {};
+      const body: any = {};
       if (nickEdit !== data.nick) body.nick = nickEdit;
       if (emailEdit !== data.email) body.email = emailEdit;
       if (pwdNew) { body.hasloAktualne = pwdCurrent; body.hasloNowe = pwdNew; }
@@ -573,7 +574,7 @@ const Profil = () => {
       }
       setData(d => d ? { ...d, nick: json.nick, email: json.email } : d);
       setEditing(false);
-    } catch(e:any) {
+    } catch (e: any) {
       alert(e.message || 'Błąd zapisu profilu');
     } finally { setSaving(false); }
   };
@@ -586,7 +587,7 @@ const Profil = () => {
       </div>
     </div>
   );
-  
+
   if (err) return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
       <div className="p-8 bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 text-center transition-colors">
@@ -612,9 +613,9 @@ const Profil = () => {
                   </div>
                 )}
                 <label className="absolute -bottom-2 -right-2 cursor-pointer">
-                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e)=>{const f=e.target.files?.[0]; if(f) handleAvatarChange(f);}} />
+                  <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) handleAvatarChange(f); }} />
                   <span className="px-3 py-1.5 text-xs rounded-lg bg-blue-600 dark:bg-blue-700 text-white shadow-md hover:bg-blue-700 dark:hover:bg-blue-600 hover:scale-105 transition-all font-bold">
-                    {uploadingAvatar? '⏳' : '📷'}
+                    {uploadingAvatar ? '⏳' : '📷'}
                   </span>
                 </label>
               </div>
@@ -635,8 +636,8 @@ const Profil = () => {
                 <Zap className="inline w-5 h-5 mr-1" />
                 {data?.punkty ?? 0} pkt
               </div>
-              <button 
-                onClick={startEdit} 
+              <button
+                onClick={startEdit}
                 className="px-5 py-2.5 rounded-lg bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 border dark:border-gray-600 text-gray-900 dark:text-gray-100 font-bold shadow-sm hover:shadow-md transition-all"
               >
                 ⚙️ Edytuj
@@ -645,7 +646,7 @@ const Profil = () => {
           </div>
         </div>
 
-  {/* Main grid */}
+        {/* Main grid */}
         <div className="mt-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Left: Account data / form */}
           <div className="lg:col-span-5 xl:col-span-4">
@@ -655,23 +656,23 @@ const Profil = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Nick</label>
-                    <input value={nickEdit} onChange={e=>setNickEdit(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                    <input value={nickEdit} onChange={e => setNickEdit(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Email</label>
-                    <input value={emailEdit} onChange={e=>setEmailEdit(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                    <input value={emailEdit} onChange={e => setEmailEdit(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Aktualne hasło (jeśli zmieniasz)</label>
-                    <input type="password" value={pwdCurrent} onChange={e=>setPwdCurrent(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                    <input type="password" value={pwdCurrent} onChange={e => setPwdCurrent(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Nowe hasło</label>
-                    <input type="password" value={pwdNew} onChange={e=>setPwdNew(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
+                    <input type="password" value={pwdNew} onChange={e => setPwdNew(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div className="flex gap-3 pt-2">
                     <button onClick={cancelEdit} type="button" className="flex-1 p-3 rounded-lg border dark:border-gray-600 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-gray-100 hover:bg-gray-200 dark:hover:bg-gray-600 transition-all font-semibold">Anuluj</button>
-                    <button onClick={saveProfile} disabled={saving} className="flex-1 p-3 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-bold disabled:opacity-50 hover:bg-blue-700 dark:hover:bg-blue-600 shadow-sm hover:shadow-md transition-all">{saving? 'Zapisywanie...' : '💾 Zapisz'}</button>
+                    <button onClick={saveProfile} disabled={saving} className="flex-1 p-3 rounded-lg bg-blue-600 dark:bg-blue-700 text-white font-bold disabled:opacity-50 hover:bg-blue-700 dark:hover:bg-blue-600 shadow-sm hover:shadow-md transition-all">{saving ? 'Zapisywanie...' : '💾 Zapisz'}</button>
                   </div>
                 </div>
               ) : (
@@ -722,9 +723,8 @@ const Profil = () => {
 
         {/* Powiadomienia */}
         {message && (
-          <div className={`mt-6 p-3 rounded-lg text-center font-medium text-sm ${
-            message.includes('Błąd') ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-          }`}>
+          <div className={`mt-6 p-3 rounded-lg text-center font-medium text-sm ${message.includes('Błąd') ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400' : 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
+            }`}>
             {message}
           </div>
         )}
@@ -760,14 +760,14 @@ const Profil = () => {
                     <span className="text-sm font-bold text-yellow-900 dark:text-white uppercase flex items-center gap-1"><Shield className="w-4 h-4" /> Moderacja</span>
                   </div>
                   <nav>
-                    <button onClick={()=>{ setActiveTab('modComments'); fetchModComments(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'modComments' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <button onClick={() => { setActiveTab('modComments'); fetchModComments(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'modComments' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                       <MessageCircle className="w-5 h-5" /> Komentarze <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{modComments.length}</span>
                     </button>
-                    <button onClick={()=>{ setActiveTab('modOffers'); fetchModOffers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${data?.rola !== 'Admin' ? 'border-b border-gray-100 dark:border-gray-700' : ''} ${activeTab === 'modOffers' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <button onClick={() => { setActiveTab('modOffers'); fetchModOffers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${data?.rola !== 'Admin' ? 'border-b border-gray-100 dark:border-gray-700' : ''} ${activeTab === 'modOffers' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                       <Eye className="w-5 h-5" /> Oferty <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{modOffers.filter(o => !o.zatwierdzona).length}</span>
                     </button>
                     {data?.rola !== 'Admin' && (
-                      <button onClick={()=>{ setActiveTab('modReports'); fetchModReports(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${activeTab === 'modReports' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                      <button onClick={() => { setActiveTab('modReports'); fetchModReports(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${activeTab === 'modReports' ? 'bg-yellow-50 dark:bg-yellow-900/40 text-yellow-700 dark:text-yellow-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                         <AlertTriangle className="w-5 h-5" /> Zgłoszenia {modReports.length > 0 && <span className="ml-auto px-1.5 py-0.5 text-xs bg-red-500 text-white rounded">{modReports.length}</span>}
                       </button>
                     )}
@@ -782,16 +782,16 @@ const Profil = () => {
                     <span className="text-sm font-bold text-red-900 dark:text-white uppercase flex items-center gap-1"><Settings className="w-4 h-4" /> Administracja</span>
                   </div>
                   <nav>
-                    <button onClick={()=>{ setActiveTab('adminUsers'); fetchAdminUsers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminUsers' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <button onClick={() => { setActiveTab('adminUsers'); fetchAdminUsers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminUsers' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                       <UserCog className="w-5 h-5" /> Użytkownicy <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{adminUsers.length}</span>
                     </button>
-                    <button onClick={()=>{ setActiveTab('adminBadges'); fetchAdminBadges(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminBadges' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <button onClick={() => { setActiveTab('adminBadges'); fetchAdminBadges(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminBadges' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                       <Award className="w-5 h-5" /> Odznaki <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{adminBadges.length}</span>
                     </button>
-                    <button onClick={()=>{ setActiveTab('adminOffers'); fetchAdminOffers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminOffers' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <button onClick={() => { setActiveTab('adminOffers'); fetchAdminOffers(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm border-b border-gray-100 dark:border-gray-700 ${activeTab === 'adminOffers' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                       <FileText className="w-5 h-5" /> Oferty <span className="ml-auto text-xs text-gray-500 dark:text-gray-400">{adminOffers.length}</span>
                     </button>
-                    <button onClick={()=>{ setActiveTab('modReports'); fetchAdminReports(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${activeTab === 'modReports' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
+                    <button onClick={() => { setActiveTab('modReports'); fetchAdminReports(); }} className={`w-full flex items-center gap-3 px-4 py-3 text-sm ${activeTab === 'modReports' ? 'bg-red-50 dark:bg-red-900/40 text-red-700 dark:text-red-300 font-medium' : 'text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700'}`}>
                       <AlertTriangle className="w-5 h-5" /> Zgłoszenia {modReports.length > 0 && <span className="ml-auto px-1.5 py-0.5 text-xs bg-red-500 text-white rounded">{modReports.length}</span>}
                     </button>
                   </nav>
@@ -802,447 +802,448 @@ const Profil = () => {
 
           {/* Główna zawartość */}
           <div className="flex-1 min-w-0">
-            <div className={`rounded-lg border p-6 ${
-              activeTab.startsWith('admin') || (activeTab === 'modReports' && data?.rola === 'Admin') 
-                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700' 
+            <div className={`rounded-lg border p-6 ${activeTab.startsWith('admin') || (activeTab === 'modReports' && data?.rola === 'Admin')
+                ? 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-700'
                 : (activeTab === 'modComments' || activeTab === 'modOffers' || (activeTab === 'modReports' && data?.rola !== 'Admin'))
-                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700' 
+                  ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-700'
                   : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-            }`}>
+              }`}>
 
-          {activeTab === 'offers' && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Moje oferty</h3>
-              
-              <div className="mb-4 flex flex-wrap gap-2">
-                <select value={categoryFilter} onChange={(e)=>setCategoryFilter(e.target.value)} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                  <option value="">Wszystkie kategorie</option>
-                  <option value="Elektronika">Elektronika</option>
-                  <option value="Moda">Moda</option>
-                  <option value="Dom i Ogród">Dom i Ogród</option>
-                  <option value="Sport">Sport</option>
-                  <option value="Książki">Książki</option>
-                  <option value="Gry">Gry</option>
-                  <option value="Kosmetyki">Kosmetyki</option>
-                  <option value="Jedzenie">Jedzenie</option>
-                  <option value="Podróże">Podróże</option>
-                  <option value="Inne">Inne</option>
-                </select>
-                <select value={sortBy} onChange={(e)=>setSortBy(e.target.value as any)} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
-                  <option value="newest">Najnowsze</option>
-                  <option value="hot">Najgorętsze</option>
-                  <option value="price">Najtańsze</option>
-                </select>
-              </div>
+              {activeTab === 'offers' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Moje oferty</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {offers.map(offer => (
-                  <div key={offer.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
-                    <div className="mb-2 flex justify-between items-start">
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-600 dark:bg-blue-700 text-white transition-colors">{offer.kategoria}</span>
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300 mb-3 line-clamp-3 transition-colors">{offer.opis}</p>
-                    <div className="mb-3">
-                      {offer.zdjecia?.length ? (
-                        <div className="flex gap-2">
-                          {offer.zdjecia.slice(0,3).map((img,i)=>(
-                            <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border dark:border-gray-600 transition-colors" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
-                          ))}
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                      <option value="">Wszystkie kategorie</option>
+                      <option value="Elektronika">Elektronika</option>
+                      <option value="Moda">Moda</option>
+                      <option value="Dom i Ogród">Dom i Ogród</option>
+                      <option value="Sport">Sport</option>
+                      <option value="Książki">Książki</option>
+                      <option value="Gry">Gry</option>
+                      <option value="Kosmetyki">Kosmetyki</option>
+                      <option value="Jedzenie">Jedzenie</option>
+                      <option value="Podróże">Podróże</option>
+                      <option value="Inne">Inne</option>
+                    </select>
+                    <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+                      <option value="newest">Najnowsze</option>
+                      <option value="hot">Najgorętsze</option>
+                      <option value="price">Najtańsze</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {offers.map(offer => (
+                      <div key={offer.id} className="rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
+                        <div className="mb-2 flex justify-between items-start">
+                          <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
+                          <span className="text-xs px-2 py-1 rounded-full bg-blue-600 dark:bg-blue-700 text-white transition-colors">{offer.kategoria}</span>
                         </div>
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded border dark:border-gray-600 flex items-center justify-center transition-colors">{offer.typ==='kupon'?'🎫':'🛍️'}</div>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex gap-2">
-                        <button className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${offer.userVote==='hot'?'bg-red-600 dark:bg-red-700 text-white shadow-sm':'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'}`} onClick={()=>voteOffer(offer.id,'hot')} disabled={loadingList}><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</button>
-                        <button className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${offer.userVote==='cold'?'bg-blue-600 dark:bg-blue-700 text-white shadow-sm':'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'}`} onClick={()=>voteOffer(offer.id,'cold')} disabled={loadingList}><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</button>
+                        <p className="text-gray-700 dark:text-gray-300 mb-3 line-clamp-3 transition-colors">{offer.opis}</p>
+                        <div className="mb-3">
+                          {offer.zdjecia?.length ? (
+                            <div className="flex gap-2">
+                              {offer.zdjecia.slice(0, 3).map((img, i) => (
+                                <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border dark:border-gray-600 transition-colors" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded border dark:border-gray-600 flex items-center justify-center transition-colors">{offer.typ === 'kupon' ? '🎫' : '🛍️'}</div>
+                          )}
+                        </div>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex gap-2">
+                            <button className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${offer.userVote === 'hot' ? 'bg-red-600 dark:bg-red-700 text-white shadow-sm' : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'}`} onClick={() => voteOffer(offer.id, 'hot')} disabled={loadingList}><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</button>
+                            <button className={`px-3 py-1 rounded-full text-sm font-semibold transition-all ${offer.userVote === 'cold' ? 'bg-blue-600 dark:bg-blue-700 text-white shadow-sm' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'}`} onClick={() => voteOffer(offer.id, 'cold')} disabled={loadingList}><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</button>
+                          </div>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center transition-colors"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
+                          <button className="text-red-500 dark:text-red-400 text-sm hover:text-red-700 dark:hover:text-red-300 transition-colors" onClick={() => { const r = prompt('Powód zgłoszenia:'); if (r) reportContent('offer', offer.id, r); }}>
+                            <Flag className="w-4 h-4 inline mr-1" />Zgłoś
+                          </button>
+                        </div>
+                        <input className="w-full p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" placeholder="Dodaj komentarz..." onKeyDown={(e) => { if (e.key === 'Enter') { const v = (e.target as HTMLInputElement).value; addComment(offer.id, v); (e.target as HTMLInputElement).value = ''; } }} />
+                        <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors">Dodane: {offer.dataUtworzenia}</div>
+                        <div className="mt-3 flex justify-end gap-2">
+                          <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white text-sm hover:bg-red-700 dark:hover:bg-red-600 shadow-sm transition-all" onClick={() => deleteOffer(offer.id)} disabled={loadingList}>Usuń</button>
+                          <button className="px-3 py-1 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm hover:bg-blue-700 dark:hover:bg-blue-600 shadow-sm transition-all" onClick={() => { const base = offer.typ === 'kupon' ? '/stworz-oferte/kupon' : '/stworz-oferte/okazja'; window.location.href = `${base}?edit=${offer.id}`; }}>Edytuj</button>
+                        </div>
                       </div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center transition-colors"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
-                      <button className="text-red-500 dark:text-red-400 text-sm hover:text-red-700 dark:hover:text-red-300 transition-colors" onClick={()=>{const r=prompt('Powód zgłoszenia:'); if(r) reportContent('offer', offer.id, r);}}>
-                        <Flag className="w-4 h-4 inline mr-1" />Zgłoś
-                      </button>
-                    </div>
-                    <input className="w-full p-2 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg mb-3 focus:ring-2 focus:ring-blue-500 outline-none transition-colors" placeholder="Dodaj komentarz..." onKeyDown={(e)=>{ if(e.key==='Enter'){ const v=(e.target as HTMLInputElement).value; addComment(offer.id, v); (e.target as HTMLInputElement).value=''; } }} />
-                    <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors">Dodane: {offer.dataUtworzenia}</div>
-                    <div className="mt-3 flex justify-end gap-2">
-                      <button className="px-3 py-1 rounded-lg bg-red-600 dark:bg-red-700 text-white text-sm hover:bg-red-700 dark:hover:bg-red-600 shadow-sm transition-all" onClick={()=>deleteOffer(offer.id)} disabled={loadingList}>Usuń</button>
-                      <button className="px-3 py-1 rounded-lg bg-blue-600 dark:bg-blue-700 text-white text-sm hover:bg-blue-700 dark:hover:bg-blue-600 shadow-sm transition-all" onClick={()=>{const base=offer.typ==='kupon'?'/stworz-oferte/kupon':'/stworz-oferte/okazja'; window.location.href = `${base}?edit=${offer.id}`;}}>Edytuj</button>
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
 
-              <div className="mt-6 flex justify-center">
-                {offersHasMore ? (
-                  <button onClick={loadMoreOffers} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
-                ) : (
-                  <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystkie Twoje oferty</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'activity' && (
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Historia aktywności</h3>
-              {userActivity.map(a => (
-                <div key={a.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start gap-3">
-                  <div className="text-2xl">
-                    {a.typ==='oferta' && '🛍️'}
-                    {a.typ==='komentarz' && '💬'}
-                    {a.typ==='glos' && '🔥'}
-                    {a.typ==='odznaka' && '🏆'}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-gray-900 dark:text-gray-100 transition-colors">{a.opis}</div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2 transition-colors">{a.data} {a.punkty ? (<span className="text-green-600 dark:text-green-400 font-semibold transition-colors">+{a.punkty} pkt</span>) : null}</div>
-                  </div>
-                </div>
-              ))}
-              {userActivity.length === 0 && (
-                <div className="text-center text-gray-600 dark:text-gray-400 transition-colors">Brak aktywności</div>
-              )}
-              <div className="mt-6 flex justify-center">
-                {activityHasMore ? (
-                  <button onClick={()=>fetchUserActivity(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
-                ) : (
-                  <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystko</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'comments' && (
-            <div className="space-y-2">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Twoje komentarze</h3>
-              {userComments.map(c => (
-                <div key={c.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start justify-between">
-                  <div>
-                    <div className="text-gray-900 dark:text-gray-100 mb-1 transition-colors">{c.tresc}</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors">W ofercie: <strong className="text-gray-700 dark:text-gray-300">{c.oferta}</strong> • {c.data}</div>
-                  </div>
-                  <button className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition" onClick={()=>{const r=prompt('Powód zgłoszenia komentarza:'); if(r) reportContent('comment', c.id, r);}}>🚩</button>
-                </div>
-              ))}
-              {userComments.length === 0 && (
-                <div className="text-center text-gray-600 dark:text-gray-400 transition-colors">Brak komentarzy</div>
-              )}
-              <div className="mt-6 flex justify-center">
-                {commentsHasMore ? (
-                  <button onClick={()=>fetchUserComments(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
-                ) : (
-                  <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystko</div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'zapisane' && (
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Zapisane oferty</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {savedOffers.map(offer => (
-                  <div key={offer.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
-                    <div className="mb-2 flex justify-between items-start">
-                      <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
-                      <span className="text-xs px-2 py-1 rounded-full bg-blue-600 dark:bg-blue-700 text-white transition-colors">{offer.kategoria}</span>
-                    </div>
-                    <p className="text-gray-700 dark:text-gray-300 mb-3 line-clamp-3 transition-colors">{offer.opis}</p>
-                    
-                    {offer.cena && (
-                      <div className="mb-3 flex items-center gap-2">
-                        <span className="text-xl font-bold text-green-600 dark:text-green-400 transition-colors">{offer.cena}zł</span>
-                        {offer.cenaPoprzednia && (
-                          <span className="text-sm line-through text-gray-500 dark:text-gray-400 transition-colors">{offer.cenaPoprzednia}zł</span>
-                        )}
-                      </div>
+                  <div className="mt-6 flex justify-center">
+                    {offersHasMore ? (
+                      <button onClick={loadMoreOffers} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
+                    ) : (
+                      <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystkie Twoje oferty</div>
                     )}
-
-                    <div className="mb-3">
-                      {offer.zdjecia?.length ? (
-                        <div className="flex gap-2">
-                          {offer.zdjecia.slice(0,3).map((img,i)=>(
-                            <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border dark:border-gray-600 transition-colors" onError={(e)=>{(e.currentTarget as HTMLImageElement).style.display='none';}} />
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded border dark:border-gray-600 flex items-center justify-center transition-colors">{offer.typ==='kupon'?'🎫':'🛍️'}</div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex gap-2">
-                        <span className="px-3 py-1 rounded-full text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 transition-colors"><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</span>
-                        <span className="px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 transition-colors"><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</span>
-                      </div>
-                      <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center transition-colors"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
-                    </div>
-
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 transition-colors">Autor: {offer.autor} • {offer.dataUtworzenia}</div>
-                    
-                    <div className="mt-3 flex justify-between gap-2">
-                      <button 
-                        className="px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white text-sm flex-1 hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
-                        onClick={() => {
-                          const link = offer.sklep;
-                          const url = link.startsWith('http') ? link : `https://${link}`;
-                          window.open(url, '_blank');
-                        }}
-                      >
-                        Przejdź do sklepu
-                      </button>
-                      <button 
-                        className="px-4 py-2 rounded-lg bg-red-600 dark:bg-red-700 text-white text-sm hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
-                        onClick={async () => {
-                          try {
-                            const res = await authorizedFetch(`${API_BASE}/api/uzytkownik/zapisane/${offer.id}`, {
-                              method: 'DELETE'
-                            });
-                            if (res.ok) {
-                              setSavedOffers(prev => prev.filter(o => o.id !== offer.id));
-                            } else {
-                              setMessage('Błąd podczas usuwania z zapisanych');
-                            }
-                          } catch {
-                            setMessage('Błąd połączenia z serwerem');
-                          }
-                        }}
-                      >
-                        Usuń
-                      </button>
-                    </div>
                   </div>
-                ))}
-              </div>
-
-              {savedOffers.length === 0 && (
-                <div className="text-center text-gray-600 dark:text-gray-400 py-8 transition-colors">
-                  <Check className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
-                  <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100 transition-colors">Brak zapisanych ofert</h3>
-                  <p className="text-sm">Zapisane oferty będą wyświetlane tutaj</p>
                 </div>
               )}
 
-              <div className="mt-6 flex justify-center">
-                {savedOffersHasMore ? (
-                  <button onClick={() => fetchSavedOffers(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
-                ) : savedOffers.length > 0 ? (
-                  <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">To już wszystkie zapisane oferty</div>
-                ) : null}
-              </div>
-            </div>
-          )}
-
-          {activeTab === 'modComments' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Komentarze do moderacji</h3>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{modComments.length} komentarzy</span>
-              </div>
-              <div className="space-y-3">
-                {modComments.map(c => (
-                  <div key={c.idKomentarz} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-gray-900 dark:text-gray-100">{c.autor}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">{c.dataDodania}</span>
-                          {c.zgloszen > 0 && <span className="px-2 py-0.5 rounded text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">{c.zgloszen} zgł.</span>}
-                        </div>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">{c.tresc}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Oferta: {c.ofertaTytul || '-'}</p>
+              {activeTab === 'activity' && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Historia aktywności</h3>
+                  {userActivity.map(a => (
+                    <div key={a.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start gap-3">
+                      <div className="text-2xl">
+                        {a.typ === 'oferta' && '🛍️'}
+                        {a.typ === 'komentarz' && '💬'}
+                        {a.typ === 'glos' && '🔥'}
+                        {a.typ === 'odznaka' && '🏆'}
                       </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={()=>warnComment(c.idKomentarz)} disabled={loadingList}>Ostrzeż</button>
-                        <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteCommentMod(c.idKomentarz)} disabled={loadingList}>Usuń</button>
+                      <div className="flex-1">
+                        <div className="text-gray-900 dark:text-gray-100 transition-colors">{a.opis}</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-2 transition-colors">{a.data} {a.punkty ? (<span className="text-green-600 dark:text-green-400 font-semibold transition-colors">+{a.punkty} pkt</span>) : null}</div>
                       </div>
                     </div>
+                  ))}
+                  {userActivity.length === 0 && (
+                    <div className="text-center text-gray-600 dark:text-gray-400 transition-colors">Brak aktywności</div>
+                  )}
+                  <div className="mt-6 flex justify-center">
+                    {activityHasMore ? (
+                      <button onClick={() => fetchUserActivity(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
+                    ) : (
+                      <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystko</div>
+                    )}
                   </div>
-                ))}
-                {modComments.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak komentarzy do moderacji</div>}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {activeTab === 'modOffers' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Oferty do zatwierdzenia</h3>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{modOffers.filter(o => !o.zatwierdzona).length} oczekujących</span>
-              </div>
-              <div className="space-y-3">
-                {modOffers.map(o => (
-                  <div key={o.idOferta} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-medium text-gray-900 dark:text-gray-100">{o.tytul}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${o.zatwierdzona ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{o.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
-                        </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 line-clamp-2">{o.opis}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Autor: {o.autor} • {o.dataDodania}</p>
+              {activeTab === 'comments' && (
+                <div className="space-y-2">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Twoje komentarze</h3>
+                  {userComments.map(c => (
+                    <div key={c.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4 shadow-sm hover:shadow-md transition-all flex items-start justify-between">
+                      <div>
+                        <div className="text-gray-900 dark:text-gray-100 mb-1 transition-colors">{c.tresc}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 transition-colors">W ofercie: <strong className="text-gray-700 dark:text-gray-300">{c.oferta}</strong> • {c.data}</div>
                       </div>
-                      <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
-                        {!o.zatwierdzona && <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={()=>approveOfferMod(o.idOferta)} disabled={loadingList}>Zatwierdź</button>}
-                        <button className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700" onClick={()=>{const isKupon=o.typ==='kupon'; window.location.href = isKupon?`/stworz-oferte/kupon?edit=${o.idOferta}`:`/stworz-oferte/okazja?edit=${o.idOferta}`;}} disabled={loadingList}>Edytuj</button>
-                        <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={()=>rejectOfferMod(o.idOferta)} disabled={loadingList}>Odrzuć</button>
-                        <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteOfferMod(o.idOferta)} disabled={loadingList}>Usuń</button>
-                      </div>
+                      <button className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition" onClick={() => { const r = prompt('Powód zgłoszenia komentarza:'); if (r) reportContent('comment', c.id, r); }}>🚩</button>
                     </div>
+                  ))}
+                  {userComments.length === 0 && (
+                    <div className="text-center text-gray-600 dark:text-gray-400 transition-colors">Brak komentarzy</div>
+                  )}
+                  <div className="mt-6 flex justify-center">
+                    {commentsHasMore ? (
+                      <button onClick={() => fetchUserComments(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
+                    ) : (
+                      <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">To już wszystko</div>
+                    )}
                   </div>
-                ))}
-                {modOffers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak ofert do moderacji</div>}
-              </div>
-            </div>
-          )}
+                </div>
+              )}
 
-          {activeTab === 'modReports' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zgłoszenia</h3>
-                {modReports.length > 0 && <span className="text-sm text-red-500 font-medium">{modReports.length} do rozpatrzenia</span>}
-              </div>
-              <div className="space-y-3">
-                {modReports.map((r:any) => (
-                  <div key={r.idZgloszenie || r.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">#{r.idZgloszenie || r.id}</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">{r.dataZgloszenia}</span>
+              {activeTab === 'zapisane' && (
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Zapisane oferty</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {savedOffers.map(offer => (
+                      <div key={offer.id} className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-6 shadow-sm hover:shadow-md transition-all">
+                        <div className="mb-2 flex justify-between items-start">
+                          <h4 className="text-lg font-bold text-gray-900 dark:text-gray-100 transition-colors">{offer.tytul}</h4>
+                          <span className="text-xs px-2 py-1 rounded-full bg-blue-600 dark:bg-blue-700 text-white transition-colors">{offer.kategoria}</span>
                         </div>
-                        <p className="text-sm text-gray-900 dark:text-gray-100 mb-1">{r.tresc}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Zgłosił: {r.zgloszonePrzez}</p>
-                      </div>
-                      <div className="flex gap-1 flex-shrink-0">
-                        {(data?.rola==='Admin' || data?.rola==='Moderator') ? (
-                          <>
-                            {r.idKomentarz && <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteReportedCommentAdmin(r.idKomentarz, r.idZgloszenie || r.id)} disabled={loadingList}>Usuń kom.</button>}
-                            {r.idOferta && <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteOfferMod(r.idOferta)} disabled={loadingList}>Usuń ofertę</button>}
-                            <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={()=>approveReportAdmin(r.idZgloszenie || r.id)} disabled={loadingList}>Zatwierdź</button>
-                            <button className="px-2 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700" onClick={()=>rejectReportAdmin(r.idZgloszenie || r.id)} disabled={loadingList}>Odrzuć</button>
-                          </>
-                        ) : (
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Brak akcji</span>
+                        <p className="text-gray-700 dark:text-gray-300 mb-3 line-clamp-3 transition-colors">{offer.opis}</p>
+
+                        {offer.cena && (
+                          <div className="mb-3 flex items-center gap-2">
+                            <span className="text-xl font-bold text-green-600 dark:text-green-400 transition-colors">{offer.cena}zł</span>
+                            {offer.cenaPoprzednia && (
+                              <span className="text-sm line-through text-gray-500 dark:text-gray-400 transition-colors">{offer.cenaPoprzednia}zł</span>
+                            )}
+                          </div>
                         )}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {modReports.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak zgłoszeń</div>}
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'adminUsers' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zarządzanie użytkownikami</h3>
-                <span className="text-sm text-gray-500 dark:text-gray-400">{adminUsers.length} użytkowników</span>
-              </div>
-              <div className="space-y-3">
-                {adminUsers.map(u => (
-                  <div key={u.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-medium text-gray-900 dark:text-gray-100">{u.nick}</span>
-                          <span className={`text-xs ${u.emailConfirmed ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{u.emailConfirmed ? '✓' : '✗'}</span>
+                        <div className="mb-3">
+                          {offer.zdjecia?.length ? (
+                            <div className="flex gap-2">
+                              {offer.zdjecia.slice(0, 3).map((img, i) => (
+                                <img key={i} src={`${API_BASE}${img}`} alt="zdjęcie" className="w-16 h-16 object-cover rounded border dark:border-gray-600 transition-colors" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                              ))}
+                            </div>
+                          ) : (
+                            <div className="w-16 h-16 bg-gray-100 dark:bg-gray-700 rounded border dark:border-gray-600 flex items-center justify-center transition-colors">{offer.typ === 'kupon' ? '🎫' : '🛍️'}</div>
+                          )}
                         </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">{u.email}</p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <select value={u.rola} onChange={(e)=>changeUserRole(u.id, e.target.value)} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded">
-                          <option value="Uzytkownik">Użytkownik</option>
-                          <option value="Moderator">Moderator</option>
-                          <option value="Admin">Admin</option>
-                        </select>
-                        <div className="flex items-center gap-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Pkt:</span>
-                          <input type="number" defaultValue={u.punkty} className="w-16 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" onKeyDown={(e)=>{ if(e.key==='Enter'){ const v=parseInt((e.target as HTMLInputElement).value); if(!isNaN(v)) updateUserPoints(u.id, v); } }} />
-                        </div>
-                        <button className="px-2 py-1 text-xs rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-800/40" onClick={()=>recalcBadgesForUser(u.id)} disabled={loadingList}>Przelicz</button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {adminUsers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak użytkowników</div>}
-              </div>
-            </div>
-          )}
 
-          {activeTab === 'adminBadges' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zarządzanie odznakami</h3>
-                <div className="flex gap-2">
-                  <button className="px-3 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700" onClick={recalcPointsForAll}>Przelicz punkty</button>
-                  <button className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700" onClick={recalcBadgesForAll}>Przelicz odznaki</button>
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex gap-2">
+                            <span className="px-3 py-1 rounded-full text-sm bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 transition-colors"><Flame className="w-4 h-4 inline mr-1" />{offer.votes.hot}</span>
+                            <span className="px-3 py-1 rounded-full text-sm bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 transition-colors"><Snowflake className="w-4 h-4 inline mr-1" />{offer.votes.cold}</span>
+                          </div>
+                          <span className="text-sm text-gray-600 dark:text-gray-400 flex items-center transition-colors"><MessageCircle className="w-4 h-4 inline mr-1" /> {offer.komentarze}</span>
+                        </div>
+
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mb-3 transition-colors">Autor: {offer.autor} • {offer.dataUtworzenia}</div>
+
+                        <div className="mt-3 flex justify-between gap-2">
+                          <button
+                            className="px-4 py-2 rounded-lg bg-green-600 dark:bg-green-700 text-white text-sm flex-1 hover:bg-green-700 dark:hover:bg-green-600 transition-colors"
+                            onClick={() => {
+                              const link = offer.sklep;
+                              const url = link.startsWith('http') ? link : `https://${link}`;
+                              window.open(url, '_blank');
+                            }}
+                          >
+                            Przejdź do sklepu
+                          </button>
+                          <button
+                            className="px-4 py-2 rounded-lg bg-red-600 dark:bg-red-700 text-white text-sm hover:bg-red-700 dark:hover:bg-red-600 transition-colors"
+                            onClick={async () => {
+                              try {
+                                const res = await authorizedFetch(`${API_BASE}/api/uzytkownik/zapisane/${offer.id}`, {
+                                  method: 'DELETE'
+                                });
+                                if (res.ok) {
+                                  setSavedOffers(prev => prev.filter(o => o.id !== offer.id));
+                                } else {
+                                  setMessage('Błąd podczas usuwania z zapisanych');
+                                }
+                              } catch {
+                                setMessage('Błąd połączenia z serwerem');
+                              }
+                            }}
+                          >
+                            Usuń
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {savedOffers.length === 0 && (
+                    <div className="text-center text-gray-600 dark:text-gray-400 py-8 transition-colors">
+                      <Check className="w-16 h-16 mx-auto mb-4 text-gray-400 dark:text-gray-500" />
+                      <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-gray-100 transition-colors">Brak zapisanych ofert</h3>
+                      <p className="text-sm">Zapisane oferty będą wyświetlane tutaj</p>
+                    </div>
+                  )}
+
+                  <div className="mt-6 flex justify-center">
+                    {savedOffersHasMore ? (
+                      <button onClick={() => fetchSavedOffers(false)} disabled={loadingList} className="px-5 py-2 rounded-lg bg-gray-200 dark:bg-gray-700 border dark:border-gray-600 text-gray-900 dark:text-gray-100 hover:bg-gray-300 dark:hover:bg-gray-600 shadow-sm transition-all">Załaduj kolejne</button>
+                    ) : savedOffers.length > 0 ? (
+                      <div className="text-sm text-gray-500 dark:text-gray-400 transition-colors">To już wszystkie zapisane oferty</div>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              
-              <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600 mb-4">
-                <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Nowa odznaka</h4>
-                <form onSubmit={createBadge} className="flex flex-wrap gap-2">
-                  <input value={newBadge.nazwa} onChange={e=>setNewBadge({...newBadge, nazwa:e.target.value})} placeholder="Nazwa" className="flex-1 min-w-[120px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" required />
-                  <input value={newBadge.opis} onChange={e=>setNewBadge({...newBadge, opis:e.target.value})} placeholder="Opis" className="flex-1 min-w-[150px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" required />
-                  <input value={newBadge.ikona} onChange={e=>setNewBadge({...newBadge, ikona:e.target.value})} placeholder="🏆" className="w-16 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-center" />
-                  <button type="submit" className="px-4 py-2 text-sm rounded bg-yellow-500 text-white hover:bg-yellow-600">Utwórz</button>
-                </form>
-              </div>
-              
-              <div className="space-y-2">
-                {adminBadges.map(b => (
-                  <div key={b.idOdznaka} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 flex items-center gap-3">
-                    <span className="text-2xl">{b.ikona}</span>
-                    <div className="flex-1 min-w-0">
-                      <span className="font-medium text-gray-900 dark:text-gray-100">{b.nazwa}</span>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{b.opis}</p>
-                    </div>
-                    <button className="p-1.5 rounded text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={()=>deleteBadge(b.idOdznaka)}><Trash2 className="w-4 h-4"/></button>
-                  </div>
-                ))}
-                {adminBadges.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak odznak</div>}
-              </div>
-            </div>
-          )}
+              )}
 
-          {activeTab === 'adminOffers' && (
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Wszystkie oferty</h3>
-                <div className="flex gap-3 text-sm">
-                  <span className="text-green-600 dark:text-green-400">{adminOffers.filter(o => o.zatwierdzona).length} zatwierdzonych</span>
-                  <span className="text-yellow-600 dark:text-yellow-400">{adminOffers.filter(o => !o.zatwierdzona).length} oczekujących</span>
-                </div>
-              </div>
-              <div className="space-y-3">
-                {adminOffers.map(offer => (
-                  <div key={offer.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1 flex-wrap">
-                          <span className="font-medium text-gray-900 dark:text-gray-100">{offer.tytul}</span>
-                          <span className={`px-2 py-0.5 rounded text-xs ${offer.zatwierdzona ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
+              {activeTab === 'modComments' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Komentarze do moderacji</h3>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{modComments.length} komentarzy</span>
+                  </div>
+                  <div className="space-y-3">
+                    {modComments.map(c => (
+                      <div key={c.idKomentarz} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{c.autor}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{c.dataDodania}</span>
+                              {c.zgloszen > 0 && <span className="px-2 py-0.5 rounded text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400">{c.zgloszen} zgł.</span>}
+                            </div>
+                            <p className="text-sm text-gray-700 dark:text-gray-300 mb-1">{c.tresc}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Oferta: {c.ofertaTytul || '-'}</p>
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0">
+                            <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={() => warnComment(c.idKomentarz)} disabled={loadingList}>Ostrzeż</button>
+                            <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => deleteCommentMod(c.idKomentarz)} disabled={loadingList}>Usuń</button>
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 line-clamp-2">{offer.opis}</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Autor: {offer.autor} • {offer.dataUtworzenia}</p>
                       </div>
-                      <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
-                        {!offer.zatwierdzona && <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={()=>approveOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Zatwierdź</button>}
-                        <button className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700" onClick={()=>editOfferAdmin(offer.idOferta ?? offer.id, offer.typ)} disabled={loadingList}>Edytuj</button>
-                        <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={()=>rejectOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Odrzuć</button>
-                        <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={()=>deleteOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Usuń</button>
+                    ))}
+                    {modComments.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak komentarzy do moderacji</div>}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'modOffers' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Oferty do zatwierdzenia</h3>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{modOffers.filter(o => !o.zatwierdzona).length} oczekujących</span>
+                  </div>
+                  <div className="space-y-3">
+                    {modOffers.map(o => (
+                      <div key={o.idOferta} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{o.tytul}</span>
+                              {o.zatwierdzeniePrzezAI && <span className="px-2 py-0.5 rounded text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">🤖 AI</span>}
+                              <span className={`px-2 py-0.5 rounded text-xs ${o.zatwierdzona ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{o.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 line-clamp-2">{o.opis}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Autor: {o.autor} • {o.dataDodania}</p>
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+                            {!o.zatwierdzona && <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={() => approveOfferMod(o.idOferta)} disabled={loadingList}>Zatwierdź</button>}
+                            <button className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700" onClick={() => { const isKupon = o.typ === 'kupon'; window.location.href = isKupon ? `/stworz-oferte/kupon?edit=${o.idOferta}` : `/stworz-oferte/okazja?edit=${o.idOferta}`; }} disabled={loadingList}>Edytuj</button>
+                            <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={() => rejectOfferMod(o.idOferta)} disabled={loadingList}>Odrzuć</button>
+                            <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => deleteOfferMod(o.idOferta)} disabled={loadingList}>Usuń</button>
+                          </div>
+                        </div>
                       </div>
+                    ))}
+                    {modOffers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak ofert do moderacji</div>}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'modReports' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zgłoszenia</h3>
+                    {modReports.length > 0 && <span className="text-sm text-red-500 font-medium">{modReports.length} do rozpatrzenia</span>}
+                  </div>
+                  <div className="space-y-3">
+                    {modReports.map((r: any) => (
+                      <div key={r.idZgloszenie || r.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="px-2 py-0.5 rounded text-xs bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400">#{r.idZgloszenie || r.id}</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">{r.dataZgloszenia}</span>
+                            </div>
+                            <p className="text-sm text-gray-900 dark:text-gray-100 mb-1">{r.tresc}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Zgłosił: {r.zgloszonePrzez}</p>
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0">
+                            {(data?.rola === 'Admin' || data?.rola === 'Moderator') ? (
+                              <>
+                                {r.idKomentarz && <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => deleteReportedCommentAdmin(r.idKomentarz, r.idZgloszenie || r.id)} disabled={loadingList}>Usuń kom.</button>}
+                                {r.idOferta && <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => deleteOfferMod(r.idOferta)} disabled={loadingList}>Usuń ofertę</button>}
+                                <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={() => approveReportAdmin(r.idZgloszenie || r.id)} disabled={loadingList}>Zatwierdź</button>
+                                <button className="px-2 py-1 text-xs rounded bg-gray-600 text-white hover:bg-gray-700" onClick={() => rejectReportAdmin(r.idZgloszenie || r.id)} disabled={loadingList}>Odrzuć</button>
+                              </>
+                            ) : (
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Brak akcji</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {modReports.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak zgłoszeń</div>}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'adminUsers' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zarządzanie użytkownikami</h3>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">{adminUsers.length} użytkowników</span>
+                  </div>
+                  <div className="space-y-3">
+                    {adminUsers.map(u => (
+                      <div key={u.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{u.nick}</span>
+                              <span className={`text-xs ${u.emailConfirmed ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>{u.emailConfirmed ? '✓' : '✗'}</span>
+                            </div>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">{u.email}</p>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <select value={u.rola} onChange={(e) => changeUserRole(u.id, e.target.value)} className="px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded">
+                              <option value="Uzytkownik">Użytkownik</option>
+                              <option value="Moderator">Moderator</option>
+                              <option value="Admin">Admin</option>
+                            </select>
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Pkt:</span>
+                              <input type="number" defaultValue={u.punkty} className="w-16 px-2 py-1 text-xs border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" onKeyDown={(e) => { if (e.key === 'Enter') { const v = parseInt((e.target as HTMLInputElement).value); if (!isNaN(v)) updateUserPoints(u.id, v); } }} />
+                            </div>
+                            <button className="px-2 py-1 text-xs rounded bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-200 dark:hover:bg-indigo-800/40" onClick={() => recalcBadgesForUser(u.id)} disabled={loadingList}>Przelicz</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {adminUsers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak użytkowników</div>}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'adminBadges' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Zarządzanie odznakami</h3>
+                    <div className="flex gap-2">
+                      <button className="px-3 py-1 text-sm rounded bg-green-600 text-white hover:bg-green-700" onClick={recalcPointsForAll}>Przelicz punkty</button>
+                      <button className="px-3 py-1 text-sm rounded bg-indigo-600 text-white hover:bg-indigo-700" onClick={recalcBadgesForAll}>Przelicz odznaki</button>
                     </div>
                   </div>
-                ))}
-                {adminOffers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak ofert w systemie</div>}
-              </div>
-            </div>
-          )}
+
+                  <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-gray-200 dark:border-gray-600 mb-4">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-3">Nowa odznaka</h4>
+                    <form onSubmit={createBadge} className="flex flex-wrap gap-2">
+                      <input value={newBadge.nazwa} onChange={e => setNewBadge({ ...newBadge, nazwa: e.target.value })} placeholder="Nazwa" className="flex-1 min-w-[120px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" required />
+                      <input value={newBadge.opis} onChange={e => setNewBadge({ ...newBadge, opis: e.target.value })} placeholder="Opis" className="flex-1 min-w-[150px] px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded" required />
+                      <input value={newBadge.ikona} onChange={e => setNewBadge({ ...newBadge, ikona: e.target.value })} placeholder="🏆" className="w-16 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded text-center" />
+                      <button type="submit" className="px-4 py-2 text-sm rounded bg-yellow-500 text-white hover:bg-yellow-600">Utwórz</button>
+                    </form>
+                  </div>
+
+                  <div className="space-y-2">
+                    {adminBadges.map(b => (
+                      <div key={b.idOdznaka} className="bg-white dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-700 flex items-center gap-3">
+                        <span className="text-2xl">{b.ikona}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-gray-900 dark:text-gray-100">{b.nazwa}</span>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{b.opis}</p>
+                        </div>
+                        <button className="p-1.5 rounded text-red-500 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30" onClick={() => deleteBadge(b.idOdznaka)}><Trash2 className="w-4 h-4" /></button>
+                      </div>
+                    ))}
+                    {adminBadges.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak odznak</div>}
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'adminOffers' && (
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Wszystkie oferty</h3>
+                    <div className="flex gap-3 text-sm">
+                      <span className="text-green-600 dark:text-green-400">{adminOffers.filter(o => o.zatwierdzona).length} zatwierdzonych</span>
+                      <span className="text-yellow-600 dark:text-yellow-400">{adminOffers.filter(o => !o.zatwierdzona).length} oczekujących</span>
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    {adminOffers.map(offer => (
+                      <div key={offer.id} className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1 flex-wrap">
+                              <span className="font-medium text-gray-900 dark:text-gray-100">{offer.tytul}</span>
+                              {offer.zatwierdzeniePrzezAI && <span className="px-2 py-0.5 rounded text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400">🤖 AI</span>}
+                              <span className={`px-2 py-0.5 rounded text-xs ${offer.zatwierdzona ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'}`}>{offer.zatwierdzona ? 'Zatwierdzona' : 'Oczekuje'}</span>
+                            </div>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-1 line-clamp-2">{offer.opis}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">Autor: {offer.autor} • {offer.dataUtworzenia}</p>
+                          </div>
+                          <div className="flex gap-1 flex-shrink-0 flex-wrap justify-end">
+                            {!offer.zatwierdzona && <button className="px-2 py-1 text-xs rounded bg-green-600 text-white hover:bg-green-700" onClick={() => approveOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Zatwierdź</button>}
+                            <button className="px-2 py-1 text-xs rounded bg-blue-600 text-white hover:bg-blue-700" onClick={() => editOfferAdmin(offer.idOferta ?? offer.id, offer.typ)} disabled={loadingList}>Edytuj</button>
+                            <button className="px-2 py-1 text-xs rounded bg-yellow-500 text-white hover:bg-yellow-600" onClick={() => rejectOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Odrzuć</button>
+                            <button className="px-2 py-1 text-xs rounded bg-red-600 text-white hover:bg-red-700" onClick={() => deleteOfferAdmin(offer.idOferta ?? offer.id)} disabled={loadingList}>Usuń</button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {adminOffers.length === 0 && <div className="text-center text-gray-500 dark:text-gray-400 py-8">Brak ofert w systemie</div>}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -359,10 +359,11 @@ namespace TechPromo.Api.Controllers
                     status = o.Status,
                     aktywna = o.Aktywna, // Dodane pole z ModeratorController
                     zatwierdzona = o.Zatwierdzona, // Dodane pole z ModeratorController
+                    zatwierdzeniePrzezAI = o.ZatwierdzeniePrzezAI, // Oznacza że oferta przeszła automatyczną moderację AI
                     cena = o.Cena,
-            cenaPoprzednia = o.CenaPoprzednia,
-                    link = o.Link
-            ,typ = o.Typ
+                    cenaPoprzednia = o.CenaPoprzednia,
+                    link = o.Link,
+                    typ = o.Typ
                 })
                 .ToListAsync();
 
