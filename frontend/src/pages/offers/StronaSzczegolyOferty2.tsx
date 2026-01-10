@@ -178,7 +178,8 @@ export default function OfferDetailsPage() {
     if (!id) return;
     try {
       setLoadingSimilar(true);
-      const res = await fetch(`/api/wyszukiwarka/podobne/${id}?liczba=5`);
+      // Używamy endpointu rekomendacji dla podobnych ofert (Content-Based)
+      const res = await fetch(`/api/rekomendacje/podobne/${id}?limit=5`);
       if (res.ok) {
         const data = await res.json();
         setSimilarOffers(data || []);

@@ -112,6 +112,9 @@ builder.Services.AddScoped<ISerwisWykrywaniaDuplikatow, SerwisWykrywaniaDuplikat
 // Azure Content Safety - automatyczne wykrywanie wulgarnych/obraźliwych treści
 builder.Services.AddSingleton<ISerwisModeracjiTresci, SerwisModeracjiTresci>();
 
+// Hybrydowy system rekomendacji (Collaborative Filtering + Content-Based)
+builder.Services.AddScoped<ISerwisRekomendacji, SerwisRekomendacji>();
+
 // Azure AI Search - konfiguracja klientów i serwisów wyszukiwania
 var azureSearchEndpoint = builder.Configuration["AzureSearch:Endpoint"];
 var azureSearchApiKey = builder.Configuration["AzureSearch:ApiKey"];
@@ -159,10 +162,10 @@ using (var scope = app.Services.CreateScope())
         {
             await searchService.UtworzIndeksJesliNieIstniajeAsync();
             
-            // Sprawdź czy indeks jest pusty i zsynchronizuj
-            var documentCount = await searchService.PobierzLiczbeOfertAsync();
-            if (documentCount.HasValue && documentCount.Value == 0 && syncService != null)
+            // Synchronizuj zawsze przy starcie (wymaganie użytkownika)
+            if (syncService != null)
             {
+                Console.WriteLine("Rozpoczynam automatyczną synchronizację z Azure Search...");
                 await syncService.SynchronizujWszystkieOfertyAsync();
             }
         }

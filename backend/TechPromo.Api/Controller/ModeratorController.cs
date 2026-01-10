@@ -413,6 +413,23 @@ namespace TechPromo.Api.Controllers
             }
         }
 
+        // Wymuś pełną synchronizację z Azure Search
+        [HttpPost("sync-all")]
+        public async Task<IActionResult> WymusSynchronizacje()
+        {
+            if (_syncService == null) return StatusCode(500, new { message = "Serwis synchronizacji niedostępny (brak konfiguracji Azure Search)" });
+            
+            try 
+            {
+                var result = await _syncService.SynchronizujWszystkieOfertyAsync();
+                return Ok(new { message = $"Synchronizacja zakończona. Sukces: {result.Success}, Błędy: {result.Failed}" });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { message = "Błąd synchronizacji", error = ex.Message });
+            }
+        }
+
         #endregion
 
         #region Zarządzanie zdjęciami oferty

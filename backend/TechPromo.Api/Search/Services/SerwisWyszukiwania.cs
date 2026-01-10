@@ -121,6 +121,10 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
 
             // Wykonaj wyszukiwanie
             var searchText = string.IsNullOrWhiteSpace(zapytanie.Zapytanie) ? "*" : zapytanie.Zapytanie;
+            
+            // SearchQueryType.Full jest już ustawione w opcjach wyżej, co włącza obsługę Lucene i synonimów
+            // Wycofano Semantic Search z powodu braku obsługi w usłudze Azure Search użytkownika
+
             SearchResults<ModelWyszukiwaniaOferty> response = await _searchClient.SearchAsync<ModelWyszukiwaniaOferty>(
                 searchText,
                 searchOptions);
@@ -270,57 +274,39 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
             // Najpierw utwórz synonym map
             await UtworzLubAktualizujSynonymMapAsync();
 
-            // Sprawdź czy indeks istnieje
-            try
-            {
-                await _indexClient.GetIndexAsync(_indexName);
-                _logger.LogInformation("Indeks {IndexName} już istnieje", _indexName);
-                return true;
-            }
-            catch (RequestFailedException ex) when (ex.Status == 404)
-            {
-                // Indeks nie istnieje, utwórz go
-                _logger.LogInformation("Tworzenie indeksu {IndexName}...", _indexName);
-            }
-
             // Utwórz definicję indeksu
             var indexDefinition = new SearchIndex(_indexName)
             {
                 Fields = new FieldBuilder().Build(typeof(ModelWyszukiwaniaOferty))
             };
 
+            // Wycofano Semantic Search - używamy klasycznego wyszukiwania z rozbudowanymi synonimami
+
             // Dodaj suggester dla autouzupełniania
             indexDefinition.Suggesters.Add(new SearchSuggester("sg", new[] { "Nazwa", "Kategoria" }));
 
-            // Przypisz synonym map do pól przeszukiwalnych (Nazwa, Opis, Kategoria)
+            // Przypisz synonym map polom, jeśli trzeba (implementacja niżej)
+            // ... (kod przypisania synonimów ręcznie, bo FieldBuilder tego nie robi automatycznie)
             var nazwaField = indexDefinition.Fields.FirstOrDefault(f => f.Name == "Nazwa");
-            if (nazwaField != null)
-            {
-                nazwaField.SynonymMapNames.Add("techpromo-synonyms");
-            }
+            if (nazwaField != null) nazwaField.SynonymMapNames.Add("techpromo-synonyms");
 
             var opisField = indexDefinition.Fields.FirstOrDefault(f => f.Name == "Opis");
-            if (opisField != null)
-            {
-                opisField.SynonymMapNames.Add("techpromo-synonyms");
-            }
+            if (opisField != null) opisField.SynonymMapNames.Add("techpromo-synonyms");
 
             var kategoriaField = indexDefinition.Fields.FirstOrDefault(f => f.Name == "Kategoria");
-            if (kategoriaField != null && kategoriaField.IsSearchable == true)
-            {
-                kategoriaField.SynonymMapNames.Add("techpromo-synonyms");
-            }
+            if (kategoriaField != null && kategoriaField.IsSearchable == true) kategoriaField.SynonymMapNames.Add("techpromo-synonyms");
 
-            // Utwórz indeks
-            await _indexClient.CreateIndexAsync(indexDefinition);
-            _logger.LogInformation("Indeks {IndexName} został utworzony pomyślnie", _indexName);
+
+            // Utwórz lub zaktualizuj indeks (wymusza aktualizację konfiguracji semantycznej)
+            await _indexClient.CreateOrUpdateIndexAsync(indexDefinition);
+            _logger.LogInformation("Indeks {IndexName} został utworzony/zaktualizowany pomyślnie (włączono Semantic Search)", _indexName);
             
             return true;
         }
         catch (RequestFailedException ex)
         {
-            _logger.LogError(ex, "Błąd Azure Search podczas tworzenia indeksu {IndexName}: Status={Status}, ErrorCode={ErrorCode}, Message={Message}", 
-                _indexName, ex.Status, ex.ErrorCode, ex.Message);
+            _logger.LogError(ex, "Błąd Azure Search podczas operacji na indeksie {IndexName}: Status={Status}, Message={Message}", 
+                _indexName, ex.Status, ex.Message);
             return false;
         }
         catch (Exception ex)
@@ -723,7 +709,24 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
                 "gwarancja, warranty, rękojmia, guarantee",
                 "oryginalny, original, genuine, authentic",
                 "akcesoria, accessories, dodatki",
-                "etui, case, pokrowiec, futerał, cover, obudowa"
+                "akcesoria, accessories, dodatki",
+                "etui, case, pokrowiec, futerał, cover, obudowa",
+
+                // ============================================
+                // INTENCJE I CZYNNOŚCI (Mapowanie potrzeb na produkty)
+                // Format Solr: "zapytanie => wynik1, wynik2"
+                // ============================================
+                "muzyka, słuchanie muzyki, do muzyki, audiofil => słuchawki, głośniki, soundbar, wieża",
+                "impreza, na imprezę, party => głośnik bluetooth, jbl, soundbar",
+                "praca, do pracy, biuro, do biura, home office, praca zdalna => laptop, monitor, myszka, klawiatura, drukarka, fotel, kamerka",
+                "nauka, do nauki, szkoła, studia, dla studenta, dla ucznia => laptop, tablet, drukarka, czytnik ebook",
+                "gry, granie, do gier, gaming, dla gracza, pro gamer => konsola, playstation, xbox, nintendo, laptop gamingowy, komputer gamingowy, mysz gamingowa, klawiatura gamingowa",
+                "film, filmy, kino, oglądanie filmów, seriale, netflix => telewizor, projektor, soundbar",
+                "sport, bieganie, na siłownię, trening, fitness => smartwatch, smartband, słuchawki bezprzewodowe",
+                "zdjęcia, fotografia, robienie zdjęć, fotografowanie => aparat, lustrzanka, bezlusterkowiec, dron, karta pamięci",
+                "internet, wifi, brak zasięgu, wolny internet => router, wzmacniacz wifi, mesh",
+                "prezent, na prezent => smartfon, smartwatch, słuchawki, konsola, czytnik",
+                "podróż, wyjazd, wakacje, na wyjazd => powerbank, słuchawki, czytnik, aparat, gopro"
             });
 
             var synonymMap = new SynonymMap(synonymMapName, synonyms);

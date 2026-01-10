@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import KodKuponu from '../components/KodKuponu';
+import SekcjaRekomendacji from '../components/SekcjaRekomendacji';
 import { Flame, Snowflake, MessageCircle, Star, Zap, Search, Flag, Share2, Gift, Clock, Smartphone, Laptop, Headphones, Watch, Gamepad2, Monitor, Cpu, HardDrive, Plus, Bookmark, TrendingUp } from 'lucide-react';
 import { getAuthToken } from '../utils/auth';
 import ModalZgloszeniaOferty from '../components/modals/ModalZgloszeniaOferty';
@@ -844,6 +845,9 @@ function StronaGlowna() {
       </div>
 
       <div className="max-w-[1800px] mx-auto px-2 sm:px-4 py-4 sm:py-6 offers-section relative z-10 pb-20 lg:pb-6">
+        {/* Sekcja rekomendacji dla zalogowanych użytkowników */}
+        <SekcjaRekomendacji limit={6} className="mb-6" />
+        
         <div className="flex gap-6">
           {/* Główna lista ofert */}
           <div className="flex-1 min-w-0">{loading ? (

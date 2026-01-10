@@ -7,6 +7,7 @@ using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
 using TechPromo.Api.Services;
 using TechPromo.Api.Search.Services;
+using Microsoft.AspNetCore.Hosting;
 using System.Security.Claims;
 using System.ComponentModel.DataAnnotations;
 using System.IO;
@@ -25,6 +26,7 @@ namespace TechPromo.Api.Controllers
         private readonly SerwisSync? _syncService;
         private readonly ISerwisWykrywaniaDuplikatow _serwisWykrywaniaDuplikatow;
         private readonly ISerwisModeracjiTresci _serwisModeracjiTresci;
+        private readonly IWebHostEnvironment _environment;
 
         public OfertaController(
             TechPromoDbContext context, 
@@ -32,6 +34,7 @@ namespace TechPromo.Api.Controllers
             IBadgeService badgeService,
             ISerwisWykrywaniaDuplikatow serwisWykrywaniaDuplikatow,
             ISerwisModeracjiTresci serwisModeracjiTresci,
+            IWebHostEnvironment environment,
             SerwisSync? syncService = null)
         {
             _context = context;
@@ -40,6 +43,7 @@ namespace TechPromo.Api.Controllers
             _syncService = syncService;
             _serwisWykrywaniaDuplikatow = serwisWykrywaniaDuplikatow;
             _serwisModeracjiTresci = serwisModeracjiTresci;
+            _environment = environment;
         }
 
         #region Metody pomocnicze
@@ -74,7 +78,8 @@ namespace TechPromo.Api.Controllers
         {
             try
             {
-                var uploadDir = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "profiles");
+                var webRoot = _environment.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                var uploadDir = Path.Combine(webRoot, "uploads", "profiles");
                 if (!Directory.Exists(uploadDir)) return null;
                 var existing = Directory.GetFiles(uploadDir, $"user_{autorId}.*").FirstOrDefault();
                 if (existing == null) return null;
@@ -503,6 +508,7 @@ namespace TechPromo.Api.Controllers
                     Id = k.IdKomentarz,
                     Tresc = k.Tresc,
                     Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
+                    AutorId = k.IdUzytkownik,
                     Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
                     Oferta = string.Empty,
                     ParentId = k.ParentId,
@@ -510,6 +516,8 @@ namespace TechPromo.Api.Controllers
                     Down = k.LiczbaDown,
                     UserVote = null
                 }).FirstOrDefaultAsync();
+
+            if (result != null) result.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(result.AutorId);
 
             return Created($"/api/oferta/{id}/komentarze/{komentarz.IdKomentarz}", result);
         }
@@ -570,6 +578,7 @@ namespace TechPromo.Api.Controllers
                     Id = k.IdKomentarz,
                     Tresc = k.Tresc,
                     Autor = k.Uzytkownik != null ? (k.Uzytkownik.UserName ?? "Nieznany") : "Nieznany",
+                    AutorId = k.IdUzytkownik,
                     Data = k.DataDodania.ToString("dd.MM.yyyy HH:mm"),
                     Oferta = "",
                     ParentId = k.ParentId,
@@ -578,6 +587,8 @@ namespace TechPromo.Api.Controllers
                     UserVote = userId != 0 ? _context.KomentarzGlosy.Where(g => g.IdKomentarz == k.IdKomentarz && g.IdUzytkownik == userId).Select(g => g.TypGlosu).FirstOrDefault() : null
                 })
                 .ToListAsync();
+
+            items.ForEach(i => i.AutorAvatarUrl = BuildAutorAvatarAbsoluteUrl(i.AutorId));
 
             return Ok(new PagedResult<KomentarzDto>
             {

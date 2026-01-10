@@ -5,6 +5,8 @@ using Microsoft.EntityFrameworkCore;
 using TechPromo.Api.Data;
 using TechPromo.Api.DTO;
 using TechPromo.Api.Model;
+using TechPromo.Api.Services;
+using TechPromo.Api.Search.Services;
 using System.Security.Claims;
 
 namespace TechPromo.Api.Controllers
@@ -19,15 +21,24 @@ namespace TechPromo.Api.Controllers
         private readonly TechPromoDbContext _context;
         private readonly UserManager<Uzytkownik> _userManager;
         private readonly IWebHostEnvironment _environment;
+        private readonly IBadgeService _badgeService;
+        private readonly ISerwisModeracjiTresci _serwisModeracji;
+        private readonly SerwisSync? _syncService;
 
-        private readonly TechPromo.Api.Services.IBadgeService _badgeService;
-
-        public UzytkownikController(TechPromoDbContext context, UserManager<Uzytkownik> userManager, IWebHostEnvironment environment, TechPromo.Api.Services.IBadgeService badgeService)
+        public UzytkownikController(
+            TechPromoDbContext context, 
+            UserManager<Uzytkownik> userManager, 
+            IWebHostEnvironment environment, 
+            IBadgeService badgeService,
+            ISerwisModeracjiTresci serwisModeracji,
+            SerwisSync? syncService = null)
         {
             _context = context;
             _userManager = userManager;
             _environment = environment;
             _badgeService = badgeService;
+            _serwisModeracji = serwisModeracji;
+            _syncService = syncService;
         }
 
         // GET: api/uzytkownik/aktywnosc (stronicowane)
@@ -384,6 +395,31 @@ namespace TechPromo.Api.Controllers
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
+            // 1. Walidacja AI - Tekst
+            var contentCheck = await _serwisModeracji.ModerujTekstAsync($"{dto.Tytul} {dto.Opis}");
+            if (!contentCheck.CzyBezpieczny)
+            {
+                return BadRequest(new { message = contentCheck.KomunikatDlaUzytkownika, details = contentCheck.NaruszonKategorie });
+            }
+
+            // 2. Walidacja AI - Zdjęcia (jeśli są)
+            if (dto.Zdjecia != null && dto.Zdjecia.Any())
+            {
+                foreach (var file in dto.Zdjecia)
+                {
+                    if (file.Length > 0)
+                    {
+                        using var ms = new MemoryStream();
+                        await file.CopyToAsync(ms);
+                        var imageCheck = await _serwisModeracji.ModerujObrazAsync(ms.ToArray());
+                        if (!imageCheck.CzyBezpieczny)
+                        {
+                            return BadRequest(new { message = imageCheck.KomunikatDlaUzytkownika });
+                        }
+                    }
+                }
+            }
+
             // Znajdź lub utwórz kategorię
             var kategoria = await _context.Kategorie
                 .FirstOrDefaultAsync(k => k.Nazwa == dto.Kategoria);
@@ -406,8 +442,9 @@ namespace TechPromo.Api.Controllers
                 DataDodania = DateTime.UtcNow,
                 WaznoscOd = dto.WaznoscOd,
                 WaznoscDo = dto.WaznoscDo,
-                Zatwierdzona = false,
-                Aktywna = true
+                Zatwierdzona = true, // Automatyczne zatwierdzenie po pozytywnej weryfikacji AI
+                Aktywna = true,
+                ZatwierdzeniePrzezAI = true
             };
 
             _context.Oferty.Add(oferta);
@@ -484,7 +521,14 @@ namespace TechPromo.Api.Controllers
 
             // Odznaki (first_deal, deals_5)
             await _badgeService.EvaluateForUserAsync(userId);
-            return Ok("Oferta została dodana pomyślnie i oczekuje na moderację.");
+
+            // Synchronizacja z Azure AI Search
+            if (_syncService != null)
+            {
+                await _syncService.SynchronizujOferteAsync(oferta.IdOferta);
+            }
+
+            return Ok("Oferta została dodana pomyślnie.");
         }
 
         // POST: api/uzytkownik/oferta/{id}/glos
@@ -696,9 +740,16 @@ namespace TechPromo.Api.Controllers
             
             if (isOwner && !isModerator && !isAdmin)
             {
-                // Zwykły użytkownik edytuje swoją ofertę - wymaga ponownej moderacji
-                oferta.Zatwierdzona = false;
+                // Moderacja AI tekstu po edycji
+                var contentCheck = await _serwisModeracji.ModerujTekstAsync($"{oferta.Nazwa} {oferta.Opis}");
+                if (!contentCheck.CzyBezpieczny)
+                {
+                    return BadRequest(new { message = contentCheck.KomunikatDlaUzytkownika, details = contentCheck.NaruszonKategorie });
+                }
+
+                oferta.Zatwierdzona = true; // Auto-approve
                 oferta.Aktywna = true;
+                oferta.ZatwierdzeniePrzezAI = true;
             }
             else
             {
@@ -709,9 +760,14 @@ namespace TechPromo.Api.Controllers
 
             await _context.SaveChangesAsync();
             
+            if (_syncService != null)
+            {
+                await _syncService.SynchronizujOferteAsync(oferta.IdOferta);
+            }
+
             if (isOwner && !isModerator && !isAdmin)
             {
-                return Ok("Oferta zaktualizowana – oczekuje ponownej moderacji.");
+                return Ok("Oferta została zaktualizowana.");
             }
             return Ok("Oferta zaktualizowana przez moderatora / administratora.");
         }
@@ -741,13 +797,23 @@ namespace TechPromo.Api.Controllers
                 if (file.Length == 0) continue;
                 if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase)) continue;
                 if (file.Length > 5 * 1024 * 1024) return BadRequest($"Plik {file.FileName} >5MB");
+
+                // Moderacja AI
+                using var ms = new MemoryStream();
+                await file.CopyToAsync(ms);
+                var imageBytes = ms.ToArray();
+                var imageCheck = await _serwisModeracji.ModerujObrazAsync(imageBytes);
+                if (!imageCheck.CzyBezpieczny)
+                {
+                     return BadRequest(new { message = $"Zdjęcie {file.FileName} odrzucone: {imageCheck.KomunikatDlaUzytkownika}" });
+                }
+
                 var ext = Path.GetExtension(file.FileName);
                 var name = $"{id}_{DateTime.UtcNow.Ticks}_{Guid.NewGuid()}{ext}";
                 var path = Path.Combine(uploadsPath, name);
-                using (var s = new FileStream(path, FileMode.Create))
-                {
-                    await file.CopyToAsync(s);
-                }
+                
+                await System.IO.File.WriteAllBytesAsync(path, imageBytes);
+
                 _context.OfertyZdjecia.Add(new OfertaZdjecie
                 {
                     IdOferta = id,
@@ -757,6 +823,12 @@ namespace TechPromo.Api.Controllers
                 added++;
             }
             await _context.SaveChangesAsync();
+            
+            if (_syncService != null && added > 0)
+            {
+                 await _syncService.SynchronizujOferteAsync(id);
+            }
+
             var urls = await _context.OfertyZdjecia.Where(z => z.IdOferta == id).OrderBy(z => z.Kolejnosc).Select(z => z.UrlZdjecia).ToListAsync();
             return Ok(new { message = $"Dodano {added} plik(ów)", zdjecia = urls });
         }

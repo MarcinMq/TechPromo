@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Flame, Snowflake, ArrowLeft, ExternalLink, Share2, Gift, Clock } from 'lucide-react';
+import {
+  Flame, Snowflake, ArrowLeft, ExternalLink, Share2,
+  Clock, MessageSquare, Bookmark, Star,
+  ChevronRight, ChevronLeft, Flag,
+  ThumbsUp, ThumbsDown, X, Check
+} from 'lucide-react';
 import KodKuponu from '../../components/KodKuponu';
 import ModalZgloszeniaKomentarza from '../../components/modals/ModalZgloszeniaKomentarza';
 import { getAuthToken } from '../../utils/auth';
+
+// --- Interfaces ---
 
 interface OfertaDto {
   id: number;
@@ -24,6 +31,7 @@ interface OfertaDto {
   komentarze: number;
   zdjecia: string[];
   userVote?: string | null;
+  autorAvatarUrl?: string;
 }
 
 interface CommentDto {
@@ -35,107 +43,119 @@ interface CommentDto {
   up?: number;
   down?: number;
   userVote?: string | null;
+  autorAvatarUrl?: string;
 }
 
 interface CommentNode extends CommentDto {
   children: CommentNode[];
 }
 
+// --- Component ---
+
 export default function StronaSzczegolyOferty() {
   const { id } = useParams();
+
+  // State
   const [offer, setOffer] = useState<OfertaDto | null>(null);
-  const [currentImage, setCurrentImage] = useState(0); // index aktywnego zdjęcia
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Gallery
+  const [currentImage, setCurrentImage] = useState(0);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  // Comments
   const [comments, setComments] = useState<CommentDto[]>([]);
   const [commentsSkip, setCommentsSkip] = useState(0);
   const [commentsTotal, setCommentsTotal] = useState(0);
-  const pageSize = 20;
+  const [commentText, setCommentText] = useState('');
   const [replyParentId, setReplyParentId] = useState<number | null>(null);
   const [replyText, setReplyText] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [commentText, setCommentText] = useState('');
-  const [error, setError] = useState<string | null>(null);
-  const [commentSort, setCommentSort] = useState<'newest'|'oldest'|'helpful'|'best'>('newest');
+  const [commentSort, setCommentSort] = useState<'newest' | 'oldest' | 'helpful' | 'best'>('newest');
+  const pageSize = 20;
+
+  // Actions
+  const [votingInProgress, setVotingInProgress] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [saveLoading, setSaveLoading] = useState(false);
+  const [copiedLink, setCopiedLink] = useState(false);
+
+  // Reporting
   const [reportingCommentId, setReportingCommentId] = useState<number | null>(null);
   const [reportLoading, setReportLoading] = useState(false);
   const [reportSuccessFlash, setReportSuccessFlash] = useState<string | null>(null);
-  const [saveLoading, setSaveLoading] = useState(false);
-  const [isSaved, setIsSaved] = useState(false);
+
+  // Recommendations
   const [similarOffers, setSimilarOffers] = useState<any[]>([]);
   const [loadingSimilar, setLoadingSimilar] = useState(false);
-  const [votingInProgress, setVotingInProgress] = useState(false);
 
-  // Funkcja udostępniania - kopiuje link do schowka
-  const handleShare = async () => {
-    try {
-      const url = window.location.href;
-      await navigator.clipboard.writeText(url);
-      alert('Link do oferty został skopiowany do schowka!');
-    } catch (err) {
-      alert('Nie udało się skopiować linku do schowka');
-      console.error('Share error:', err);
+  // --- Logic ---
+
+  // Initial Load
+  useEffect(() => {
+    const load = async () => {
+      if (!id) return;
+      try {
+        setLoading(true);
+        // 1. Fetch Offer
+        const res = await fetch(`/api/oferta/${id}`);
+        if (!res.ok) throw new Error('Nie znaleziono oferty');
+        const data = await res.json();
+        setOffer(data);
+        setCurrentImage(0);
+
+        // 2. Fetch Comments
+        await fetchComments(true);
+
+        // 3. Check if Saved
+        await checkIfSaved();
+
+        // 4. Fetch Similar Offers
+        await fetchSimilarOffers();
+
+      } catch (e: any) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [id]);
+
+  const fetchComments = async (reset: boolean) => {
+    if (!id) return;
+    const currentSkip = reset ? 0 : commentsSkip;
+    const res = await fetch(`/api/oferta/${id}/komentarze?skip=${currentSkip}&take=${pageSize}&sort=${commentSort}`);
+    if (res.ok) {
+      const data = await res.json();
+      if (reset) {
+        setComments(data.items || data.Items || []);
+      } else {
+        setComments(prev => [...prev, ...(data.items || data.Items || [])]);
+      }
+      setCommentsTotal(data.total ?? data.Total ?? 0);
+      setCommentsSkip(currentSkip + (data.take ?? data.Take ?? pageSize));
     }
   };
 
-  // Funkcja zapisywania oferty
-  const handleSave = async () => {
+  const fetchSimilarOffers = async () => {
     if (!id) return;
-    
     try {
-      setSaveLoading(true);
-      const token = getAuthToken();
-      if (!token) {
-        alert('Musisz być zalogowany aby zapisać ofertę');
-        return;
-      }
-
-      if (isSaved) {
-        // Usuń z zapisanych
-        const response = await fetch(`/api/uzytkownik/zapisane/${id}`, {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          setIsSaved(false);
-          alert('Oferta została usunięta z zapisanych!');
-        } else {
-          const errorText = await response.text();
-          alert('Błąd podczas usuwania: ' + errorText);
-        }
-      } else {
-        // Dodaj do zapisanych
-        const response = await fetch(`/api/uzytkownik/zapisane/${id}`, {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (response.ok) {
-          setIsSaved(true);
-          alert('Oferta została zapisana!');
-        } else {
-          const errorText = await response.text();
-          alert('Błąd podczas zapisywania: ' + errorText);
-        }
+      setLoadingSimilar(true);
+      const res = await fetch(`/api/rekomendacje/podobne/${id}?limit=5`);
+      if (res.ok) {
+        const data = await res.json();
+        setSimilarOffers(data || []);
       }
     } catch (error) {
-      alert('Błąd podczas zapisywania oferty');
-      console.error('Save error:', error);
+      console.error('Error fetching similar offers:', error);
     } finally {
-      setSaveLoading(false);
+      setLoadingSimilar(false);
     }
   };
 
-  // Funkcja sprawdzania czy oferta jest zapisana
   const checkIfSaved = async () => {
     if (!id) return;
-    
     const token = getAuthToken();
     if (!token) return;
 
@@ -158,106 +178,14 @@ export default function StronaSzczegolyOferty() {
     }
   };
 
-  const fetchComments = async (reset: boolean) => {
-    if (!id) return;
-    const currentSkip = reset ? 0 : commentsSkip;
-    const res = await fetch(`/api/oferta/${id}/komentarze?skip=${currentSkip}&take=${pageSize}&sort=${commentSort}`);
-    if (res.ok) {
-      const data = await res.json();
-      if (reset) {
-        setComments(data.items || data.Items || []);
-      } else {
-        setComments(prev => [...prev, ...(data.items || data.Items || [])]);
-      }
-      setCommentsTotal(data.total ?? data.Total ?? 0);
-      setCommentsSkip(currentSkip + (data.take ?? data.Take ?? pageSize));
-    }
-  };
-
-  const fetchSimilarOffers = async () => {
-    if (!id) return;
-    try {
-      setLoadingSimilar(true);
-      const res = await fetch(`/api/wyszukiwarka/podobne/${id}?liczba=5`);
-      if (res.ok) {
-        const data = await res.json();
-        setSimilarOffers(data || []);
-      }
-    } catch (error) {
-      console.error('Error fetching similar offers:', error);
-    } finally {
-      setLoadingSimilar(false);
-    }
-  };
-
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const res = await fetch(`/api/oferta/${id}`);
-        if (!res.ok) throw new Error('Nie znaleziono oferty');
-        const data = await res.json();
-        setOffer(data);
-        setCurrentImage(0);
-        await fetchComments(true);
-        await checkIfSaved(); // Sprawdź czy oferta jest zapisana
-        await fetchSimilarOffers(); // Pobierz podobne oferty
-      } catch (e: any) {
-        setError(e.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  // Obsługa klawiatury dla zmiany zdjęć
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (!offer?.zdjecia || offer.zdjecia.length < 2) return;
-      if (e.key === 'ArrowRight') {
-        setCurrentImage(ci => (ci + 1) % offer.zdjecia.length);
-      } else if (e.key === 'ArrowLeft') {
-        setCurrentImage(ci => (ci - 1 + offer.zdjecia.length) % offer.zdjecia.length);
-      }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, [offer?.zdjecia]);
-
-  // Lightbox klawiatura
-  useEffect(() => {
-    if (!lightboxOpen) return;
-    const kb = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setLightboxOpen(false);
-      if (!offer?.zdjecia || offer.zdjecia.length < 2) return;
-      if (e.key === 'ArrowRight') setCurrentImage(ci => (ci + 1) % offer.zdjecia.length);
-      if (e.key === 'ArrowLeft') setCurrentImage(ci => (ci - 1 + offer.zdjecia.length) % offer.zdjecia.length);
-    };
-    window.addEventListener('keydown', kb);
-    return () => window.removeEventListener('keydown', kb);
-  }, [lightboxOpen, offer?.zdjecia]);
-
-  useEffect(() => {
-    // reload comments on sort change
-    setCommentsSkip(0);
-    fetchComments(true);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commentSort]);
-
+  // Actions
   const handleVote = async (vote: 'hot' | 'cold') => {
     if (!offer) return;
     const token = getAuthToken();
     if (!token) { alert('Zaloguj się aby głosować'); return; }
-    
-    // Zabezpieczenie przed wielokrotnym klikaniem
-    if (votingInProgress) {
-      return;
-    }
-    
+    if (votingInProgress) return;
+
     setVotingInProgress(true);
-    
     try {
       const res = await fetch(`/api/uzytkownik/oferta/${offer.id}/glos`, {
         method: 'POST',
@@ -273,24 +201,63 @@ export default function StronaSzczegolyOferty() {
     }
   };
 
+  const handleSave = async () => {
+    if (!id) return;
+    const token = getAuthToken();
+    if (!token) { alert('Musisz być zalogowany aby zapisać ofertę'); return; }
+
+    try {
+      setSaveLoading(true);
+      const method = isSaved ? 'DELETE' : 'POST';
+      const response = await fetch(`/api/uzytkownik/zapisane/${id}`, {
+        method,
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }
+      });
+
+      if (response.ok) {
+        setIsSaved(!isSaved);
+      } else {
+        alert('Wystąpił błąd podczas akcji.');
+      }
+    } catch (error) {
+      console.error('Save error:', error);
+    } finally {
+      setSaveLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+    } catch (err) {
+      console.error('Share error:', err);
+    }
+  };
+
   const handleAddComment = async () => {
     if (!commentText.trim() || !offer) return;
     const token = getAuthToken();
     if (!token) { alert('Zaloguj się aby komentować'); return; }
+
     const text = commentText.trim();
     setCommentText('');
-    const tempComment: CommentDto = { id: Date.now(), tresc: text, autor: 'Ty', data: new Date().toLocaleString(), parentId: null };
+
+    // Optimistic UI
+    const tempComment: CommentDto = { id: Date.now(), tresc: text, autor: 'Ty', data: 'Teraz', parentId: null };
     setComments(prev => [tempComment, ...prev]);
+
     const res = await fetch(`/api/oferta/${offer.id}/komentarze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ tresc: text })
     });
+
     if (res.ok) {
       setCommentsSkip(0);
       fetchComments(true);
     } else {
-      // Revert on failure
       setComments(prev => prev.filter(c => c.id !== tempComment.id));
       alert('Błąd podczas dodawania komentarza');
     }
@@ -300,16 +267,20 @@ export default function StronaSzczegolyOferty() {
     if (!replyText.trim() || !offer) return;
     const token = getAuthToken();
     if (!token) { alert('Zaloguj się aby komentować'); return; }
+
     const text = replyText.trim();
     setReplyText('');
     setReplyParentId(null);
-    const tempReply: CommentDto = { id: Date.now(), tresc: text, autor: 'Ty', data: new Date().toLocaleString(), parentId };
+
+    const tempReply: CommentDto = { id: Date.now(), tresc: text, autor: 'Ty', data: 'Teraz', parentId };
     setComments(prev => [tempReply, ...prev]);
+
     const res = await fetch(`/api/oferta/${offer.id}/komentarze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: JSON.stringify({ tresc: text, parentId })
     });
+
     if (res.ok) {
       setCommentsSkip(0);
       fetchComments(true);
@@ -319,49 +290,14 @@ export default function StronaSzczegolyOferty() {
     }
   };
 
-  const buildTree = (flat: CommentDto[]): CommentNode[] => {
-    const map = new Map<number, CommentNode>();
-    const roots: CommentNode[] = [];
-    flat.forEach(c => { map.set(c.id, { ...c, children: [] }); });
-    map.forEach(node => {
-      if (node.parentId && map.has(node.parentId)) {
-        map.get(node.parentId)!.children.push(node);
-      } else {
-        roots.push(node);
-      }
-    });
-    const score = (c: CommentNode) => (c.up ?? 0) - (c.down ?? 0);
-    const compare = (a: CommentNode, b: CommentNode): number => {
-      switch (commentSort) {
-        case 'oldest':
-          return new Date(a.data).getTime() - new Date(b.data).getTime();
-        case 'helpful': // net score desc then newest
-          return score(b) - score(a) || new Date(b.data).getTime() - new Date(a.data).getTime();
-        case 'best': // up desc then net desc then newest
-          return (b.up ?? 0) - (a.up ?? 0) || (score(b) - score(a)) || new Date(b.data).getTime() - new Date(a.data).getTime();
-        case 'newest':
-        default:
-          return new Date(b.data).getTime() - new Date(a.data).getTime();
-      }
-    };
-    const sortNodes = (arr: CommentNode[]) => {
-      arr.sort(compare);
-      arr.forEach(n => sortNodes(n.children));
-    };
-    sortNodes(roots);
-    return roots;
-  };
-
-  const commentTree = buildTree(comments);
-
   const handleCommentVote = async (commentId: number, vote: 'up' | 'down') => {
     const token = getAuthToken();
     if (!token) { alert('Zaloguj się aby głosować'); return; }
-    // optimistic update
+
     setComments(prev => prev.map(c => {
       if (c.id !== commentId) return c;
-      let up = c.up || 0; let down = c.down || 0; let userVote = c.userVote || null;
-      if (userVote === vote) { // remove vote
+      let up = c.up || 0, down = c.down || 0, userVote = c.userVote || null;
+      if (userVote === vote) {
         if (vote === 'up') up--; else down--;
         userVote = null;
       } else {
@@ -371,484 +307,630 @@ export default function StronaSzczegolyOferty() {
       }
       return { ...c, up, down, userVote };
     }));
-    const res = await fetch(`/api/oferta/komentarz/${commentId}/glos`, {
+
+    await fetch(`/api/oferta/komentarz/${commentId}/glos`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body: JSON.stringify({ typ: vote })
     });
-    if (!res.ok) {
-      // revert by refetch
-      if (offer) {
-        setCommentsSkip(0);
-        fetchComments(true);
-      }
-    } else {
-      const data = await res.json();
-      setComments(prev => prev.map(c => c.id === commentId ? { ...c, up: data.liczbaUp ?? data.LiczbaUp ?? c.up, down: data.liczbaDown ?? data.LiczbaDown ?? c.down, userVote: data.userVote } : c));
-    }
-  };
-
-  // Start zgłaszania
-  const openReport = (commentId: number) => {
-    const token = getAuthToken();
-    if (!token) { alert('Zaloguj się aby zgłosić komentarz'); return; }
-    setReportingCommentId(commentId);
   };
 
   const submitReport = async (reason: string) => {
     if (reportingCommentId === null) return;
     const token = getAuthToken();
-    if (!token) { alert('Sesja wygasła – zaloguj się ponownie'); return; }
+    if (!token) return;
+
     setReportLoading(true);
     try {
-  const res = await fetch('/api/uzytkownik/zgloszenie', {
+      const res = await fetch('/api/uzytkownik/zgloszenie', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ typ: 'comment', idTresci: reportingCommentId, powod: reason })
       });
       if (res.ok) {
-        setReportSuccessFlash('Zgłoszenie wysłane do moderacji');
-        setTimeout(()=> setReportSuccessFlash(null), 4000);
+        setReportSuccessFlash('Zgłoszenie wysłane');
+        setTimeout(() => setReportSuccessFlash(null), 3000);
         setReportingCommentId(null);
       } else {
-        const txt = await res.text();
-        alert('Błąd zgłaszania: ' + txt);
+        alert('Błąd zgłaszania');
       }
-    } catch {
-      alert('Nie udało się wysłać zgłoszenia');
     } finally {
       setReportLoading(false);
     }
   };
 
-  const renderComments = (nodes: CommentNode[], depth = 0) => (
-    nodes.map(c => (
-      <div key={c.id} className={`rounded p-3 mb-3 transition-colors ${depth === 0 ? 'bg-gray-50 dark:bg-gray-800 border dark:border-gray-700' : 'bg-white dark:bg-gray-900 border-l-2 dark:border-l-gray-600'} `} style={depth>0?{marginLeft: depth * 16}:{}}>
-        <div className="text-xs text-gray-500 dark:text-gray-400 mb-1 transition-colors">
-          <Link to={`/uzytkownik/${c.autor}`} className="font-medium hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-            {c.autor}
-          </Link>
-          {' • '}{c.data}
-        </div>
-        <div className="text-sm text-gray-800 dark:text-gray-300 whitespace-pre-line mb-2 transition-colors">{c.tresc}</div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 text-xs">
-            <button onClick={()=>handleCommentVote(c.id,'up')} className={`px-2 py-0.5 rounded border transition-colors ${c.userVote==='up' ? 'bg-green-600 text-white border-green-600' : 'bg-white dark:bg-gray-700 hover:bg-green-50 dark:hover:bg-green-900/30 text-green-600 dark:text-green-400 border-green-300 dark:border-green-700'}`}>▲ {c.up ?? 0}</button>
-            <button onClick={()=>handleCommentVote(c.id,'down')} className={`px-2 py-0.5 rounded border transition-colors ${c.userVote==='down' ? 'bg-red-600 text-white border-red-600' : 'bg-white dark:bg-gray-700 hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 border-red-300 dark:border-red-700'}`}>▼ {c.down ?? 0}</button>
-          </div>
-          <button onClick={() => setReplyParentId(replyParentId === c.id ? null : c.id)} className="text-xs text-blue-600 dark:text-blue-400 hover:underline transition-colors">{replyParentId === c.id ? 'Anuluj' : 'Odpowiedz'}</button>
-          <button onClick={() => openReport(c.id)} className="text-xs text-red-600 dark:text-red-400 hover:underline transition-colors">Zgłoś</button>
-        </div>
-        {replyParentId === c.id && (
-          <div className="mt-2 space-y-2">
-            <textarea value={replyText} onChange={e=>setReplyText(e.target.value)} className="w-full border dark:border-gray-600 rounded p-2 text-xs resize-y min-h-[60px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors" placeholder="Twoja odpowiedź..." />
-            <div className="flex gap-2">
-              <button onClick={()=>handleAddReply(c.id)} className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1 rounded text-xs hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors">Wyślij</button>
-              <button onClick={()=>{setReplyParentId(null); setReplyText('');}} className="text-xs text-gray-500 dark:text-gray-400 hover:underline transition-colors">Anuluj</button>
-            </div>
-          </div>
-        )}
-        {c.children.length>0 && (
-          <div className="mt-2">
-            {renderComments(c.children, depth+1)}
-          </div>
-        )}
-      </div>
-    ))
+  // --- Render Helpers ---
+
+  // Build comment tree
+  const buildTree = (flat: CommentDto[]): CommentNode[] => {
+    const map = new Map<number, CommentNode>();
+    const roots: CommentNode[] = [];
+    flat.forEach(c => map.set(c.id, { ...c, children: [] }));
+    map.forEach(node => {
+      if (node.parentId && map.has(node.parentId)) map.get(node.parentId)!.children.push(node);
+      else roots.push(node);
+    });
+
+    // Sorting logic here (simplified for brevity)
+    return roots.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  };
+
+  const commentTree = buildTree(comments);
+
+  // --- Render ---
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
+      <div className="w-16 h-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+    </div>
   );
 
-  if (loading) return <div className="p-4 text-center text-gray-900 dark:text-gray-100">Ładowanie...</div>;
-  if (error) return <div className="p-4 text-center text-red-600 dark:text-red-400">{error}</div>;
-  if (!offer) return <div className="p-4 text-center text-gray-900 dark:text-gray-100">Brak danych</div>;
+  if (error || !offer) return (
+    <div className="min-h-screen flex flex-col items-center justify-center text-center p-4 bg-gray-50 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+      <h2 className="text-2xl font-bold mb-2">Ups, coś poszło nie tak</h2>
+      <p className="mb-4 text-gray-600 dark:text-gray-400">{error || 'Nie znaleziono oferty'}</p>
+      <Link to="/" className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">Wróć na stronę główną</Link>
+    </div>
+  );
 
-  const temp = offer.votes.hot - offer.votes.cold;
-  // Rabat obliczany inline w renderze (usunieto zmienna discount)
+  const discount = offer.cenaPoprzednia && offer.cena && offer.cenaPoprzednia > offer.cena
+    ? Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)
+    : 0;
+
+  const temperature = offer.votes.hot - offer.votes.cold;
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors pb-20 lg:pb-0">
-      <div className="w-full max-w-7xl mx-auto px-4 py-6">
-        {reportSuccessFlash && (
-          <div className="mb-6 px-4 py-3 rounded-xl bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-sm border border-green-200 dark:border-green-800 shadow">
-            {reportSuccessFlash}
-          </div>
-        )}
-        <div className="flex items-center mb-6 text-sm text-gray-600 dark:text-gray-400">
-          <Link to="/" className="text-blue-600 dark:text-blue-400 hover:underline flex items-center font-medium">
-            <ArrowLeft className="w-4 h-4 mr-2" /> Wróć do strony głównej
+    <div className="min-h-screen bg-[#F3F4F6] dark:bg-[#0f172a] text-gray-900 dark:text-gray-100 pb-20">
+
+      {/* Background decoration */}
+      <div className="absolute top-0 left-0 right-0 h-64 bg-gradient-to-br from-blue-600 to-purple-800 dark:from-blue-900 dark:to-purple-900 z-0" />
+
+      {/* Main Content */}
+      <main className="relative z-10 container mx-auto px-4 pt-8">
+
+        {/* Breadcrumbs / Back */}
+        <div className="mb-6 flex items-center justify-between">
+          <Link
+            to="/"
+            className="inline-flex items-center gap-2 text-white/90 hover:text-white font-medium transition-colors bg-white/10 hover:bg-white/20 px-4 py-2 rounded-lg backdrop-blur-sm"
+          >
+            <ArrowLeft className="w-4 h-4" /> Wróć
           </Link>
+
+          {reportSuccessFlash && (
+            <div className="bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg animate-fade-in flex items-center gap-2">
+              <Check className="w-4 h-4" /> {reportSuccessFlash}
+            </div>
+          )}
         </div>
 
-        <div className="bg-white dark:bg-gray-800 border dark:border-gray-700 rounded-xl shadow-lg overflow-hidden transition-colors">
-          <div className="p-4 md:p-6">
-            <div className="flex flex-col lg:flex-row lg:space-x-6">
-              {/* Galeria */}
-              <div className="w-full lg:w-80 mb-4 lg:mb-0 flex-shrink-0">
+        {/* Offer Card */}
+        <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+
+            {/* Left Column: Gallery (5/12) */}
+            <div className="lg:col-span-5 bg-gray-50 dark:bg-gray-800/50 p-6 lg:p-8 flex flex-col">
+
+              <div className="relative aspect-square bg-white dark:bg-gray-700 rounded-2xl overflow-hidden shadow-inner mb-4 group cursor-zoom-in" onClick={() => setLightboxOpen(true)}>
                 {offer.zdjecia && offer.zdjecia.length > 0 ? (
-                  <div className="space-y-3">
-                    {/* Obraz główny / karuzela */}
-                    <div className="w-full aspect-square bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 rounded-xl overflow-hidden relative group cursor-zoom-in transition-colors" onClick={() => setLightboxOpen(true)}>
-                      {offer.zdjecia.map((z, idx) => {
-                        const src = z.startsWith('http') ? z : `http://localhost:5023${z}`;
-                        return (
-                          <img
-                            key={idx}
-                            src={src}
-                            alt={`${offer.tytul} (${idx+1}/${offer.zdjecia.length})`}
-                            className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-300 bg-white dark:bg-gray-800 ${idx === currentImage ? 'opacity-100' : 'opacity-0'}`}
-                            draggable={false}
-                          />
-                        );
-                      })}
-                      {offer.zdjecia.length > 1 && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentImage(ci => (ci - 1 + offer.zdjecia.length) % offer.zdjecia.length)}
-                            className="absolute left-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                            aria-label="Poprzednie zdjęcie"
-                          >
-                            ‹
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setCurrentImage(ci => (ci + 1) % offer.zdjecia.length)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 bg-black/40 hover:bg-black/60 text-white w-8 h-8 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition"
-                            aria-label="Następne zdjęcie"
-                          >
-                            ›
-                          </button>
-                          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1">
-                            {offer.zdjecia.map((_, i) => (
-                              <button
-                                key={i}
-                                onClick={() => setCurrentImage(i)}
-                                aria-label={`Pokaż zdjęcie ${i+1}`}
-                                className={`w-2.5 h-2.5 rounded-full border border-white transition ${i===currentImage ? 'bg-white' : 'bg-white/40 hover:bg-white/70'}`}
-                              />
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </div>
-                    {/* Miniatury scrollowane */}
-                    {offer.zdjecia.length > 1 && (
-                      <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin scrollbar-thumb-gray-300">
-                        {offer.zdjecia.map((z, i) => {
-                          const src = z.startsWith('http') ? z : `http://localhost:5023${z}`;
-                          return (
-                            <button
-                              key={i}
-                              type="button"
-                              onClick={() => setCurrentImage(i)}
-                              className={`relative flex-shrink-0 w-16 h-16 border dark:border-gray-600 rounded-lg overflow-hidden bg-white dark:bg-gray-700 transition ring-2 ${i===currentImage ? 'ring-custom-blue dark:ring-blue-500' : 'ring-transparent hover:ring-gray-300 dark:hover:ring-gray-600'}`}
-                            >
-                              <img src={src} alt={`miniatura ${i+1}`} className="absolute inset-0 w-full h-full object-cover" />
-                            </button>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
+                  <img
+                    src={offer.zdjecia[currentImage].startsWith('http') ? offer.zdjecia[currentImage] : `http://localhost:5023${offer.zdjecia[currentImage]}`}
+                    alt={offer.tytul}
+                    className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-105"
+                  />
                 ) : (
-                  <div className="w-full aspect-square bg-gray-100 dark:bg-gray-700 border dark:border-gray-600 rounded flex items-center justify-center text-5xl transition-colors">
+                  <div className="w-full h-full flex items-center justify-center text-6xl text-gray-300 dark:text-gray-600">
                     {offer.typ === 'kupon' ? '🎫' : '🛍️'}
                   </div>
                 )}
-              </div>
 
-              {/* Treść */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between mb-4">
-                  <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100 pr-4 leading-tight">{offer.tytul}</h1>
-                  <div className="flex flex-col items-center flex-shrink-0">
-                    <div className="w-16 h-16 flex items-center justify-center rounded-lg border-2 dark:border-gray-600 font-bold text-xl bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-900/40 text-red-600 dark:text-red-400 shadow-sm">
-                      {temp}°
-                    </div>
-                    <div className="flex items-center space-x-1.5 mt-2">
-                      <button onClick={() => handleVote('hot')} disabled={votingInProgress} className={`px-2.5 py-1 rounded-lg text-sm flex items-center font-medium transition-all shadow-sm ${offer.userVote==='hot' ? 'bg-red-600 text-white shadow-red-200 dark:shadow-red-900/50' : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50'}`}><Flame className="w-3.5 h-3.5 mr-0.5" /> {offer.votes.hot}</button>
-                      <button onClick={() => handleVote('cold')} disabled={votingInProgress} className={`px-2.5 py-1 rounded-lg text-sm flex items-center font-medium transition-all shadow-sm ${offer.userVote==='cold' ? 'bg-blue-600 text-white shadow-blue-200 dark:shadow-blue-900/50' : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 dark:hover:bg-blue-900/50'}`}><Snowflake className="w-3.5 h-3.5 mr-0.5" /> {offer.votes.cold}</button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex items-center flex-wrap gap-3 mb-4">
-                  {offer.typ === 'kupon' && (
-                    <>
-                      <span className="bg-gradient-to-r from-purple-600 to-purple-700 text-white text-sm font-semibold px-3 py-1.5 rounded-lg shadow-md">Kupon</span>
-                      <KodKuponu code={offer.kod} size="md" />
-                    </>
-                  )}
-                  {/* Stara cena (jeśli występuje i > aktualnej) */}
-                  {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
-                    <span className="text-xl line-through text-gray-400 dark:text-gray-500 font-semibold">{offer.cenaPoprzednia} zł</span>
-                  )}
-                  {/* Nowa cena lub za darmo */}
-                  {offer.cena === 0 ? (
-                    <span className="text-3xl font-black text-green-600 dark:text-green-400 bg-gradient-to-r from-green-100 to-green-50 dark:from-green-900/30 dark:to-green-900/20 px-5 py-2.5 rounded-xl flex items-center gap-2 shadow-md border-2 border-green-200 dark:border-green-800"><Gift className="w-8 h-8" /> ZA DARMO!</span>
-                  ) : offer.cena ? (
-                    <span className="text-4xl font-black text-red-600 dark:text-red-400">{offer.cena} zł</span>
-                  ) : null}
-                  {/* Badge rabatu */}
-                  {offer.cenaPoprzednia && offer.cena && offer.cena > 0 && offer.cenaPoprzednia > offer.cena && (
-                    <span className="bg-gradient-to-r from-red-500 to-red-600 text-white text-base font-bold px-3 py-1.5 rounded-lg shadow-md">
-                      -{Math.round((1 - offer.cena / offer.cenaPoprzednia) * 100)}%
-                    </span>
-                  )}
-                </div>
-
-                {/* Duży przycisk do sklepu */}
-                {offer.sklep && offer.sklep.trim() ? (
-                  <div className="mb-4">
-                    <a
-                      href={offer.sklep.startsWith('http') ? offer.sklep : `https://${offer.sklep}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center space-x-2 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white font-bold text-base py-3 px-6 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200"
+                {/* Image Navigation Overlay (Desktop hover) */}
+                {offer.zdjecia && offer.zdjecia.length > 1 && (
+                  <>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setCurrentImage((c) => (c - 1 + offer.zdjecia.length) % offer.zdjecia.length); }}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                     >
-                      <ExternalLink className="w-4 h-4" />
-                      <span>Przejść do sklepu</span>
-                    </a>
-                  </div>
-                ) : (
-                  <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                    <p className="text-sm text-yellow-700 dark:text-yellow-400">
-                      <strong>Brak linku do sklepu.</strong> Ta oferta nie zawiera linku do sklepu.
-                    </p>
-                  </div>
+                      <ChevronLeft className="w-6 h-6" />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setCurrentImage((c) => (c + 1) % offer.zdjecia.length); }}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/20 hover:bg-black/40 text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <ChevronRight className="w-6 h-6" />
+                    </button>
+                  </>
                 )}
-
-                <div className="bg-gray-50 dark:bg-gray-900/50 rounded-lg p-3 mb-4 border border-gray-200 dark:border-gray-700">
-                  <div className="flex flex-wrap gap-x-4 gap-y-1.5 text-sm text-gray-600 dark:text-gray-400">
-                    <span className="flex items-center">
-                      Dodane przez:{' '}
-                      <Link to={`/uzytkownik/${offer.autor}`} className="ml-1 font-semibold text-blue-600 dark:text-blue-400 hover:underline">
-                        {offer.autor}
-                      </Link>
-                    </span>
-                    <span>Kategoria: <strong className="text-purple-600 dark:text-purple-400">{offer.kategoria}</strong></span>
-                    <span>Data dodania: <strong>{offer.dataUtworzenia}</strong></span>
-                    {/* Ważność oferty */}
-                    {(offer.waznoscOd || offer.waznoscDo) && (
-                      <span className="flex items-center text-orange-600 dark:text-orange-400">
-                        <Clock className="w-4 h-4 mr-1.5" />
-                        Ważna: <strong className="ml-1">
-                          {offer.waznoscOd && offer.waznoscDo ? (
-                            <>{new Date(offer.waznoscOd).toLocaleDateString('pl-PL')} - {new Date(offer.waznoscDo).toLocaleDateString('pl-PL')}</>
-                          ) : offer.waznoscOd ? (
-                            <>od {new Date(offer.waznoscOd).toLocaleDateString('pl-PL')}</>
-                          ) : offer.waznoscDo ? (
-                            <>do {new Date(offer.waznoscDo).toLocaleDateString('pl-PL')}</>
-                          ) : null}
-                        </strong>
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="prose prose-sm max-w-none text-gray-800 dark:text-gray-300 whitespace-pre-line mb-6 leading-relaxed transition-colors">
-                  {offer.opis || 'Brak opisu.'}
-                </div>
-
-                {/* Przyciski akcji */}
-                <div className="flex items-center space-x-3 mb-6 pb-4 border-b border-gray-200 dark:border-gray-700">
-                  <button 
-                    onClick={handleShare}
-                    className="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium transition-colors"
-                  >
-                    <Share2 className="w-3.5 h-3.5" /> 
-                    <span>Udostępnij</span>
-                  </button>
-                  <button 
-                    onClick={handleSave}
-                    disabled={saveLoading}
-                    className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-sm font-medium disabled:opacity-50 transition-colors ${
-                      isSaved 
-                        ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400 hover:bg-yellow-200 dark:hover:bg-yellow-900/50' 
-                        : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                    }`}
-                  >
-                    <span className={`text-lg ${isSaved ? 'text-yellow-500 dark:text-yellow-400' : 'text-gray-400 dark:text-gray-500'}`}>⭐</span>
-                    <span>{saveLoading ? 'Zapisywanie...' : (isSaved ? 'Zapisane' : 'Zapisz')}</span>
-                  </button>
-                </div>
-
-                <div className="pt-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-                    <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">Komentarze ({comments.length})</h2>
-                    {comments.length>0 && (
-                      <div className="text-xs text-gray-600 dark:text-gray-400 flex items-center gap-1 transition-colors">
-                        <span>sortowanie:</span>
-                        <select value={commentSort} onChange={e=>setCommentSort(e.target.value as any)} className="border dark:border-gray-600 rounded px-2 py-1 text-xs bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors">
-                          <option value="newest">Najpierw najnowsze</option>
-                          <option value="oldest">Najpierw najstarsze</option>
-                          <option value="helpful">Najbardziej pomocne</option>
-                          <option value="best">Najlepsze komentarze</option>
-                        </select>
-                      </div>
-                    )}
-                  </div>
-                  <div className="mb-4">
-                    {commentTree.length>0 ? renderComments(commentTree) : <div className="text-sm text-gray-500 dark:text-gray-400">Brak komentarzy.</div>}
-                    {comments.length < commentsTotal && (
-                      <div className="mt-4">
-                        <button onClick={()=>fetchComments(false)} className="px-4 py-2 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 rounded text-xs text-gray-900 dark:text-gray-100 transition-colors">Załaduj więcej...</button>
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <textarea value={commentText} onChange={e => setCommentText(e.target.value)} className="flex-1 border dark:border-gray-600 rounded p-2 text-sm resize-y min-h-[80px] bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 transition-colors" placeholder="Dodaj komentarz..." />
-                    <button onClick={handleAddComment} className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded text-sm hover:bg-blue-700 dark:hover:bg-blue-600 self-start transition-colors">Wyślij</button>
-                  </div>
-                </div>
               </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Sekcja z podobnymi ofertami */}
-        {similarOffers.length > 0 && (
-          <div className="mt-8 mb-8">
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border dark:border-gray-700 p-6 transition-colors">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                <Flame className="w-5 h-5 text-orange-500" />
-                Podobne oferty
-              </h2>
-              
-              {loadingSimilar ? (
-                <div className="text-center py-8 text-gray-600 dark:text-gray-400">
-                  Ładowanie podobnych ofert...
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                  {similarOffers.map((similar: any) => {
-                    const temperatura = similar.liczbaHot - similar.liczbaCold;
-                    return (
-                      <Link
-                        key={similar.ofertaId}
-                        to={`/okazja/${similar.ofertaId}`}
-                        className="group bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3 hover:shadow-md transition-all border border-gray-200 dark:border-gray-600"
-                      >
-                        {/* Zdjęcie */}
-                        <div className="relative w-full aspect-square rounded-lg overflow-hidden bg-white dark:bg-gray-800 mb-3">
-                          {similar.zdjecie ? (
-                            <img
-                              src={similar.zdjecie}
-                              alt={similar.nazwa}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-4xl">
-                              {similar.typ === 'kupon' ? '🎫' : '🛍️'}
-                            </div>
-                          )}
-                          {/* Badge temperatury */}
-                          <div className={`absolute top-2 right-2 px-2 py-1 rounded-lg text-xs font-bold ${
-                            temperatura > 0 
-                              ? 'bg-red-600 text-white' 
-                              : temperatura < 0 
-                              ? 'bg-blue-600 text-white' 
-                              : 'bg-gray-600 text-white'
-                          }`}>
-                            {temperatura > 0 ? '+' : ''}{temperatura}°
-                          </div>
-                        </div>
-
-                        {/* Tytuł */}
-                        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {similar.nazwa}
-                        </h3>
-
-                        {/* Cena */}
-                        <div className="flex items-center gap-2">
-                          {similar.cena !== undefined && (
-                            <>
-                              {similar.cena === 0 ? (
-                                <span className="text-sm font-bold text-green-600 dark:text-green-400">GRATIS</span>
-                              ) : (
-                                <span className="text-lg font-bold text-red-600 dark:text-red-400">
-                                  {similar.cena} zł
-                                </span>
-                              )}
-                            </>
-                          )}
-                        </div>
-
-                        {/* Sklep */}
-                        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
-                          {similar.sklep}
-                        </div>
-                      </Link>
-                    );
-                  })}
+              {/* Thumbnails */}
+              {offer.zdjecia && offer.zdjecia.length > 1 && (
+                <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+                  {offer.zdjecia.map((src, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentImage(idx)}
+                      className={`relative flex-shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all ${idx === currentImage ? 'border-blue-500 shadow-lg scale-105 z-10' : 'border-transparent opacity-70 hover:opacity-100'
+                        }`}
+                    >
+                      <img
+                        src={src.startsWith('http') ? src : `http://localhost:5023${src}`}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-      </div>
-      {/* Modal zgłoszenia komentarza */}
-      <ModalZgloszeniaKomentarza
-        isVisible={reportingCommentId !== null}
-        commentId={reportingCommentId}
-        onClose={() => !reportLoading && setReportingCommentId(null)}
-        onSubmit={submitReport}
-        loading={reportLoading}
-      />
+            {/* Right Column: Info users (7/12) */}
+            <div className="lg:col-span-7 p-6 lg:p-10 flex flex-col">
 
-      {/* Lightbox */}
-      {lightboxOpen && offer?.zdjecia && (
-        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col">
-          <div className="flex justify-end p-4">
-            <button
-              onClick={() => setLightboxOpen(false)}
-              className="text-white/80 hover:text-white text-2xl leading-none px-3 py-1"
-              aria-label="Zamknij podgląd"
-            >×</button>
-          </div>
-          <div className="flex-1 flex items-center justify-center px-4 pb-6 relative select-none">
-            {offer.zdjecia.map((z, i) => {
-              const src = z.startsWith('http') ? z : `http://localhost:5023${z}`;
-              return (
-                <img
-                  key={i}
-                  src={src}
-                  alt={offer.tytul + ' powiększone'}
-                  className={`max-h-[80vh] max-w-[90vw] object-contain transition-opacity duration-300 ${i===currentImage?'opacity-100':'opacity-0 absolute'}`}
-                  draggable={false}
-                />
-              );
-            })}
-            {offer.zdjecia.length > 1 && (
-              <>
-                <button
-                  onClick={() => setCurrentImage(ci => (ci - 1 + offer.zdjecia.length) % offer.zdjecia.length)}
-                  className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-3xl flex items-center justify-center"
-                  aria-label="Poprzednie"
-                >‹</button>
-                <button
-                  onClick={() => setCurrentImage(ci => (ci + 1) % offer.zdjecia.length)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-3xl flex items-center justify-center"
-                  aria-label="Następne"
-                >›</button>
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                  {offer.zdjecia.map((_, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setCurrentImage(i)}
-                      className={`w-3 h-3 rounded-full border border-white ${i===currentImage?'bg-white':'bg-white/40 hover:bg-white/70'}`}
-                      aria-label={`Zdjęcie ${i+1}`}
-                    />
-                  ))}
+              {/* Header */}
+              <div className="flex items-start justify-between gap-4 mb-4">
+                <div>
+                  <div className="flex flex-wrap gap-2 mb-3">
+                    <span className="px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-bold uppercase tracking-wider">
+                      {offer.kategoria}
+                    </span>
+                    {offer.typ === 'kupon' && (
+                      <span className="px-3 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 text-xs font-bold uppercase tracking-wider">
+                        Kupon
+                      </span>
+                    )}
+                  </div>
+                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 dark:text-white leading-tight mb-2">
+                    {offer.tytul}
+                  </h1>
+                  <div className="flex items-center gap-3 text-sm text-gray-500 dark:text-gray-400">
+                    <Link to={`/uzytkownik/${offer.autor}`} className="flex items-center gap-1.5 font-medium px-2 py-1 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition group">
+                      <div className="w-6 h-6 rounded-full overflow-hidden bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center text-[10px] text-white font-bold border border-gray-200 dark:border-gray-600">
+                        {offer.autorAvatarUrl ? (
+                          <img src={offer.autorAvatarUrl.startsWith('http') ? offer.autorAvatarUrl : `http://localhost:5023${offer.autorAvatarUrl}`} alt={offer.autor} className="w-full h-full object-cover" />
+                        ) : (
+                          offer.autor.charAt(0)
+                        )}
+                      </div>
+                      <span className="group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{offer.autor}</span>
+                    </Link>
+                    <span>•</span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5" /> {offer.dataUtworzenia}
+                    </span>
+                  </div>
                 </div>
-              </>
+
+                {/* Score Big Display */}
+                <div className={`flex flex-col items-center justify-center min-w-[80px] p-3 rounded-2xl border-2 ${temperature > 0
+                  ? 'border-red-100 bg-red-50 text-red-600 dark:border-red-900/30 dark:bg-red-900/10 dark:text-red-400'
+                  : temperature < 0
+                    ? 'border-blue-100 bg-blue-50 text-blue-600 dark:border-blue-900/30 dark:bg-blue-900/10 dark:text-blue-400'
+                    : 'border-gray-100 bg-gray-50 text-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-400'
+                  }`}>
+                  <span className="text-xs font-bold uppercase tracking-wide opacity-70">Ocena</span>
+                  <span className="text-3xl font-black">{temperature}°</span>
+                </div>
+              </div>
+
+              {/* Pricing & Actions Main Block */}
+              <div className="mt-6 mb-8 p-6 rounded-2xl bg-gray-50 dark:bg-gray-700/30 border border-gray-100 dark:border-gray-700">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+
+                  {/* Price */}
+                  <div className="flex items-end gap-3">
+                    {offer.cena !== undefined && offer.cena !== null ? (
+                      <span className={`text-4xl font-black ${offer.cena === 0 ? 'text-green-500' : 'text-red-600 dark:text-red-400'}`}>
+                        {offer.cena} zł
+                      </span>
+                    ) : null}
+
+                    {offer.cenaPoprzednia && (
+                      <span className="text-xl text-gray-400 line-through font-medium mb-1">
+                        {offer.cenaPoprzednia} zł
+                      </span>
+                    )}
+
+                    {discount > 0 && (
+                      <span className="mb-2 px-2 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 text-xs font-bold rounded">
+                        -{discount}%
+                      </span>
+                    )}
+                  </div>
+
+                  {/* CTA Button */}
+                  {offer.sklep && (
+                    <a
+                      href={offer.sklep.startsWith('http') ? offer.sklep : `https://${offer.sklep}`}
+                      target="_blank" rel="noopener noreferrer"
+                      className="w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white font-bold text-lg rounded-xl shadow-lg shadow-green-500/20 hover:shadow-xl hover:shadow-green-500/30 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                    >
+                      Idź do okazji <ExternalLink className="w-5 h-5" />
+                    </a>
+                  )}
+                </div>
+
+                {/* Coupon Code optional */}
+                {offer.typ === 'kupon' && offer.kod && (
+                  <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-600">
+                    <div className="flex items-center gap-4">
+                      <span className="text-sm font-medium text-gray-500 dark:text-gray-400">Kod rabatowy:</span>
+                      <KodKuponu code={offer.kod} size="md" />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Secondary Actions Bar */}
+              <div className="flex flex-wrap items-center gap-4 mt-auto pt-6 border-t border-gray-100 dark:border-gray-700">
+
+                {/* Voting */}
+                <div className="flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg p-1 shadow-sm">
+                  <button
+                    onClick={() => handleVote('hot')}
+                    disabled={votingInProgress}
+                    className={`p-2 rounded-md transition-all flex items-center gap-2 font-bold ${offer.userVote === 'hot'
+                      ? 'bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-red-600 dark:hover:text-red-400'
+                      }`}
+                  >
+                    <Flame className={offer.userVote === 'hot' ? 'fill-current text-red-600' : 'text-red-500'} size={20} />
+                    <span>{offer.votes.hot}</span>
+                  </button>
+                  <div className="w-px h-6 bg-gray-200 dark:bg-gray-600" />
+                  <button
+                    onClick={() => handleVote('cold')}
+                    disabled={votingInProgress}
+                    className={`p-2 rounded-md transition-all flex items-center gap-2 font-bold ${offer.userVote === 'cold'
+                      ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400'
+                      : 'hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400'
+                      }`}
+                  >
+                    <Snowflake className={offer.userVote === 'cold' ? 'fill-current text-blue-600' : 'text-blue-500'} size={20} />
+                    <span>{offer.votes.cold}</span>
+                  </button>
+                </div>
+
+                {/* Save & Share */}
+                <div className="flex items-center gap-2 ml-auto">
+                  <button
+                    onClick={handleSave}
+                    disabled={saveLoading}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border font-medium transition-all ${isSaved
+                      ? 'bg-yellow-50 border-yellow-200 text-yellow-700 dark:bg-yellow-900/20 dark:border-yellow-800 dark:text-yellow-400'
+                      : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700'
+                      }`}
+                  >
+                    <Bookmark className={isSaved ? 'fill-current' : ''} size={18} />
+                    <span className="hidden sm:inline">{isSaved ? 'Zapisano' : 'Zapisz'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-gray-200 bg-white text-gray-600 hover:bg-gray-50 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700 font-medium transition-all"
+                  >
+                    {copiedLink ? <Check size={18} className="text-green-500" /> : <Share2 size={18} />}
+                    <span className="hidden sm:inline">{copiedLink ? 'Skopiowano!' : 'Udostępnij'}</span>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+          {/* Bottom Section: Description */}
+          <div className="border-t border-gray-100 dark:border-gray-700 p-6 lg:p-10 bg-gray-50/50 dark:bg-gray-800/30">
+            <h3 className="text-lg font-bold mb-4 flex items-center gap-2 text-gray-900 dark:text-white">
+              <div className="w-1 h-6 bg-blue-500 rounded-full" /> Opis oferty
+            </h3>
+            <div className="prose dark:prose-invert max-w-none text-gray-700 dark:text-gray-300 leading-relaxed whitespace-pre-wrap">
+              {offer.opis || 'Brak opisu dla tej oferty.'}
+            </div>
+
+            {/* Tags footer */}
+            {offer.tagi && offer.tagi.length > 0 && (
+              <div className="mt-8 flex flex-wrap gap-2">
+                {offer.tagi.map(tag => (
+                  <span key={tag} className="text-sm px-3 py-1 bg-gray-200 dark:bg-gray-700 rounded-full text-gray-600 dark:text-gray-300">
+                    #{tag}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         </div>
+
+        {/* Similar Offers + Comments Split Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
+
+          {/* Main Column: Comments (2/3) */}
+          <div className="lg:col-span-2">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
+              <div className="p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <MessageSquare className="text-blue-500" />
+                  Komentarze <span className="text-gray-400 font-normal">({commentsTotal})</span>
+                </h3>
+                <select
+                  value={commentSort}
+                  onChange={e => setCommentSort(e.target.value as any)}
+                  className="text-sm border-none bg-gray-100 dark:bg-gray-700 rounded-lg px-3 py-1.5 focus:ring-0 cursor-pointer"
+                >
+                  <option value="newest">Najnowsze</option>
+                  <option value="oldest">Najstarsze</option>
+                  <option value="helpful">Pomocne</option>
+                </select>
+              </div>
+
+              <div className="p-6 bg-gray-50/30 dark:bg-gray-800/30">
+                {/* Add Comment Input */}
+                <div className="flex gap-4 mb-8">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-blue-600 dark:text-blue-400 font-bold">
+                    Ty
+                  </div>
+                  <div className="flex-1">
+                    <textarea
+                      value={commentText}
+                      onChange={e => setCommentText(e.target.value)}
+                      placeholder="Dodaj komentarz..."
+                      className="w-full rounded-xl border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-transparent min-h-[100px] p-3 transition-all shadow-sm"
+                    />
+                    <div className="flex justify-end mt-2">
+                      <button
+                        onClick={handleAddComment}
+                        disabled={!commentText.trim()}
+                        className="px-6 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                      >
+                        Opublikuj
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Comments List */}
+                <div className="space-y-6">
+                  {commentTree.length > 0 ? commentTree.map(node => (
+                    <CommentItem
+                      key={node.id}
+                      node={node}
+                      onVote={handleCommentVote}
+                      onReply={handleAddReply}
+                      onReport={(id) => setReportingCommentId(id)}
+                      replyParentId={replyParentId}
+                      setReplyParentId={setReplyParentId}
+                      replyText={replyText}
+                      setReplyText={setReplyText}
+                    />
+                  )) : (
+                    <div className="text-center py-10 text-gray-500">
+                      Brak komentarzy. Bądź pierwszy!
+                    </div>
+                  )}
+                </div>
+
+                {comments.length < commentsTotal && (
+                  <button
+                    onClick={() => fetchComments(false)}
+                    className="w-full mt-6 py-3 text-blue-600 font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-xl transition"
+                  >
+                    Załaduj więcej komentarzy
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Sidebar: Similar Offers (1/3) */}
+          <div className="lg:col-span-1">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 p-6 sticky top-24">
+              <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
+                <Star className="text-yellow-500 fill-current" size={20} />
+                Podobne oferty
+              </h3>
+
+              {loadingSimilar ? (
+                <div className="space-y-4 animate-pulse">
+                  {[1, 2, 3].map(i => <div key={i} className="h-24 bg-gray-100 dark:bg-gray-700 rounded-xl" />)}
+                </div>
+              ) : similarOffers.length > 0 ? (
+                <div className="space-y-4">
+                  {similarOffers.map(sim => (
+                    <Link key={sim.id} to={`/okazja/${sim.id}`} className="flex gap-3 group">
+                      <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden flex-shrink-0 relative">
+                        {sim.zdjecia?.[0] ? (
+                          <img
+                            src={sim.zdjecia[0].startsWith('http') ? sim.zdjecia[0] : `http://localhost:5023${sim.zdjecia[0]}`}
+                            className="w-full h-full object-cover group-hover:scale-105 transition"
+                            alt=""
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-xl">🛍️</div>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-medium text-sm line-clamp-2 group-hover:text-blue-600 transition">
+                          {sim.tytul}
+                        </h4>
+                        <div className="mt-1 flex items-center gap-2">
+                          <span className="font-bold text-red-600 dark:text-red-400">
+                            {sim.cena ? `${sim.cena} zł` : 'Za darmo'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                          <span className="flex items-center gap-0.5">
+                            <Flame size={12} className="text-gray-400" /> {(sim.votes?.hot || 0) + (sim.votes?.cold || 0)}
+                          </span>
+                          <span>•</span>
+                          <span>{sim.autor}</span>
+                        </div>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-gray-500 text-sm">Brak podobnych ofert.</p>
+              )}
+            </div>
+          </div>
+
+        </div>
+
+      </main>
+
+      {/* Lightbox Overlay */}
+      {lightboxOpen && offer && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center animate-fade-in" onClick={() => setLightboxOpen(false)}>
+          <button className="absolute top-4 right-4 p-2 text-white/70 hover:text-white hover:bg-white/10 rounded-full transition" onClick={() => setLightboxOpen(false)}>
+            <X size={32} />
+          </button>
+
+          <img
+            src={offer.zdjecia[currentImage].startsWith('http') ? offer.zdjecia[currentImage] : `http://localhost:5023${offer.zdjecia[currentImage]}`}
+            className="max-h-[85vh] max-w-[90vw] object-contain shadow-2xl rounded-sm"
+            alt=""
+            onClick={(e) => e.stopPropagation()}
+          />
+
+          <p className="absolute bottom-8 text-white/50 text-sm">
+            Zdjęcie {currentImage + 1} z {offer.zdjecia.length} • Użyj strzałek klawiatury
+          </p>
+
+          {/* Lightbox Nav */}
+          <button
+            className="absolute left-4 top-1/2 -translate-y-1/2 p-4 text-white/50 hover:text-white transition"
+            onClick={(e) => { e.stopPropagation(); setCurrentImage((c) => (c - 1 + offer.zdjecia.length) % offer.zdjecia.length); }}
+          >
+            <ChevronLeft size={48} />
+          </button>
+          <button
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-4 text-white/50 hover:text-white transition"
+            onClick={(e) => { e.stopPropagation(); setCurrentImage((c) => (c + 1) % offer.zdjecia.length); }}
+          >
+            <ChevronRight size={48} />
+          </button>
+        </div>
       )}
+
+      {/* Modals */}
+      <ModalZgloszeniaKomentarza
+        isVisible={reportingCommentId !== null}
+        commentId={reportingCommentId}
+        onClose={() => setReportingCommentId(null)}
+        onSubmit={submitReport}
+        loading={reportLoading}
+      />
     </div>
   );
 }
 
-{/* Modal zgłoszenia komentarza */}
-{/* Umieszczony poza komponentem eksportowanym? Musi być wewnątrz return głównego komponentu - przeniesiono niżej */}
+// --- Subcomponent: Recursive Comment Item ---
+
+interface CommentItemProps {
+  node: CommentNode;
+  onVote: (commentId: number, vote: 'up' | 'down') => Promise<void>;
+  onReply: (parentId: number) => Promise<void>;
+  onReport: (id: number) => void;
+  replyParentId: number | null;
+  setReplyParentId: (id: number | null) => void;
+  replyText: string;
+  setReplyText: (text: string) => void;
+  depth?: number;
+}
+
+function CommentItem({ node, onVote, onReply, onReport, replyParentId, setReplyParentId, replyText, setReplyText, depth = 0 }: CommentItemProps) {
+  const isReplying = replyParentId === node.id;
+
+  return (
+    <div className={`relative ${depth > 0 ? 'ml-8 pl-4 border-l-2 border-gray-100 dark:border-gray-700' : ''}`}>
+      <div className="flex gap-3 group">
+        <Link to={`/uzytkownik/${node.autor}`} className="flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center text-xs font-bold text-gray-600 dark:text-gray-300 overflow-hidden ring-2 ring-transparent hover:ring-blue-400 transition-all">
+            {node.autorAvatarUrl ? (
+              <img src={node.autorAvatarUrl.startsWith('http') ? node.autorAvatarUrl : `http://localhost:5023${node.autorAvatarUrl}`} alt={node.autor} className="w-full h-full object-cover" />
+            ) : (
+              node.autor.charAt(0)
+            )}
+          </div>
+        </Link>
+        <div className="flex-1 min-w-0">
+          <div className="bg-white dark:bg-gray-700/50 p-3 rounded-2xl rounded-tl-none border border-gray-100 dark:border-gray-700/50 shadow-sm relative hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between mb-1">
+              <Link to={`/uzytkownik/${node.autor}`} className="font-bold text-sm text-gray-900 dark:text-gray-100 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                {node.autor}
+              </Link>
+              <span className="text-xs text-gray-400">{node.data}</span>
+            </div>
+            <p className="text-gray-700 dark:text-gray-300 text-sm whitespace-pre-line leading-relaxed">
+              {node.tresc}
+            </p>
+
+            {/* Hover Actions Trigger */}
+            <button onClick={() => onReport(node.id)} className="absolute top-2 right-2 text-gray-300 hover:text-gray-500 opacity-0 group-hover:opacity-100 transition p-1" title="Zgłoś">
+              <Flag size={14} />
+            </button>
+          </div>
+
+          {/* Action Bar */}
+          <div className="flex items-center gap-4 mt-1 ml-1 text-xs font-medium text-gray-500">
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onVote(node.id, 'up')}
+                className={`hover:text-blue-600 flex items-center gap-1 ${node.userVote === 'up' ? 'text-blue-600' : ''}`}
+              >
+                <ThumbsUp size={12} /> {node.up || 0}
+              </button>
+              <button
+                onClick={() => onVote(node.id, 'down')}
+                className={`hover:text-red-600 flex items-center gap-1 ${node.userVote === 'down' ? 'text-red-600' : ''}`}
+              >
+                <ThumbsDown size={12} /> {node.down || 0}
+              </button>
+            </div>
+            <button onClick={() => setReplyParentId(isReplying ? null : node.id)} className="hover:text-blue-600 transition">
+              Odpowiedz
+            </button>
+          </div>
+
+          {/* Reply Form */}
+          {isReplying && (
+            <div className="mt-3 animate-fade-in">
+              <textarea
+                value={replyText}
+                onChange={e => setReplyText(e.target.value)}
+                placeholder={`Odpowiedź do @${node.autor}...`}
+                className="w-full text-sm p-3 rounded-xl border border-blue-200 dark:border-blue-900 bg-blue-50/50 dark:bg-blue-900/10 focus:ring-1 focus:ring-blue-500"
+                autoFocus
+              />
+              <div className="flex justify-end gap-2 mt-2">
+                <button onClick={() => setReplyParentId(null)} className="px-3 py-1 text-gray-500 hover:text-gray-700 text-xs">Anuluj</button>
+                <button onClick={() => onReply(node.id)} className="px-3 py-1 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 transition">Wyślij</button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Children */}
+      {
+        node.children && node.children.length > 0 && (
+          <div className="mt-4 space-y-4">
+            {node.children.map((child: any) => (
+              <CommentItem
+                key={child.id}
+                node={child}
+                depth={depth + 1}
+                onVote={onVote}
+                onReply={onReply}
+                onReport={onReport}
+                replyParentId={replyParentId}
+                setReplyParentId={setReplyParentId}
+                replyText={replyText}
+                setReplyText={setReplyText}
+              />
+            ))}
+          </div>
+        )
+      }
+    </div >
+  );
+}
