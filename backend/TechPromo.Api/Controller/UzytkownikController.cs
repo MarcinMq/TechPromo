@@ -727,12 +727,83 @@ namespace TechPromo.Api.Controllers
                 return BadRequest("Cena promocyjna powinna być niższa niż cena poprzednia.");
 
             // Aktualizacja pól
+            Console.WriteLine($"[DEBUG UpdateOwnOffer] Otrzymano: Tytul={dto.Tytul}, Opis={(dto.Opis?.Length > 20 ? dto.Opis?.Substring(0,20) + "..." : dto.Opis)}, Cena={dto.Cena}, Tagi={dto.Tagi?.Count ?? 0}");
+            
+            // Pola wymagane - aktualizuj tylko jeśli niepuste
             if (!string.IsNullOrWhiteSpace(dto.Tytul)) oferta.Nazwa = dto.Tytul.Trim();
             if (!string.IsNullOrWhiteSpace(dto.Opis)) oferta.Opis = dto.Opis.Trim();
+            
+            // Pola opcjonalne - aktualizuj ZAWSZE gdy są w requescie (pozwala na wyczyszczenie)
             if (dto.Cena.HasValue) oferta.Cena = dto.Cena;
             if (dto.CenaPoprzednia.HasValue) oferta.CenaPoprzednia = dto.CenaPoprzednia;
-            if (!string.IsNullOrWhiteSpace(dto.Kod)) oferta.Kod = dto.Kod.Trim();
-            if (!string.IsNullOrWhiteSpace(dto.Link)) oferta.Link = dto.Link.Trim();
+            
+            // Kod i Link - aktualizuj nawet jeśli puste (pozwala usunąć)
+            if (dto.Kod != null) oferta.Kod = string.IsNullOrWhiteSpace(dto.Kod) ? null : dto.Kod.Trim();
+            if (dto.Link != null) oferta.Link = string.IsNullOrWhiteSpace(dto.Link) ? null : dto.Link.Trim();
+            
+            // Aktualizacja kategorii
+            if (!string.IsNullOrWhiteSpace(dto.Kategoria))
+            {
+                var kategoria = await _context.Kategorie.FirstOrDefaultAsync(k => k.Nazwa == dto.Kategoria);
+                if (kategoria == null)
+                {
+                    // Jeśli kategoria nie istnieje, utwórz ją (jak w CreateOffer)
+                    kategoria = new Kategoria { Nazwa = dto.Kategoria };
+                    _context.Kategorie.Add(kategoria);
+                    await _context.SaveChangesAsync();
+                }
+                
+                if (kategoria != null)
+                {
+                    oferta.IdKategoria = kategoria.IdKategoria;
+                }
+            }
+            
+            // Aktualizacja dat ważności - konwersja do UTC dla PostgreSQL
+            if (dto.WaznoscOd.HasValue)
+            {
+                oferta.WaznoscOd = DateTime.SpecifyKind(dto.WaznoscOd.Value, DateTimeKind.Utc);
+            }
+            else
+            {
+                oferta.WaznoscOd = null;
+            }
+            
+            if (dto.WaznoscDo.HasValue)
+            {
+                oferta.WaznoscDo = DateTime.SpecifyKind(dto.WaznoscDo.Value, DateTimeKind.Utc);
+            }
+            else
+            {
+                oferta.WaznoscDo = null;
+            }
+            
+            Console.WriteLine($"[DEBUG UpdateOwnOffer] Po aktualizacji: Nazwa={oferta.Nazwa}, Cena={oferta.Cena}, Kategoria={oferta.IdKategoria}");
+            
+            // Aktualizacja tagów - jeśli pole Tagi zostało przesłane (nie null)
+            if (dto.Tagi != null)
+            {
+                // Usuń stare tagi
+                var stareTagi = await _context.OfertaTagi.Where(ot => ot.IdOferta == id).ToListAsync();
+                _context.OfertaTagi.RemoveRange(stareTagi);
+                
+                // Dodaj nowe tagi (jeśli są)
+                foreach (var tagNazwa in dto.Tagi.Take(10)) // max 10 tagów
+                {
+                    var trimmedTag = tagNazwa.Trim().ToLower();
+                    if (string.IsNullOrWhiteSpace(trimmedTag)) continue;
+                    
+                    var tag = await _context.Tagi.FirstOrDefaultAsync(t => t.Nazwa == trimmedTag);
+                    if (tag == null)
+                    {
+                        tag = new Tag { Nazwa = trimmedTag };
+                        _context.Tagi.Add(tag);
+                        await _context.SaveChangesAsync();
+                    }
+                    
+                    _context.OfertaTagi.Add(new OfertaTag { IdOferta = id, IdTag = tag.IdTag });
+                }
+            }
             
             // Logika zatwierdzenia:
             // - Jeśli zwykły użytkownik edytuje swoją ofertę -> wymaga ponownej moderacji
@@ -741,15 +812,20 @@ namespace TechPromo.Api.Controllers
             if (isOwner && !isModerator && !isAdmin)
             {
                 // Moderacja AI tekstu po edycji
+                Console.WriteLine($"[DEBUG] User edit - running AI moderation for offer {id}");
                 var contentCheck = await _serwisModeracji.ModerujTekstAsync($"{oferta.Nazwa} {oferta.Opis}");
+                Console.WriteLine($"[DEBUG] AI moderation result: CzyBezpieczny={contentCheck.CzyBezpieczny}");
+                
                 if (!contentCheck.CzyBezpieczny)
                 {
+                    Console.WriteLine($"[DEBUG] AI moderation BLOCKED: {contentCheck.KomunikatDlaUzytkownika}");
                     return BadRequest(new { message = contentCheck.KomunikatDlaUzytkownika, details = contentCheck.NaruszonKategorie });
                 }
 
                 oferta.Zatwierdzona = true; // Auto-approve
                 oferta.Aktywna = true;
                 oferta.ZatwierdzeniePrzezAI = true;
+                Console.WriteLine($"[DEBUG] User edit approved by AI, saving changes...");
             }
             else
             {
@@ -799,27 +875,39 @@ namespace TechPromo.Api.Controllers
                 if (file.Length > 5 * 1024 * 1024) return BadRequest($"Plik {file.FileName} >5MB");
 
                 // Moderacja AI
-                using var ms = new MemoryStream();
-                await file.CopyToAsync(ms);
-                var imageBytes = ms.ToArray();
-                var imageCheck = await _serwisModeracji.ModerujObrazAsync(imageBytes);
-                if (!imageCheck.CzyBezpieczny)
+                try
                 {
-                     return BadRequest(new { message = $"Zdjęcie {file.FileName} odrzucone: {imageCheck.KomunikatDlaUzytkownika}" });
+                    using var ms = new MemoryStream();
+                    await file.CopyToAsync(ms);
+                    var imageBytes = ms.ToArray();
+                    var imageCheck = await _serwisModeracji.ModerujObrazAsync(imageBytes);
+                    if (!imageCheck.CzyBezpieczny)
+                    {
+                         return BadRequest(new { message = $"Zdjęcie {file.FileName} odrzucone: {imageCheck.KomunikatDlaUzytkownika}" });
+                    }
+                    
+                    var ext = Path.GetExtension(file.FileName);
+                    var name = $"{id}_{DateTime.UtcNow.Ticks}_{Guid.NewGuid()}{ext}";
+                    var path = Path.Combine(uploadsPath, name);
+                    
+                    await System.IO.File.WriteAllBytesAsync(path, imageBytes);
+    
+                    _context.OfertyZdjecia.Add(new OfertaZdjecie
+                    {
+                        IdOferta = id,
+                        UrlZdjecia = $"/uploads/oferty/{name}",
+                        Kolejnosc = ++startOrder
+                    });
                 }
-
-                var ext = Path.GetExtension(file.FileName);
-                var name = $"{id}_{DateTime.UtcNow.Ticks}_{Guid.NewGuid()}{ext}";
-                var path = Path.Combine(uploadsPath, name);
-                
-                await System.IO.File.WriteAllBytesAsync(path, imageBytes);
-
-                _context.OfertyZdjecia.Add(new OfertaZdjecie
+                catch (Exception ex)
                 {
-                    IdOferta = id,
-                    UrlZdjecia = $"/uploads/oferty/{name}",
-                    Kolejnosc = ++startOrder
-                });
+                    Console.WriteLine($"[AI ERROR] Błąd moderacji zdjęcia {file.FileName}: {ex.Message}");
+                    // W przypadku błędu AI - odrzucamy dla bezpieczenstwa, czy przepuszczamy? 
+                    // Użytkownik ma problem z zapisem. Jeśli AI leży, to użytkownik nie może dodać zdjęcia.
+                    // Przepuśćmy warunkowo lub zwróćmy błąd 500. 
+                    // Zwróćmy błąd żeby wiedział co jest grane
+                    throw; 
+                }
                 added++;
             }
             await _context.SaveChangesAsync();

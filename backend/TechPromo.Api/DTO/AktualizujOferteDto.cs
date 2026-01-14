@@ -22,5 +22,25 @@ namespace TechPromo.Api.DTO
         
         [StringLength(300, ErrorMessage = "Link nie może być dłuższy niż 300 znaków")]
         public string? Link { get; set; }
+        
+        /// <summary>
+        /// Lista tagów - opcjonalna przy aktualizacji
+        /// </summary>
+        public List<string>? Tagi { get; set; }
+        
+        /// <summary>
+        /// Kategoria oferty
+        /// </summary>
+        public string? Kategoria { get; set; }
+        
+        /// <summary>
+        /// Data rozpoczęcia ważności oferty
+        /// </summary>
+        public DateTime? WaznoscOd { get; set; }
+        
+        /// <summary>
+        /// Data zakończenia ważności oferty
+        /// </summary>
+        public DateTime? WaznoscDo { get; set; }
     }
 }

@@ -27,7 +27,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
   const [editId, setEditId] = useState<number | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [categories, setCategories] = useState<string[]>([]);
-  
+
   const [formData, setFormData] = useState<CouponFormData>({
     tytul: '',
     opis: '',
@@ -49,20 +49,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const role = getUserData()?.role;
 
-  const refreshExistingImages = async (offerId:number) => {
-    try {
-      const token = getAuthToken();
-      if(!token) return;
-      let listUrl = '';
-      if(role === 'User') listUrl = `/api/uzytkownik/oferta/${offerId}/zdjecia`;
-      else if(role === 'Moderator' || role === 'Admin') listUrl = `/api/moderator/oferta/${offerId}/zdjecia`;
-      if(!listUrl) return;
-      const resp = await fetch(listUrl, { headers: { 'Authorization': `Bearer ${token}` }});
-      if(!resp.ok) return;
-      const data = await resp.json();
-      setExistingImages((data||[]).map((x:any)=>({ id: x.idOfertaZdjecie ?? x.IdOfertaZdjecie, url: x.urlZdjecia ?? x.UrlZdjecia, kolejnosc: x.kolejnosc ?? x.Kolejnosc })));
-    } catch { /* ignore */ }
-  };
+
 
   // Load categories from API
   useEffect(() => {
@@ -75,8 +62,33 @@ const FormularzTworzeniaKuponu: React.FC = () => {
           setFormData(prev => ({ ...prev, kategoria: data[0] }));
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
+
+  const fetchImages = async (id: number) => {
+    const role = getUserData()?.role;
+    const token = getAuthToken();
+    let photoUrl = '';
+    if (role === 'User' || role === 'Uzytkownik') {
+      photoUrl = `/api/uzytkownik/oferta/${id}/zdjecia`;
+    } else if (role === 'Moderator' || role === 'Admin') {
+      photoUrl = `/api/moderator/oferta/${id}/zdjecia`;
+    }
+
+    if (photoUrl) {
+      try {
+        const r = await fetch(photoUrl, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (r.ok) {
+          const data = await r.json();
+          setExistingImages(data.map((x: any) => ({
+            id: x.idOfertaZdjecie ?? x.IdOfertaZdjecie,
+            url: x.urlZdjecia ?? x.UrlZdjecia,
+            kolejnosc: x.kolejnosc ?? x.Kolejnosc
+          })));
+        }
+      } catch (err) { console.log('[DEBUG] Photo fetch error:', err); }
+    }
+  };
 
   // Detect edit mode
   useEffect(() => {
@@ -86,8 +98,9 @@ const FormularzTworzeniaKuponu: React.FC = () => {
       const idNum = parseInt(edit, 10);
       if (!isNaN(idNum)) {
         setEditId(idNum);
-        const role = getUserData()?.role;
-        const url = role === 'User' ? `/api/uzytkownik/oferta/${idNum}` : `/api/oferta/${idNum}`;
+
+        // Użyj tego samego endpointu dla wszystkich ról - pełne dane oferty
+        const url = `/api/oferta/${idNum}`;
         fetch(url)
           .then(r => r.ok ? r.json() : Promise.reject())
           .then(data => {
@@ -101,27 +114,19 @@ const FormularzTworzeniaKuponu: React.FC = () => {
               kategoria: data.kategoria || data.Kategoria || 'Telefony',
               sklep: data.sklep || data.Sklep || '',
               tagi: (data.tagi || data.Tagi || []).join(', '),
-              typ: 'kupon'
+              typ: 'kupon',
+              // Daty ważności
+              waznoscOd: data.waznoscOd || data.WaznoscOd ? new Date(data.waznoscOd || data.WaznoscOd).toISOString().slice(0, 16) : '',
+              waznoscDo: data.waznoscDo || data.WaznoscDo ? new Date(data.waznoscDo || data.WaznoscDo).toISOString().slice(0, 16) : ''
             }));
           })
           .catch(() => {
             setMessage({ type: 'error', text: 'Brak uprawnień do edycji tej oferty' });
-            setTimeout(()=> navigate('/konto/profil'), 1500);
+            setTimeout(() => navigate('/konto/profil'), 1500);
           });
-        // Pobierz istniejące zdjęcia
-        const token = getAuthToken();
-        const imageFetches: Promise<any>[] = [];
-        if (role === 'User') {
-          imageFetches.push(fetch(`/api/uzytkownik/oferta/${idNum}/zdjecia`, { headers: { 'Authorization': `Bearer ${token}` }}));
-        } else if (role === 'Moderator' || role === 'Admin') {
-          imageFetches.push(fetch(`/api/moderator/oferta/${idNum}/zdjecia`, { headers: { 'Authorization': `Bearer ${token}` }}));
-        }
-        Promise.all(imageFetches)
-          .then(responses => Promise.all(responses.filter(r=>r.ok).map(r=>r.json())))
-          .then(allLists => {
-            const merged = allLists.flat();
-            setExistingImages(merged.map((x:any)=>({ id: x.idOfertaZdjecie ?? x.IdOfertaZdjecie, url: x.urlZdjecia ?? x.UrlZdjecia, kolejnosc: x.kolejnosc ?? x.Kolejnosc })));
-          }).catch(()=>{});
+
+        // Pobierz istniejące zdjęcia używając nowej funkcji
+        fetchImages(idNum);
       }
     }
   }, []);
@@ -129,7 +134,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    
+
     if (fieldErrors[name]) {
       setFieldErrors(prev => ({ ...prev, [name]: '' }));
     }
@@ -137,7 +142,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
-    
+
     if (!formData.tytul.trim()) errors.tytul = 'Tytuł jest wymagany';
     if (formData.tytul.length > 150) errors.tytul = 'Tytuł nie może być dłuższy niż 150 znaków';
     if (!formData.opis.trim()) errors.opis = 'Opis jest wymagany';
@@ -153,7 +158,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
       errors.cenaPoprzednia = 'Kwota poprzednia powinna być wyższa od aktualnej';
     }
     // Link jest opcjonalny, jeśli podany zostanie automatycznie uzupełniony o https://
-    
+
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -178,30 +183,21 @@ const FormularzTworzeniaKuponu: React.FC = () => {
         let putUrl = '';
         let payload: any = {};
 
-        if (role === 'Admin' || role === 'Moderator') {
-          // Ujednolicamy ścieżkę edycji – Moderator używa tego samego endpointu co Admin
-          putUrl = `/api/admin/oferta/${editId}`;
-          payload = {
-            tytul: formData.tytul.trim(),
-            opis: formData.opis.trim(),
-            cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
-            cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
-            kod: formData.kod.trim(),
-            // Wysyłamy pusty string, jeśli pole jest puste – pozwala to wyczyścić link w backendzie
-            link: formData.sklep !== undefined ? formData.sklep.trim() : ''
-          };
-        } else { // User
-          putUrl = `/api/uzytkownik/oferta/${editId}`;
-          payload = {
-            tytul: formData.tytul.trim(),
-            opis: formData.opis.trim(),
-            cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
-            cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
-            kod: formData.kod.trim(),
-            // Dla użytkownika pozostawiamy dotychczasowe zachowanie
-            link: formData.sklep.trim() || null
-          };
-        }
+        // Use the comprehensive User endpoint for everyone (Admins/Moderators/Users)
+        // This ensures consistent handling of Category, Tags, and Validity Dates
+        putUrl = `/api/uzytkownik/oferta/${editId}`;
+        payload = {
+          tytul: formData.tytul.trim(),
+          opis: formData.opis.trim(),
+          cena: formData.cenaAktualna ? parseFloat(formData.cenaAktualna) : null,
+          cenaPoprzednia: formData.cenaPoprzednia ? parseFloat(formData.cenaPoprzednia) : null,
+          kod: formData.kod.trim(),
+          link: formData.sklep.trim() || null,
+          tagi: formData.tagi.trim() ? formData.tagi.split(',').map(t => t.trim()).filter(t => t) : [],
+          kategoria: formData.kategoria || null,
+          waznoscOd: formData.waznoscOd || null,
+          waznoscDo: formData.waznoscDo || null
+        };
 
         const res = await fetch(putUrl, {
           method: 'PUT',
@@ -210,25 +206,41 @@ const FormularzTworzeniaKuponu: React.FC = () => {
         });
         if (!res.ok) throw new Error('Nie udało się zaktualizować kuponu');
 
+        // Zapisz kolejność istniejących zdjęć
+        if (existingImages.length > 0) {
+          await handleReorderSave();
+        }
+
         // Jeśli są nowe zdjęcia dodane w polu (formData.zdjecia), wyślij je teraz
-        if(formData.zdjecia.length > 0){
+        let photoUploadSuccess = true;
+        if (formData.zdjecia.length > 0) {
           const fd = new FormData();
           formData.zdjecia.forEach(f => fd.append('zdjecia', f));
           let uploadUrl = '';
-            if (role === 'User') uploadUrl = `/api/uzytkownik/oferta/${editId}/zdjecia`;
-            else if (role === 'Moderator' || role === 'Admin') uploadUrl = `/api/moderator/oferta/${editId}/zdjecia`;
-          if(uploadUrl){
-            const upRes = await fetch(uploadUrl, { method:'POST', headers:{'Authorization': `Bearer ${token}`}, body: fd });
-            if(!upRes.ok){
-              setMessage({ type:'error', text:'Kupon zaktualizowany, ale nie udało się wysłać nowych zdjęć.' });
+          if (role === 'User' || role === 'Uzytkownik') uploadUrl = `/api/uzytkownik/oferta/${editId}/zdjecia`;
+          else if (role === 'Moderator' || role === 'Admin') uploadUrl = `/api/moderator/oferta/${editId}/zdjecia`;
+          if (uploadUrl) {
+            const upRes = await fetch(uploadUrl, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
+            if (!upRes.ok) {
+              // Pobierz szczegóły błędu z backendu (np. odrzucenie przez AI)
+              let errorMsg = 'Nie udało się wysłać nowych zdjęć.';
+              try {
+                const errorData = await upRes.json();
+                if (errorData.message) errorMsg = errorData.message;
+              } catch { /* ignore */ }
+              setMessage({ type: 'error', text: `Kupon zaktualizowany, ale: ${errorMsg}` });
+              photoUploadSuccess = false;
             } else {
-              await refreshExistingImages(editId);
-              setFormData(prev=>({...prev, zdjecia:[]}));
+              await fetchImages(editId);
+              setFormData(prev => ({ ...prev, zdjecia: [] }));
             }
           }
         }
 
-        setMessage({ type: 'success', text: role === 'User' ? 'Kupon zaktualizowany (oczekuje na ponowną moderację). Nowe zdjęcia dodane.' : 'Kupon zaktualizowany.' });
+        // Pokaż sukces TYLKO jeśli zdjęcia się udały lub ich nie było
+        if (photoUploadSuccess) {
+          setMessage({ type: 'success', text: role === 'User' ? 'Kupon zaktualizowany! Nowe zdjęcia dodane.' : 'Kupon zaktualizowany.' });
+        }
         // Nie przekierowujemy od razu – użytkownik może dalej edytować zdjęcia
         return;
       }
@@ -236,14 +248,14 @@ const FormularzTworzeniaKuponu: React.FC = () => {
       const formDataToSend = new FormData();
       formDataToSend.append('tytul', formData.tytul.trim());
       formDataToSend.append('opis', formData.opis.trim());
-      
+
       if (formData.cenaAktualna) {
         formDataToSend.append('cena', formData.cenaAktualna);
       }
       if (formData.cenaPoprzednia) {
         formDataToSend.append('cenaPoprzednia', formData.cenaPoprzednia);
       }
-      
+
       formDataToSend.append('kod', formData.kod.trim());
       formDataToSend.append('kategoria', formData.kategoria);
       if (formData.sklep.trim()) {
@@ -257,7 +269,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
         formDataToSend.append('tagi', formData.tagi.trim());
       }
       formDataToSend.append('typ', formData.typ);
-      
+
       // Dodaj ważność oferty jeśli wypełnione
       if (formData.waznoscOd) {
         formDataToSend.append('waznoscOd', new Date(formData.waznoscOd).toISOString());
@@ -282,13 +294,13 @@ const FormularzTworzeniaKuponu: React.FC = () => {
         },
         body: formDataToSend
       });
-      
+
       if (response.ok) {
-        setMessage({ 
-          type: 'success', 
-          text: 'Kupon został dodany pomyślnie! Oczekuje na potwierdzenie przez Administrację.' 
+        setMessage({
+          type: 'success',
+          text: 'Kupon został dodany pomyślnie! Oczekuje na potwierdzenie przez Administrację.'
         });
-        
+
         // Reset formularza
         setFormData({
           tytul: '',
@@ -312,13 +324,13 @@ const FormularzTworzeniaKuponu: React.FC = () => {
         }, 3000);
       } else {
         const errorData = await response.text();
-        throw new Error(`Błąd (${response.status}): ${errorData || 'Nie udało się dodać oferty'}`);
+        throw new Error(errorData || 'Nie udało się dodać oferty');
       }
     } catch (error: any) {
       console.error('Błąd:', error);
-      setMessage({ 
-        type: 'error', 
-        text: error.message || 'Wystąpił nieoczekiwany błąd' 
+      setMessage({
+        type: 'error',
+        text: error.message || 'Wystąpił nieoczekiwany błąd'
       });
     } finally {
       setLoading(false);
@@ -366,19 +378,19 @@ const FormularzTworzeniaKuponu: React.FC = () => {
   const handleExistingDelete = async (imgId: number) => {
     if (!editId) return; if (!confirm('Usunąć zdjęcie?')) return;
     const role = getUserData()?.role;
-    const base = role === 'User' ? '/api/uzytkownik' : '/api/moderator';
-    const res = await fetch(`${base}/oferta/${editId}/zdjecie/${imgId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getAuthToken()}` }});
+    const base = (role === 'User' || role === 'Uzytkownik') ? '/api/uzytkownik' : '/api/moderator';
+    const res = await fetch(`${base}/oferta/${editId}/zdjecie/${imgId}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${getAuthToken()}` } });
     if (res.ok) setExistingImages(prev => prev.filter(i => i.id !== imgId));
   };
   const handleReorderSave = async () => {
     if (!editId) return;
     const role = getUserData()?.role;
-    const base = role === 'User' ? '/api/uzytkownik' : '/api/moderator';
-    const body = { kolejnosci: existingImages.map((img, idx) => ({ idOfertaZdjecie: img.id, kolejnosc: idx+1 })) };
-    await fetch(`${base}/oferta/${editId}/zdjecia/kolejnosc`, { method: 'PUT', headers: { 'Content-Type':'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify(body)});
+    const base = (role === 'User' || role === 'Uzytkownik') ? '/api/uzytkownik' : '/api/moderator';
+    const body = { kolejnosci: existingImages.map((img, idx) => ({ idOfertaZdjecie: img.id, kolejnosc: idx + 1 })) };
+    await fetch(`${base}/oferta/${editId}/zdjecia/kolejnosc`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getAuthToken()}` }, body: JSON.stringify(body) });
   };
-  const onDragStart = (idx:number) => setDragIndex(idx);
-  const onDragOver = (e:React.DragEvent<HTMLDivElement>, idx:number) => { e.preventDefault(); if (dragIndex===null||dragIndex===idx) return; setExistingImages(prev => { const arr=[...prev]; const [m]=arr.splice(dragIndex,1); arr.splice(idx,0,m); return arr; }); setDragIndex(idx); };
+  const onDragStart = (idx: number) => setDragIndex(idx);
+  const onDragOver = (e: React.DragEvent<HTMLDivElement>, idx: number) => { e.preventDefault(); if (dragIndex === null || dragIndex === idx) return; setExistingImages(prev => { const arr = [...prev]; const [m] = arr.splice(dragIndex, 1); arr.splice(idx, 0, m); return arr; }); setDragIndex(idx); };
   const onDragEnd = () => { setDragIndex(null); };
 
   // Obsługa wklejania zdjęć przez Ctrl+V
@@ -422,11 +434,10 @@ const FormularzTworzeniaKuponu: React.FC = () => {
           </h1>
 
           {message && (
-            <div className={`p-4 rounded-lg mb-6 text-center font-semibold transition-colors ${
-              message.type === 'success' 
-                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700' 
-                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700'
-            }`}>
+            <div className={`p-4 rounded-lg mb-6 text-center font-semibold transition-colors ${message.type === 'success'
+              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-700'
+              : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 border border-red-200 dark:border-red-700'
+              }`}>
               {message.text}
             </div>
           )}
@@ -437,14 +448,14 @@ const FormularzTworzeniaKuponu: React.FC = () => {
               <div className="flex flex-wrap gap-4">
                 {existingImages.map((img, idx) => (
                   <div key={img.id}
-                       draggable
-                       onDragStart={() => onDragStart(idx)}
-                       onDragOver={(e)=>onDragOver(e, idx)}
-                       onDragEnd={onDragEnd}
-                       className={`relative w-28 h-28 rounded-lg overflow-hidden border-2 ${idx===0? 'border-green-500 dark:border-green-600':'border-transparent'} shadow-sm group bg-gray-100 dark:bg-gray-700 transition-colors`}> 
+                    draggable
+                    onDragStart={() => onDragStart(idx)}
+                    onDragOver={(e) => onDragOver(e, idx)}
+                    onDragEnd={onDragEnd}
+                    className={`relative w-28 h-28 rounded-lg overflow-hidden border-2 ${idx === 0 ? 'border-green-500 dark:border-green-600' : 'border-transparent'} shadow-sm group bg-gray-100 dark:bg-gray-700 transition-colors`}>
                     <img src={`http://localhost:5023${img.url}`} className="w-full h-full object-cover pointer-events-none select-none" />
-                    {idx===0 && <span className="absolute bottom-0 left-0 right-0 bg-green-600 dark:bg-green-700 text-white text-[10px] text-center py-0.5 transition-colors">Główne</span>}
-                    <button type="button" onClick={()=>handleExistingDelete(img.id)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 dark:bg-red-700 text-white flex items-center justify-center text-xs opacity-80 hover:opacity-100 transition-colors">×</button>
+                    {idx === 0 && <span className="absolute bottom-0 left-0 right-0 bg-green-600 dark:bg-green-700 text-white text-[10px] text-center py-0.5 transition-colors">Główne</span>}
+                    <button type="button" onClick={() => handleExistingDelete(img.id)} className="absolute top-1 right-1 w-6 h-6 rounded-full bg-red-600 dark:bg-red-700 text-white flex items-center justify-center text-xs opacity-80 hover:opacity-100 transition-colors">×</button>
                   </div>
                 ))}
               </div>
@@ -461,7 +472,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
                 <FileText className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
                 Podstawowe informacje
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 transition-colors">
@@ -509,7 +520,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
                 <ShoppingBag className="w-5 h-5 mr-2 text-pink-600 dark:text-pink-400" />
                 Kod promocyjny i kwoty
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 transition-colors">
@@ -537,8 +548,8 @@ const FormularzTworzeniaKuponu: React.FC = () => {
                     id="bezMinimalnejKwoty"
                     checked={formData.bezMinimalnejKwoty}
                     onChange={(e) => {
-                      setFormData(prev => ({ 
-                        ...prev, 
+                      setFormData(prev => ({
+                        ...prev,
                         bezMinimalnejKwoty: e.target.checked,
                         // Wyczyść kwoty gdy zaznaczamy "bez minimalnej kwoty"
                         ...(e.target.checked ? { cenaAktualna: '', cenaPoprzednia: '' } : {})
@@ -574,8 +585,8 @@ const FormularzTworzeniaKuponu: React.FC = () => {
                       <p className="mt-1 text-sm text-red-500 dark:text-red-400 transition-colors">{fieldErrors.cenaPoprzednia}</p>
                     )}
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 transition-colors">
-                      {formData.bezMinimalnejKwoty ? 
-                        "Pole wyłączone - kupon bez minimalnej kwoty" : 
+                      {formData.bezMinimalnejKwoty ?
+                        "Pole wyłączone - kupon bez minimalnej kwoty" :
                         "Minimalna kwota przed zastosowaniem kuponu"
                       }
                     </p>
@@ -604,8 +615,8 @@ const FormularzTworzeniaKuponu: React.FC = () => {
                       <p className="mt-1 text-sm text-red-500 dark:text-red-400 transition-colors">{fieldErrors.cenaAktualna}</p>
                     )}
                     <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 transition-colors">
-                      {formData.bezMinimalnejKwoty ? 
-                        "Pole wyłączone - kupon bez minimalnej kwoty" : 
+                      {formData.bezMinimalnejKwoty ?
+                        "Pole wyłączone - kupon bez minimalnej kwoty" :
                         "Minimalna kwota po zastosowaniu kuponu"
                       }
                     </p>
@@ -662,7 +673,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
                 <Image className="w-5 h-5 mr-2 text-indigo-600 dark:text-indigo-400" />
                 Tagi i Zdjęcia
               </h2>
-              
+
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 transition-colors">
@@ -722,14 +733,13 @@ const FormularzTworzeniaKuponu: React.FC = () => {
                     </div>
                     <span className="text-xs text-gray-500 dark:text-gray-400 font-normal transition-colors">Dodaj do 5 zdjęć (JPG, PNG, max 5MB każde)</span>
                   </label>
-                  
+
                   {/* Upload Area */}
-                  <div 
-                    className={`relative border-2 border-dashed rounded-lg p-6 transition-all ${
-                      isDragOver 
-                        ? 'border-indigo-500 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30' 
-                        : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
-                    }`}
+                  <div
+                    className={`relative border-2 border-dashed rounded-lg p-6 transition-all ${isDragOver
+                      ? 'border-indigo-500 dark:border-indigo-600 bg-indigo-50 dark:bg-indigo-900/30'
+                      : 'border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 bg-white dark:bg-gray-800'
+                      }`}
                     onDragOver={(e) => {
                       e.preventDefault();
                       setIsDragOver(true);
@@ -806,7 +816,7 @@ const FormularzTworzeniaKuponu: React.FC = () => {
               >
                 Anuluj
               </button>
-              
+
               <button
                 type="submit"
                 disabled={loading}
