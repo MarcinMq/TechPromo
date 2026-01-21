@@ -17,6 +17,15 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
     private readonly ILogger<SerwisWyszukiwania> _logger;
     private readonly string _indexName;
 
+    private static readonly string[] TelefonSynonimy = new[]
+    {
+        "telefon", "telefony", "smartfon", "smartfony", "smartphone", "smartphones",
+        "komórka", "komorka", "komórki", "mobile", "phone", "cellphone", "ajfon", "iphone"
+    };
+
+    private static readonly HashSet<string> TelefonSynonimyLookup =
+        new(TelefonSynonimy, StringComparer.OrdinalIgnoreCase);
+
     public SerwisWyszukiwania(
         SearchClient searchClient,
         SearchIndexClient indexClient,
@@ -121,6 +130,7 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
 
             // 1. Próba wyszukiwania dokładnego (z obsługą synonimów)
             var searchText = string.IsNullOrWhiteSpace(zapytanie.Zapytanie) ? "*" : zapytanie.Zapytanie;
+            searchText = RozszerzZapytanieOSynonimyTelefonu(searchText);
             
             // SearchQueryType.Full jest już ustawione w opcjach wyżej, co włącza obsługę Lucene i synonimów
             var responseWrapper = await _searchClient.SearchAsync<ModelWyszukiwaniaOferty>(
@@ -306,6 +316,31 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
         }
     }
 
+    private static string RozszerzZapytanieOSynonimyTelefonu(string searchText)
+    {
+        if (string.IsNullOrWhiteSpace(searchText) || searchText == "*")
+            return searchText;
+
+        var trimmed = searchText.Trim();
+
+        // Nie rozszerzaj złożonych zapytań (operatory Lucene, cudzysłowy, tylda, spacje)
+        if (trimmed.Contains(' ') || trimmed.Contains(" AND ", StringComparison.OrdinalIgnoreCase) ||
+            trimmed.Contains(" OR ", StringComparison.OrdinalIgnoreCase) || trimmed.Contains('"') ||
+            trimmed.Contains('~'))
+        {
+            return searchText;
+        }
+
+        if (!TelefonSynonimyLookup.Contains(trimmed))
+            return searchText;
+
+        var unikalne = TelefonSynonimy
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Select(s => s.Contains(' ') ? $"\"{s}\"" : s);
+
+        return $"({string.Join(" OR ", unikalne)})";
+    }
+
     /// <inheritdoc/>
     public async Task<bool> UtworzIndeksJesliNieIstniajeAsync()
     {
@@ -336,7 +371,11 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
             if (opisField != null) opisField.SynonymMapNames.Add("techpromo-synonyms");
 
             var kategoriaField = indexDefinition.Fields.FirstOrDefault(f => f.Name == "Kategoria");
-            if (kategoriaField != null && kategoriaField.IsSearchable == true) kategoriaField.SynonymMapNames.Add("techpromo-synonyms");
+            if (kategoriaField != null && kategoriaField.IsSearchable != false) kategoriaField.SynonymMapNames.Add("techpromo-synonyms");
+
+            // Dodaj synonimy do pola Sklep (jeśli searchable)
+            var sklepField = indexDefinition.Fields.FirstOrDefault(f => f.Name == "Sklep");
+            if (sklepField != null && sklepField.IsSearchable != false) sklepField.SynonymMapNames.Add("techpromo-synonyms");
 
 
             // Utwórz lub zaktualizuj indeks (wymusza aktualizację konfiguracji semantycznej)
@@ -373,10 +412,9 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
             {
                 // ============================================
                 // TELEFONY I SMARTFONY
-                // Format: terminy_wyszukiwane => terminy_w_indeksie
+                // Format bez "=>" = dwukierunkowe synonimy (telefon <-> smartfon)
                 // ============================================
-                "komórka, komorka, mobile, smartfon, smartphone, ajfon, iphone => telefon",
-                "phone, cellphone => telefon",
+                "telefon, telefony, smartfon, smartfony, smartphone, smartphones, komórka, komorka, komórki, mobile, phone, cellphone, ajfon, iphone",
                 
                 // ============================================
                 // KOMPUTERY I LAPTOPY
@@ -743,7 +781,6 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
                 "odnowiony, refurbished, renewed, recertified",
                 "gwarancja, warranty, rękojmia, guarantee",
                 "oryginalny, original, genuine, authentic",
-                "akcesoria, accessories, dodatki",
                 "akcesoria, accessories, dodatki",
                 "etui, case, pokrowiec, futerał, cover, obudowa",
 
