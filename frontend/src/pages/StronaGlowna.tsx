@@ -392,7 +392,10 @@ function StronaGlowna() {
       };
   const sortBy = sortMap[activeFilter];
   // Zawsze pobieram pełny zestaw (bez filtrowania kategorii na backendzie) aby zachować liczniki kategorii
-  const response = await fetch(`/api/oferta?skip=${currentSkip}&take=${pageSize}&sortBy=${sortBy}`);
+  // Dodaj token jeśli użytkownik jest zalogowany, aby dostać userVote
+  const token = getAuthToken();
+  const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+  const response = await fetch(`/api/oferta?skip=${currentSkip}&take=${pageSize}&sortBy=${sortBy}`, { headers });
       if (!response.ok) throw new Error('Błąd podczas pobierania ofert');
       const data = await response.json();
       const items: OfertaDto[] = data.items || data.Items || data;

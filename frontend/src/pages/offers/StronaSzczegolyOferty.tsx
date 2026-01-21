@@ -97,8 +97,10 @@ export default function StronaSzczegolyOferty() {
       if (!id) return;
       try {
         setLoading(true);
-        // 1. Fetch Offer
-        const res = await fetch(`/api/oferta/${id}`);
+        // 1. Fetch Offer (z tokenem dla userVote)
+        const token = getAuthToken();
+        const headers: HeadersInit = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const res = await fetch(`/api/oferta/${id}`, { headers });
         if (!res.ok) throw new Error('Nie znaleziono oferty');
         const data = await res.json();
         setOffer(data);
@@ -193,7 +195,10 @@ export default function StronaSzczegolyOferty() {
         body: JSON.stringify({ typ: vote })
       });
       if (res.ok) {
-        const refreshed = await fetch(`/api/oferta/${offer.id}`);
+        // Odśwież ofertę z tokenem, żeby dostać aktualny userVote
+        const refreshed = await fetch(`/api/oferta/${offer.id}`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
         if (refreshed.ok) setOffer(await refreshed.json());
       }
     } finally {
