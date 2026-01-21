@@ -20,7 +20,7 @@ const QueryParserDemo: React.FC = () => {
     "laptop gaming od 3000 do 5000 zł",
     "słuchawki bluetooth do 200",
     "telewizor sony poniżej 3000",
-    "iPhone 15 max 4500",
+    "smartfon premium max 4500",
     "monitor od 1000",
     "500-1500 zł telefon Samsung",
     "gaming laptop 5000 zł",
@@ -62,7 +62,7 @@ const QueryParserDemo: React.FC = () => {
             <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             Wynik parsowania:
           </h2>
-          
+
           <div className="space-y-3">
             {/* Keywords */}
             <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
@@ -150,11 +150,10 @@ const QueryParserDemo: React.FC = () => {
               <button
                 key={index}
                 onClick={() => handleQueryChange(query)}
-                className={`text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  testQuery === query
+                className={`text-left px-4 py-2 rounded-lg text-sm font-medium transition-colors ${testQuery === query
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                }`}
+                  }`}
               >
                 {query}
               </button>

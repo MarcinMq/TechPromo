@@ -600,7 +600,7 @@ const FormularzTworzeniaOkazji: React.FC = () => {
                     name="tytul"
                     value={formData.tytul}
                     onChange={handleInputChange}
-                    placeholder="np. iPhone 15 Pro 128GB - 23% taniej w Media Expert"
+                    placeholder="np. Smartfon TechX Pro 128GB - 23% taniej w RTV Euro"
                     required
                     className="w-full px-4 py-3 border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                   />

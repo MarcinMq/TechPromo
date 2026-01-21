@@ -500,6 +500,24 @@ namespace TechPromo.Api.Controllers
             await _context.SaveChangesAsync();
             await _badgeService.EvaluateForUserAsync(userId);
 
+            // Powiadomienie dla autora oferty o nowym komentarzu (jeśli to nie autor sam komentuje)
+            if (oferta.IdUzytkownik != userId)
+            {
+                var commenterName = user?.UserName ?? "Ktoś";
+                var powiadomienie = new Powiadomienie
+                {
+                    IdUzytkownik = oferta.IdUzytkownik,
+                    Typ = "Komentarz",
+                    Tresc = $"{commenterName} skomentował(a) Twoją ofertę \"{(oferta.Nazwa.Length > 30 ? oferta.Nazwa.Substring(0, 30) + "..." : oferta.Nazwa)}\"",
+                    DataUtworzenia = DateTime.UtcNow,
+                    IdOferta = oferta.IdOferta,
+                    IdKomentarz = komentarz.IdKomentarz,
+                    Przeczytane = false
+                };
+                _context.Powiadomienia.Add(powiadomienie);
+                await _context.SaveChangesAsync();
+            }
+
             var result = await _context.Komentarze
                 .Where(k => k.IdKomentarz == komentarz.IdKomentarz)
                 .Include(k => k.Uzytkownik)

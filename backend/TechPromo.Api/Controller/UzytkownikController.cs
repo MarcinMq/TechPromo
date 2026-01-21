@@ -592,6 +592,25 @@ namespace TechPromo.Api.Controllers
                 
                 // Odznaki (first_vote, hot_50 może po moderacji temperatury – ale policzymy tu i tak)
                 await _badgeService.EvaluateForUserAsync(userId);
+
+                // Powiadomienie dla autora oferty o głosie HOT (tylko jeśli to nowy głos, nie zmiana)
+                if ((existingVote == null || existingVote.TypGlosu != dto.Typ) && dto.Typ == "hot" && oferta.IdUzytkownik != userId)
+                {
+                    var voter = await _userManager.FindByIdAsync(userId.ToString());
+                    var voterName = voter?.UserName ?? "Ktoś";
+                    
+                    var powiadomienie = new Powiadomienie
+                    {
+                        IdUzytkownik = oferta.IdUzytkownik,
+                        Typ = "Głos",
+                        Tresc = $"{voterName} polubił(a) Twoją ofertę \"{(oferta.Nazwa.Length > 30 ? oferta.Nazwa.Substring(0, 30) + "..." : oferta.Nazwa)}\"",
+                        DataUtworzenia = DateTime.UtcNow,
+                        IdOferta = oferta.IdOferta,
+                        Przeczytane = false
+                    };
+                    _context.Powiadomienia.Add(powiadomienie);
+                    await _context.SaveChangesAsync();
+                }
                 
                 return Ok("Głos został zapisany.");
             }
@@ -642,9 +661,64 @@ namespace TechPromo.Api.Controllers
             }
 
             await _context.SaveChangesAsync();
+            
+            // Powiadomienie dla autora oferty o nowym komentarzu (jeśli to nie autor)
+            if (oferta.IdUzytkownik != userId)
+            {
+                var commenterName = user?.UserName ?? "Ktoś";
+                var powiadomienie = new Powiadomienie
+                {
+                    IdUzytkownik = oferta.IdUzytkownik,
+                    Typ = "Komentarz",
+                    Tresc = $"{commenterName} skomentował(a) Twoją ofertę \"{(oferta.Nazwa.Length > 30 ? oferta.Nazwa.Substring(0, 30) + "..." : oferta.Nazwa)}\"",
+                    DataUtworzenia = DateTime.UtcNow,
+                    IdOferta = oferta.IdOferta,
+                    IdKomentarz = komentarz.IdKomentarz,
+                    Przeczytane = false
+                };
+                _context.Powiadomienia.Add(powiadomienie);
+                await _context.SaveChangesAsync();
+            }
+            
             // Odznaki (comments_10)
             await _badgeService.EvaluateForUserAsync(userId);
             return Ok("Komentarz został dodany.");
+        }
+
+        // DELETE: api/uzytkownik/komentarz/{id} - Usuń własny komentarz
+        [HttpDelete("komentarz/{id}")]
+        [Authorize]
+        public async Task<ActionResult> DeleteOwnComment(int id)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Brak użytkownika");
+
+            var komentarz = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == id);
+            if (komentarz == null) return NotFound("Komentarz nie istnieje");
+
+            // Sprawdź czy to własny komentarz
+            if (komentarz.IdUzytkownik != userId)
+                return Forbid("Możesz usuwać tylko własne komentarze");
+
+            // Usuń powiązane głosy
+            var glosy = _context.KomentarzGlosy.Where(g => g.IdKomentarz == id);
+            _context.KomentarzGlosy.RemoveRange(glosy);
+
+            // Usuń powiązane powiadomienia
+            var powiadomienia = _context.Powiadomienia.Where(p => p.IdKomentarz == id);
+            _context.Powiadomienia.RemoveRange(powiadomienia);
+
+            // Usuń odpowiedzi do tego komentarza (rekurencyjnie można by, ale na razie proste)
+            var odpowiedzi = _context.Komentarze.Where(k => k.ParentId == id);
+            foreach (var odp in odpowiedzi)
+            {
+                odp.ParentId = null; // Odpinamy od rodzica
+            }
+
+            _context.Komentarze.Remove(komentarz);
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Komentarz został usunięty" });
         }
 
         // POST: api/uzytkownik/zgloszenie
@@ -676,21 +750,31 @@ namespace TechPromo.Api.Controllers
             var powod = dto.Powod.Trim();
             if (powod.Length > 200) powod = powod.Substring(0, 200);
 
-            // Utwórz powiadomienie typu "Zgłoszenie"
-            var powiadomienie = new Powiadomienie
-            {
-                IdUzytkownik = userId,
-                Typ = "Zgłoszenie",
-                Tresc = typLower == "comment"
-                    ? $"Komentarz#{komentarz!.IdKomentarz}: {powod}"
-                    : $"Oferta#{oferta!.IdOferta}: {powod}",
-                DataUtworzenia = DateTime.UtcNow,
-                IdKomentarz = komentarz?.IdKomentarz,
-                IdOferta = oferta?.IdOferta,
-                Przeczytane = false
-            };
+            // Pobierz wszystkich moderatorów i adminów
+            var moderatorzy = await _userManager.GetUsersInRoleAsync("Moderator");
+            var admini = await _userManager.GetUsersInRoleAsync("Admin");
+            var moderatorzyIAdmini = moderatorzy.Concat(admini).Select(u => u.Id).Distinct().ToList();
 
-            _context.Powiadomienia.Add(powiadomienie);
+            // Utwórz powiadomienia dla wszystkich moderatorów/adminów
+            var trescZgloszenia = typLower == "comment"
+                ? $"Nowe zgłoszenie komentarza #{komentarz!.IdKomentarz}: {powod}"
+                : $"Nowe zgłoszenie oferty #{oferta!.IdOferta}: {powod}";
+
+            foreach (var modId in moderatorzyIAdmini)
+            {
+                var powiadomienie = new Powiadomienie
+                {
+                    IdUzytkownik = modId,
+                    Typ = "Zgłoszenie",
+                    Tresc = trescZgloszenia,
+                    DataUtworzenia = DateTime.UtcNow,
+                    IdKomentarz = komentarz?.IdKomentarz,
+                    IdOferta = oferta != null ? oferta.IdOferta : komentarz?.IdOferta,
+                    Przeczytane = false
+                };
+                _context.Powiadomienia.Add(powiadomienie);
+            }
+
             await _context.SaveChangesAsync();
 
             return Ok(new { message = "Zgłoszenie zostało przesłane do moderacji." });
@@ -1124,6 +1208,87 @@ namespace TechPromo.Api.Controllers
                 Skip = skip,
                 Take = take
             });
+        }
+
+        // ==================== POWIADOMIENIA ====================
+
+        // GET: api/uzytkownik/powiadomienia
+        [HttpGet("powiadomienia")]
+        public async Task<ActionResult<List<PowiadomienieDto>>> GetPowiadomienia([FromQuery] int limit = 20)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Nieprawidłowy użytkownik");
+
+            var powiadomienia = await _context.Powiadomienia
+                .Where(p => p.IdUzytkownik == userId)
+                .OrderByDescending(p => p.DataUtworzenia)
+                .Take(limit)
+                .Select(p => new PowiadomienieDto
+                {
+                    Id = p.IdPowiadomienie,
+                    Typ = p.Typ,
+                    Tresc = p.Tresc,
+                    DataUtworzenia = p.DataUtworzenia,
+                    Przeczytane = p.Przeczytane,
+                    IdOferta = p.IdOferta,
+                    IdKomentarz = p.IdKomentarz
+                })
+                .ToListAsync();
+
+            return Ok(powiadomienia);
+        }
+
+        // GET: api/uzytkownik/powiadomienia/nieprzeczytane/liczba
+        [HttpGet("powiadomienia/nieprzeczytane/liczba")]
+        public async Task<ActionResult<int>> GetLiczbaNieprzeczytanych()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Nieprawidłowy użytkownik");
+
+            var count = await _context.Powiadomienia
+                .CountAsync(p => p.IdUzytkownik == userId && !p.Przeczytane);
+
+            return Ok(count);
+        }
+
+        // PUT: api/uzytkownik/powiadomienia/{id}/przeczytane
+        [HttpPut("powiadomienia/{id}/przeczytane")]
+        public async Task<IActionResult> OznaczJakoPrzeczytane(int id)
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Nieprawidłowy użytkownik");
+
+            var powiadomienie = await _context.Powiadomienia
+                .FirstOrDefaultAsync(p => p.IdPowiadomienie == id && p.IdUzytkownik == userId);
+
+            if (powiadomienie == null)
+                return NotFound("Powiadomienie nie istnieje");
+
+            powiadomienie.Przeczytane = true;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = "Oznaczono jako przeczytane" });
+        }
+
+        // PUT: api/uzytkownik/powiadomienia/przeczytaj-wszystkie
+        [HttpPut("powiadomienia/przeczytaj-wszystkie")]
+        public async Task<IActionResult> OznaczWszystkieJakoPrzeczytane()
+        {
+            var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+            if (userId == 0) return Unauthorized("Nieprawidłowy użytkownik");
+
+            var nieprzeczytane = await _context.Powiadomienia
+                .Where(p => p.IdUzytkownik == userId && !p.Przeczytane && p.Typ != "Zgłoszenie")
+                .ToListAsync();
+
+            foreach (var p in nieprzeczytane)
+            {
+                p.Przeczytane = true;
+            }
+
+            await _context.SaveChangesAsync();
+
+            return Ok(new { message = $"Oznaczono {nieprzeczytane.Count} powiadomień jako przeczytane" });
         }
     }
 }

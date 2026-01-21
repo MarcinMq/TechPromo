@@ -119,32 +119,71 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
                 // "relevance" - domyślnie używa relevance score
             }
 
-            // Wykonaj wyszukiwanie
+            // 1. Próba wyszukiwania dokładnego (z obsługą synonimów)
             var searchText = string.IsNullOrWhiteSpace(zapytanie.Zapytanie) ? "*" : zapytanie.Zapytanie;
             
             // SearchQueryType.Full jest już ustawione w opcjach wyżej, co włącza obsługę Lucene i synonimów
-            // Wycofano Semantic Search z powodu braku obsługi w usłudze Azure Search użytkownika
-
-            SearchResults<ModelWyszukiwaniaOferty> response = await _searchClient.SearchAsync<ModelWyszukiwaniaOferty>(
+            var responseWrapper = await _searchClient.SearchAsync<ModelWyszukiwaniaOferty>(
                 searchText,
                 searchOptions);
+            SearchResults<ModelWyszukiwaniaOferty> response = responseWrapper.Value;
 
-            // Mapuj wyniki
             var items = new List<ModelWyszukiwaniaOferty>();
             await foreach (var result in response.GetResultsAsync())
             {
                 items.Add(result.Document);
             }
 
+            // Metadane zapytania
+            var queryMeta = new QueryMeta 
+            { 
+                Original = zapytanie.Zapytanie ?? "", 
+                Corrected = zapytanie.Zapytanie ?? "", 
+                WasCorrected = false 
+            };
+
+            // 2. Jeśli brak wyników, spróbuj Fuzzy Search (tolerancja błędów)
+            // Ale tylko jeśli zapytanie nie jest puste, nie zawiera cudzysłowów ani tyldy
+            if (items.Count == 0 && searchText != "*" && !searchText.Contains("\"") && !searchText.Contains("~") && !searchText.Contains(" AND ") && !searchText.Contains(" OR "))
+            {
+                var words = searchText.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var fuzzyWords = words.Select(w => w.Length > 2 ? $"{w}~" : w); // Fuzzy dla słów > 2 znaki
+                var fuzzyQuery = string.Join(" ", fuzzyWords);
+
+                if (fuzzyQuery != searchText)
+                {
+                    _logger.LogInformation("Brak wyników dla '{Original}', próba fuzzy: '{Fuzzy}'", searchText, fuzzyQuery);
+                    var fuzzyResponseWrapper = await _searchClient.SearchAsync<ModelWyszukiwaniaOferty>(fuzzyQuery, searchOptions);
+                    var fuzzyResponse = fuzzyResponseWrapper.Value;
+                    
+                    var fuzzyItems = new List<ModelWyszukiwaniaOferty>();
+                    await foreach (var result in fuzzyResponse.GetResultsAsync())
+                    {
+                        fuzzyItems.Add(result.Document);
+                    }
+
+                    if (fuzzyItems.Count > 0)
+                    {
+                        items = fuzzyItems;
+                        response = fuzzyResponse; // Nadpisz odpowiedź, żeby totalCount i facets były poprawne
+                        queryMeta.WasCorrected = true;
+                        queryMeta.Corrected = fuzzyQuery.Replace("~", ""); // Pokaż użytkownikowi "czystą" formę
+                    }
+                }
+            }
+
             // Mapuj facets
             var facets = new Dictionary<string, List<FacetValue>>();
-            foreach (var facet in response.Facets)
+            if (response.Facets != null)
             {
-                facets[facet.Key] = facet.Value.Select(f => new FacetValue
+                foreach (var facet in response.Facets)
                 {
-                    Value = f.Value?.ToString() ?? "",
-                    Count = f.Count ?? 0
-                }).ToList();
+                    facets[facet.Key] = facet.Value.Select(f => new FacetValue
+                    {
+                        Value = f.Value?.ToString() ?? "",
+                        Count = f.Count ?? 0
+                    }).ToList();
+                }
             }
 
             return new WynikWyszukiwania<ModelWyszukiwaniaOferty>
@@ -153,7 +192,8 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
                 TotalCount = response.TotalCount,
                 Strona = zapytanie.Strona,
                 RozmiarStrony = zapytanie.RozmiarStrony,
-                Facets = facets
+                Facets = facets,
+                QueryMeta = queryMeta
             };
         }
         catch (Exception ex)
@@ -274,6 +314,8 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
             // Najpierw utwórz synonym map
             await UtworzLubAktualizujSynonymMapAsync();
 
+            try { await _indexClient.DeleteIndexAsync(_indexName); } catch { } // Force delete to ensure synonyms are applied
+
             // Utwórz definicję indeksu
             var indexDefinition = new SearchIndex(_indexName)
             {
@@ -330,21 +372,14 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
             var synonyms = string.Join("\n", new[]
             {
                 // ============================================
-                // TELEFONY I SMARTFONY (wszystkie warianty)
+                // TELEFONY I SMARTFONY
+                // Format: terminy_wyszukiwane => terminy_w_indeksie
                 // ============================================
-                "telefon, phone, smartphone, smartfon, komórka, mobile, cellphone, cell phone, handy, mobilny, tel, fon, smartfony, telefony, phones, mobiles, handset",
-                "iphone, apple iphone, ajfon, i phone, i-phone",
-                "samsung, samsung galaxy, galaxy",
-                "xiaomi, redmi, poco, mi",
-                "huawei, honor",
-                "oneplus, one plus, 1+",
-                "google pixel, pixel",
-                "motorola, moto",
-                "nokia, lumia",
-                "oppo, realme, vivo",
-                "sony xperia, xperia",
-                "asus rog phone, rog phone",
-                "nothing phone, nothing",
+                "komórka, komorka, mobile, smartfon, smartphone, ajfon, iphone => telefon",
+                "phone, cellphone => telefon",
+                
+                // ============================================
+                // KOMPUTERY I LAPTOPY
                 
                 // ============================================
                 // KOMPUTERY I LAPTOPY (wszystkie warianty)

@@ -11,6 +11,11 @@ public class WynikWyszukiwania<T>
     public List<T> Items { get; set; } = new();
 
     /// <summary>
+    /// Metadane zapytania (np. informacja o korekcie)
+    /// </summary>
+    public QueryMeta? QueryMeta { get; set; }
+
+    /// <summary>
     /// Całkowita liczba wyników
     /// </summary>
     public long? TotalCount { get; set; }
@@ -54,3 +59,12 @@ public class FacetValue
     public string Value { get; set; } = string.Empty;
     public long Count { get; set; }
 }
+
+public class QueryMeta
+{
+    public string Original { get; set; } = string.Empty;
+    public string Corrected { get; set; } = string.Empty;
+    public bool WasCorrected { get; set; }
+}
+
+

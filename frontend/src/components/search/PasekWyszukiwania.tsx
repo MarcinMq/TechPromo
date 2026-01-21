@@ -27,9 +27,9 @@ interface Suggestion {
   tekst: string;
 }
 
-const PasekWyszukiwania: React.FC<SearchBarProps> = ({ 
-  onSearch, 
-  placeholder = "Wyszukaj okazje... (np. iPhone, laptop, słuchawki)",
+const PasekWyszukiwania: React.FC<SearchBarProps> = ({
+  onSearch,
+  placeholder = "Wyszukaj okazje... (np. smartfon, laptop, słuchawki)",
   showAdvancedFilters = false,
   compact = false,
   className = ""
@@ -130,7 +130,7 @@ const PasekWyszukiwania: React.FC<SearchBarProps> = ({
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setActiveSuggestionIndex(prev => 
+      setActiveSuggestionIndex(prev =>
         prev < suggestions.length - 1 ? prev + 1 : prev
       );
     } else if (e.key === 'ArrowUp') {
@@ -150,7 +150,7 @@ const PasekWyszukiwania: React.FC<SearchBarProps> = ({
   const handleFilterChange = (key: keyof SearchFilters, value: any) => {
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
-    
+
     // Automatyczne wyszukiwanie przy zmianie filtrów
     if (query || Object.values(newFilters).some(v => v)) {
       onSearch(query, newFilters);
@@ -191,7 +191,7 @@ const PasekWyszukiwania: React.FC<SearchBarProps> = ({
           <div className="flex items-center justify-center w-12 h-12 text-xl text-gray-600 dark:text-gray-400">
             <Search className="w-5 h-5" />
           </div>
-          
+
           {/* Pole tekstowe */}
           <input
             type="text"
@@ -203,9 +203,9 @@ const PasekWyszukiwania: React.FC<SearchBarProps> = ({
             onFocus={() => suggestions.length > 0 && setShowSuggestions(true)}
             autoFocus={compact && isExpanded}
           />
-          
+
           {/* Przycisk - Gradient */}
-          <button 
+          <button
             className="group relative overflow-hidden px-6 h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-bold text-base transition-all duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
             onClick={handleSearch}
           >
@@ -225,18 +225,17 @@ const PasekWyszukiwania: React.FC<SearchBarProps> = ({
                 <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">Sugestie AI</span>
               </div>
             </div>
-            
+
             <div className="py-2">
               {suggestions.map((suggestion, index) => (
                 <button
                   key={index}
                   onClick={() => handleSuggestionClick(suggestion)}
                   onMouseEnter={() => setActiveSuggestionIndex(index)}
-                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${
-                    index === activeSuggestionIndex
+                  className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors ${index === activeSuggestionIndex
                       ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400'
                       : 'text-gray-900 dark:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-2">
                     <Search className="w-4 h-4 text-gray-400 dark:text-gray-500" />
@@ -319,7 +318,7 @@ const PasekWyszukiwania: React.FC<SearchBarProps> = ({
             </div>
 
             <div className="flex items-end">
-              <button 
+              <button
                 className="w-full px-4 py-3 bg-gradient-to-r from-red-500 to-pink-500 text-white font-bold rounded-xl hover:from-red-600 hover:to-pink-600 transition-all duration-300 shadow-lg"
                 onClick={clearFilters}
               >

@@ -133,7 +133,7 @@ export function parseNaturalLanguageQuery(query: string): ParsedQuery {
   // znajdujemy synonimy i dodajemy do zapytania
   const words = result.keywords.toLowerCase().split(/\s+/);
   const expandedWords = [...words];
-  
+
   words.forEach(word => {
     if (synonyms[word]) {
       expandedWords.push(...synonyms[word]);
@@ -177,7 +177,7 @@ export function expandQueryWithSynonyms(query: string): string {
 
   const words = query.toLowerCase().trim().split(/\s+/);
   const expandedWords = [...words];
-  
+
   words.forEach(word => {
     if (synonyms[word]) {
       // dodajemy max 2-3 synonimy zeby nie bylo za dlugie
@@ -197,7 +197,7 @@ export function testQueryParser() {
     "laptop gaming od 3000 do 5000 zł",
     "słuchawki bluetooth do 200",
     "telewizor sony poniżej 3000",
-    "iPhone 15 max 4500",
+    "smartfon premium max 4500",
     "monitor od 1000",
     "500-1500 zł telefon",
     "gaming laptop 5000 zł"

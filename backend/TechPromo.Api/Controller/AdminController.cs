@@ -404,6 +404,20 @@ namespace TechPromo.Api.Controllers
             // Automatycznie przelicz odznaki po zatwierdzeniu oferty
             await _badgeService.EvaluateForUserAsync(oferta.IdUzytkownik);
 
+            // Powiadomienie dla autora o zatwierdzeniu
+            var admin = await _userManager.GetUserAsync(User);
+            var powiadomienie = new Powiadomienie
+            {
+                IdUzytkownik = oferta.IdUzytkownik,
+                Typ = "Zatwierdzenie",
+                Tresc = $"Twoja oferta \"{(oferta.Nazwa.Length > 30 ? oferta.Nazwa.Substring(0, 30) + "..." : oferta.Nazwa)}\" została zatwierdzona",
+                DataUtworzenia = DateTime.UtcNow,
+                IdOferta = oferta.IdOferta,
+                Przeczytane = false
+            };
+            _context.Powiadomienia.Add(powiadomienie);
+            await _context.SaveChangesAsync();
+
             return Ok($"Oferta '{oferta.Nazwa}' została zatwierdzona i aktywowana");
         }
 
@@ -435,6 +449,20 @@ namespace TechPromo.Api.Controllers
                         _logger.LogWarning("UWAGA: Usunięcie odrzuconej oferty {OfertaId} z Azure Search nie powiodło się!", id);
                     }
                 }
+
+                // Powiadomienie dla autora o odrzuceniu
+                var admin = await _userManager.GetUserAsync(User);
+                var powiadomienie = new Powiadomienie
+                {
+                    IdUzytkownik = oferta.IdUzytkownik,
+                    Typ = "Odrzucenie",
+                    Tresc = $"Twoja oferta \"{(oferta.Nazwa.Length > 30 ? oferta.Nazwa.Substring(0, 30) + "..." : oferta.Nazwa)}\" została odrzucona. Powód: {odrzucenieDto?.Powod ?? "brak"}",
+                    DataUtworzenia = DateTime.UtcNow,
+                    IdOferta = oferta.IdOferta,
+                    Przeczytane = false
+                };
+                _context.Powiadomienia.Add(powiadomienie);
+                await _context.SaveChangesAsync();
 
                 return Ok(new { message = "Oferta została odrzucona" });
             }
@@ -546,6 +574,23 @@ namespace TechPromo.Api.Controllers
                     return Ok(new { message = "Brak zmian", oferta = new { oferta.IdOferta } });
 
                 await _context.SaveChangesAsync();
+
+                // Powiadomienie dla autora oferty o edycji przez admina/moderatora
+                var currentUser = await _userManager.GetUserAsync(User);
+                if (currentUser != null && oferta.IdUzytkownik != currentUser.Id)
+                {
+                    var powiadomienie = new Powiadomienie
+                    {
+                        IdUzytkownik = oferta.IdUzytkownik,
+                        Typ = "Edycja",
+                        Tresc = $"Administrator {currentUser.UserName} zedytował Twoją ofertę \"{(oferta.Nazwa.Length > 30 ? oferta.Nazwa.Substring(0, 30) + "..." : oferta.Nazwa)}\"",
+                        DataUtworzenia = DateTime.UtcNow,
+                        IdOferta = oferta.IdOferta,
+                        Przeczytane = false
+                    };
+                    _context.Powiadomienia.Add(powiadomienie);
+                    await _context.SaveChangesAsync();
+                }
 
                 return Ok(new
                 {

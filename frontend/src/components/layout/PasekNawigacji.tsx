@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Settings, LogOut, Zap, Sparkles, Moon, Sun, ChevronDown } from 'lucide-react';
-import WybieraczPanelu from '../ui/WybieraczPanelu';
 import ModalTypuOferty from '../modals/ModalTypuOferty';
 import PasekWyszukiwania from '../search/PasekWyszukiwania';
+import PowiadomieniaDropdown from './PowiadomieniaDropdown';
 import { getAuthToken, isAuthenticated } from '../../utils/auth';
 import { useTheme } from '../../contexts/ThemeContext';
 import logo from '../../assets/images/Logo.png';
@@ -53,21 +53,12 @@ const mainCategories = [
 ];
 
 const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName, onLogout }) => {
-  const [showPanelSelector, setShowPanelSelector] = useState(false);
   const [showOfferTypeModal, setShowOfferTypeModal] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [categories, setCategories] = useState<string[]>([]);
   const [showMoreCategories, setShowMoreCategories] = useState(false);
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
-
-  const handlePanelClick = () => {
-    setShowPanelSelector(true);
-  };
-
-  const handlePanelSelect = () => {
-    setShowPanelSelector(false);
-  };
 
   const handlePublish = () => {
     setShowOfferTypeModal(true);
@@ -82,7 +73,7 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
     fetch('/api/oferta/kategorie')
       .then(r => r.ok ? r.json() : [])
       .then(data => setCategories(data))
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   // Fetch avatar for menubar when logged in
@@ -112,16 +103,16 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
           <div className="flex items-center justify-between h-16">
             {/* Logo */}
             <Link to="/" className="flex items-center space-x-2 flex-shrink-0">
-              <img 
-                src={logo} 
-                alt="TechPromo" 
+              <img
+                src={logo}
+                alt="TechPromo"
                 className="h-12 sm:h-14 w-auto rounded-lg"
               />
             </Link>
 
             {/* Wyszukiwarka - centrum - tylko na większych ekranach */}
             <div className="hidden sm:flex flex-1 max-w-2xl mx-4 sm:mx-8">
-              <PasekWyszukiwania 
+              <PasekWyszukiwania
                 onSearch={(query) => navigate(`/search?q=${encodeURIComponent(query)}`)}
                 className="w-full"
               />
@@ -144,9 +135,12 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
 
               {isLoggedIn ? (
                 <>
+                  {/* Powiadomienia */}
+                  <PowiadomieniaDropdown />
+
                   {/* Przycisk publikuj */}
-                  <button 
-                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm" 
+                  <button
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-semibold text-sm"
                     onClick={handlePublish}
                   >
                     <Sparkles className="w-4 h-4" />
@@ -157,17 +151,17 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
                   <div className="flex items-center space-x-2">
                     {/* Panel - tylko Moderator/Admin */}
                     {(userRole === 'Moderator' || userRole === 'Admin') && (
-                      <button 
-                        onClick={handlePanelClick} 
+                      <Link
+                        to="/konto/profil"
                         className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                       >
                         <Settings className="w-5 h-5 text-gray-700 dark:text-gray-300" />
-                      </button>
+                      </Link>
                     )}
 
                     {/* Profil */}
-                    <Link 
-                      to="/konto/profil" 
+                    <Link
+                      to="/konto/profil"
                       className="flex items-center space-x-2 px-3 py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
                     >
                       <span className="relative inline-block w-8 h-8">
@@ -181,8 +175,8 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
                     </Link>
 
                     {/* Wyloguj */}
-                    <button 
-                      onClick={onLogout} 
+                    <button
+                      onClick={onLogout}
                       className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                     >
                       <LogOut className="w-5 h-5 text-gray-700 dark:text-gray-300 hover:text-red-600 dark:hover:text-red-400 transition-colors" />
@@ -192,15 +186,15 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
               ) : (
                 /* Przyciski logowania */
                 <div className="flex flex-col xs:flex-row items-center gap-1 xs:gap-2">
-                  <Link 
-                    to="/auth/login" 
+                  <Link
+                    to="/auth/login"
                     className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors font-medium text-xs xs:text-sm text-gray-700 dark:text-gray-300 text-center"
                   >
                     <span className="hidden sm:inline">Zaloguj się</span>
                     <span className="sm:hidden">Login</span>
                   </Link>
-                  <Link 
-                    to="/auth/register" 
+                  <Link
+                    to="/auth/register"
                     className="w-full xs:w-auto px-3 xs:px-4 py-1.5 xs:py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors text-xs xs:text-sm text-center"
                   >
                     <span className="flex items-center justify-center gap-1">
@@ -214,7 +208,7 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
             </div>
           </div>
         </div>
-        
+
         {/* Kategorie - drugi rząd */}
         <div className="border-t border-gray-200 dark:border-gray-700 py-2">
           <div className="overflow-x-auto scrollbar-hide">
@@ -258,8 +252,8 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
 
                   {/* Backdrop do zamknięcia menu */}
                   {showMoreCategories && (
-                    <div 
-                      className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40" 
+                    <div
+                      className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40"
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -267,12 +261,11 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
                       }}
                     />
                   )}
-                      
+
                   {/* Menu wysuwane z prawej strony */}
-                  <div 
-                    className={`fixed top-16 right-0 h-[calc(100vh-4rem)] w-80 bg-white dark:bg-gray-800 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto ${
-                      showMoreCategories ? 'translate-x-0' : 'translate-x-full'
-                    }`}
+                  <div
+                    className={`fixed top-16 right-0 h-[calc(100vh-4rem)] w-80 bg-white dark:bg-gray-800 shadow-2xl z-50 transform transition-transform duration-300 ease-in-out overflow-y-auto ${showMoreCategories ? 'translate-x-0' : 'translate-x-full'
+                      }`}
                   >
                     <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Więcej kategorii</h3>
@@ -303,14 +296,7 @@ const PasekNawigacji: React.FC<NavbarProps> = ({ isLoggedIn, userRole, userName,
         </div>
       </nav>
 
-      {/* Modal panelu - tylko Moderator/Admin */}
-      {isLoggedIn && (userRole === 'Moderator' || userRole === 'Admin') && (
-        <WybieraczPanelu
-          userRole={userRole || 'User'}
-          isVisible={showPanelSelector}
-          onSelect={handlePanelSelect}
-        />
-      )}
+
 
       {/* Modal typu oferty */}
       {isLoggedIn && (

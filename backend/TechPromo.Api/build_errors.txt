@@ -1,0 +1,7 @@
+C:\Users\marma\Documents\GitHub\TechPromo\backend\TechPromo.Api\Search\Services\SerwisWyszukiwania.cs(158,64): error CS1061: Element ???Response<SearchResults<ModelWyszukiwaniaOferty>>??? nie zawiera definicji ???GetResultsAsync??? i nie odnaleziono dost??pnej metody rozszerzenia ???GetResultsAsync???, kt??ra przyjmuje pierwszy argument typu ???Response<SearchResults<ModelWyszukiwaniaOferty>>??? (czy nie brakuje dyrektywy using lub odwo??ania do zestawu?). [C:\Users\marma\Documents\GitHub\TechPromo\backend\TechPromo.Api\TechPromo.Api.csproj]
+
+Kompilacja NIE POWIOD??A SI??.
+    Ostrze??enia: 25
+    Liczba b????d??w: 1
+
+Czas, kt??ry up??yn????: 00:00:01.30

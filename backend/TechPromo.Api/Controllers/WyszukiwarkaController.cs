@@ -46,6 +46,45 @@ public class WyszukiwarkaController : ControllerBase
             // Wykonaj wyszukiwanie
             var wyniki = await _searchService.WyszukajOfertyAsync(parametry);
 
+            // Wykryj czy zapytanie mogło być literówką (fuzzy match)
+            // Jeśli oryginalna forma zapytania różni się od tego co zwrócono w wynikach
+            var originalQuery = parametry.Zapytanie ?? "";
+            var wasCorrected = false;
+            var correctedQuery = originalQuery;
+
+            // Proste wykrywanie literówek - jeśli zapytanie zawiera nietypowe sekwencje liter
+            // lub jeśli mamy wyniki ale zapytanie wygląda na błędne
+            if (!string.IsNullOrWhiteSpace(originalQuery) && wyniki.Items.Any())
+            {
+                // Sprawdź czy nazwy wyników nie zawierają dokładnego zapytania
+                // ale zawierają podobne słowa (fuzzy match)
+                var queryLower = originalQuery.ToLower();
+                var firstResultName = wyniki.Items.FirstOrDefault()?.Nazwa?.ToLower() ?? "";
+                
+                // Jeśli zapytanie ma literówki typowe (podwójne spółgłoski, przestawione litery)
+                // i nie występuje dokładnie w wynikach, uznajemy że było skorygowane
+                if (!firstResultName.Contains(queryLower))
+                {
+                    // Znajdź najbardziej podobne słowo z pierwszego wyniku
+                    var resultWords = firstResultName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                    foreach (var word in resultWords)
+                    {
+                        // Oblicz podobieństwo (uproszczone - sprawdź czy większość liter się zgadza)
+                        if (word.Length >= 3 && queryLower.Length >= 3)
+                        {
+                            var commonChars = queryLower.Intersect(word).Count();
+                            var similarity = (double)commonChars / Math.Max(queryLower.Length, word.Length);
+                            if (similarity > 0.6 && similarity < 1.0)
+                            {
+                                wasCorrected = true;
+                                correctedQuery = word;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
             // Zwróć wyniki w formacie zgodnym z frontendem
             return Ok(new
             {
@@ -83,7 +122,13 @@ public class WyszukiwarkaController : ControllerBase
                 totalPages = wyniki.TotalPages,
                 hasNextPage = wyniki.HasNextPage,
                 hasPreviousPage = wyniki.HasPreviousPage,
-                facets = wyniki.Facets
+                facets = wyniki.Facets,
+                queryMeta = new
+                {
+                    original = wyniki.QueryMeta?.Original ?? originalQuery,
+                    corrected = wyniki.QueryMeta?.Corrected ?? originalQuery,
+                    wasCorrected = wyniki.QueryMeta?.WasCorrected ?? false
+                }
             });
         }
         catch (Exception ex)

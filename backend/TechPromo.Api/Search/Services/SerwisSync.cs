@@ -191,6 +191,11 @@ public class SerwisSync
     /// </summary>
     public async Task<bool> InicjalizujIndeksAsync()
     {
-        return await _searchService.UtworzIndeksJesliNieIstniajeAsync();
+        var created = await _searchService.UtworzIndeksJesliNieIstniajeAsync();
+        if (created)
+        {
+            await SynchronizujWszystkieOfertyAsync();
+        }
+        return created;
     }
 }

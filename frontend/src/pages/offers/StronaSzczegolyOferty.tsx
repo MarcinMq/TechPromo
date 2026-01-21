@@ -498,14 +498,6 @@ export default function StronaSzczegolyOferty() {
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5" /> {offer.dataUtworzenia}
                     </span>
-                    {offer.waznoscDo && (
-                      <>
-                        <span>•</span>
-                        <span className="flex items-center gap-1 text-orange-600 dark:text-orange-400 font-medium">
-                          ⏳ Do {new Date(offer.waznoscDo).toLocaleDateString()}
-                        </span>
-                      </>
-                    )}
                   </div>
                 </div>
 
