@@ -11,14 +11,14 @@ const Stopka: React.FC = () => {
       {/* Główna sekcja stopki */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-          
+
           {/* Logo i opis */}
           <div className="lg:col-span-1">
             <div className="flex items-center space-x-3 mb-4">
               <img src={logo} alt="TechPromo" className="h-10 w-auto rounded-lg" />
             </div>
             <p className="text-gray-600 dark:text-gray-400 mb-6 text-sm leading-relaxed transition-colors">
-              Najlepsze okazje i promocje technologiczne w jednym miejscu. 
+              Najlepsze okazje i promocje technologiczne w jednym miejscu.
               Odkrywaj, dziel się i oszczędzaj na swoich ulubionych gadżetach!
             </p>
           </div>
@@ -28,8 +28,8 @@ const Stopka: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100 transition-colors">Popularne kategorie</h3>
             <ul className="space-y-2 text-sm">
               <li>
-                <Link 
-                  to="/?kategoria=Smartwatche" 
+                <Link
+                  to="/?kategoria=Smartwatche"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
@@ -37,8 +37,8 @@ const Stopka: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link 
-                  to="/?kategoria=Tablety" 
+                <Link
+                  to="/?kategoria=Tablety"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
@@ -46,8 +46,8 @@ const Stopka: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link 
-                  to="/?kategoria=Komputery PC" 
+                <Link
+                  to="/?kategoria=Komputery PC"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
@@ -55,8 +55,8 @@ const Stopka: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link 
-                  to="/?kategoria=Audio" 
+                <Link
+                  to="/?kategoria=Audio"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
@@ -64,8 +64,8 @@ const Stopka: React.FC = () => {
                 </Link>
               </li>
               <li>
-                <Link 
-                  to="/?kategoria=Gaming" 
+                <Link
+                  to="/?kategoria=Gaming"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
@@ -91,6 +91,11 @@ const Stopka: React.FC = () => {
             <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100 transition-colors">Informacje</h3>
             <ul className="space-y-2 text-sm">
               <li>
+                <Link to="/zasady-odznak" className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                  🏆 Zasady odznak
+                </Link>
+              </li>
+              <li>
                 <span className="text-gray-600 dark:text-gray-400 flex items-center transition-colors">
                   <Mail className="w-4 h-4 mr-2" />
                   kontakt@techpromo.pl
@@ -106,7 +111,7 @@ const Stopka: React.FC = () => {
       <div className="border-t border-gray-200 dark:border-gray-700 transition-colors">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
-            
+
             {/* Copyright */}
             <div className="text-sm text-gray-600 dark:text-gray-400 transition-colors">
               © {currentYear} TechPromo. Wszelkie prawa zastrzeżone.

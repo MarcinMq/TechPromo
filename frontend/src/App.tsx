@@ -11,6 +11,7 @@ import ZapomnialemHaslaStrona from './pages/ZapomnialemHaslaStrona';
 import ResetowanieHaslaStrona from './pages/ResetowanieHaslaStrona';
 import Profil from './pages/profile/Profil';
 import StronaPublicznegoProfileu from './pages/user/StronaPublicznegoProfileu';
+import ZasadyOdznakStrona from './pages/ZasadyOdznakStrona';
 // Panele przeniesione do profilu – pełne strony wyłączone
 // Usunięto UserPanel – funkcje przeniesione do Profil
 import FormularzTworzeniaOkazji from './pages/offers/FormularzTworzeniaOkazji';
@@ -51,26 +52,26 @@ function App() {
 
     // Sprawdzam od razu przy starcie aplikacji
     checkAuth();
-    
+
     // Sprawdzam co 30 sekund czy token nie wygasł
     const interval = setInterval(checkAuth, 30000);
-    
+
     // Nasłuchuję zmian w localStorage - kiedy ktoś się loguje/wylogowuje
     const handleStorageChange = (e: StorageEvent) => {
       if (e.key === 'authToken' || e.key === 'userNick' || e.key === 'userRole') {
         checkAuth();
       }
     };
-    
+
     window.addEventListener('storage', handleStorageChange);
-    
+
     // Nasłuchuję mojego custom eventu - gdy logowanie/wylogowanie w tej samej karcie
     const handleAuthChange = () => {
       checkAuth();
     };
-    
+
     window.addEventListener('authChanged', handleAuthChange);
-    
+
     // Sprzątam po sobie
     return () => {
       clearInterval(interval);
@@ -96,10 +97,10 @@ function App() {
         onLogout={handleLogout}
       />
 
-    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Routes>
           <Route path="/" element={<StronaGlowna />} />
-      <Route path="/okazja/:id" element={<StronaSzczegolyOferty />} />
+          <Route path="/okazja/:id" element={<StronaSzczegolyOferty />} />
           <Route path="/search" element={<StronaWyszukiwania />} />
           {/* Specyficzne trasy przed dynamicznymi parametrami */}
           <Route path="/uzytkownik/panel" element={<Profil />} />
@@ -108,6 +109,7 @@ function App() {
           <Route path="/auth/register" element={<Rejestracja />} />
           <Route path="/zapomniane-haslo" element={<ZapomnialemHaslaStrona />} />
           <Route path="/resetuj-haslo" element={<ResetowanieHaslaStrona />} />
+          <Route path="/zasady-odznak" element={<ZasadyOdznakStrona />} />
           <Route path="/stworz-oferte/okazja" element={
             <ChronionyRoute>
               <FormularzTworzeniaOkazji />
@@ -128,10 +130,10 @@ function App() {
           <Route path="/moderator" element={<Navigate to="/konto/profil" replace />} />
         </Routes>
       </main>
-      
+
       {/* Mobile Bottom Navigation */}
       <DolnyPasekMobilny isLoggedIn={isLogged} />
-      
+
       {/* Stopka */}
       <Stopka />
     </div>
