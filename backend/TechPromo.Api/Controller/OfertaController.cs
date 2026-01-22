@@ -851,6 +851,12 @@ namespace TechPromo.Api.Controllers
                     await AddTagsToOffer(oferta.IdOferta, formData.Tagi);
                 }
 
+                // Synchronizacja z Azure AI Search - oferta zatwierdzona przez AI musi być widoczna w wyszukiwarce
+                if (oferta.Zatwierdzona && oferta.Aktywna)
+                {
+                    await SyncOfertaToAzureSearch(oferta.IdOferta);
+                }
+
                 var result = await CreateOfferResponse(oferta.IdOferta);
                 return result != null ? Ok(result) : BadRequest("Błąd podczas tworzenia odpowiedzi");
 
@@ -947,6 +953,17 @@ namespace TechPromo.Api.Controllers
 
                     // Dodaj nowe tagi
                     await AddTagsToOffer(oferta.IdOferta, formData.Tagi);
+                }
+
+                // Synchronizacja z Azure AI Search po edycji
+                if (oferta.Zatwierdzona && oferta.Aktywna)
+                {
+                    await SyncOfertaToAzureSearch(oferta.IdOferta);
+                }
+                else
+                {
+                    // Jeśli oferta niezatwierdzona/nieaktywna - usuń z indeksu
+                    await RemoveOfertaFromAzureSearch(oferta.IdOferta);
                 }
 
                 var result = await CreateOfferResponse(oferta.IdOferta);

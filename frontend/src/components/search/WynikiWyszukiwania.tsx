@@ -5,8 +5,8 @@ import { Link } from 'react-router-dom';
 interface SearchResult {
   id: number;
   title: string;
-  price: number;
-  originalPrice?: number;
+  price: number | null;
+  originalPrice?: number | null;
   category: string;
   shop: string;
   votes: { hot: number; cold: number };
@@ -118,33 +118,33 @@ const WynikiWyszukiwania: React.FC<SearchResultsProps> = ({ results, query, load
           </div>
         </div>
       )}
-      
+
       {/* Siatka wyników */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {results.map(result => {
           const temperature = result.votes.hot - result.votes.cold;
-          const discount = result.originalPrice && result.price > 0 
-            ? Math.round((1 - result.price / result.originalPrice) * 100) 
+          const discount = result.originalPrice && result.price != null && result.price > 0
+            ? Math.round((1 - result.price / result.originalPrice) * 100)
             : 0;
 
           return (
-            <Link 
-              key={result.id} 
+            <Link
+              key={result.id}
               to={`/okazja/${result.id}`}
               className="group bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden hover:shadow-lg transition-all duration-300 border dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600"
             >
               {/* Obraz */}
               <div className="relative aspect-square bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors overflow-hidden">
                 {result.image ? (
-                  <img 
-                    src={result.image} 
-                    alt={result.title} 
-                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300" 
+                  <img
+                    src={result.image}
+                    alt={result.title}
+                    className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-300"
                   />
                 ) : (
                   <div className="text-6xl opacity-30">📦</div>
                 )}
-                
+
                 {/* Badge z rabatem */}
                 {discount > 0 && (
                   <div className="absolute top-2 right-2 bg-red-600 dark:bg-red-700 text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg">
@@ -153,29 +153,28 @@ const WynikiWyszukiwania: React.FC<SearchResultsProps> = ({ results, query, load
                 )}
 
                 {/* Badge z temperaturą */}
-                <div className={`absolute top-2 left-2 ${
-                  temperature > 100 ? 'bg-gradient-to-r from-red-600 to-orange-600' :
+                <div className={`absolute top-2 left-2 ${temperature > 100 ? 'bg-gradient-to-r from-red-600 to-orange-600' :
                   temperature > 50 ? 'bg-orange-500' :
-                  temperature > 0 ? 'bg-blue-500' :
-                  'bg-gray-500'
-                } text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1`}>
+                    temperature > 0 ? 'bg-blue-500' :
+                      'bg-gray-500'
+                  } text-white text-xs font-bold px-2 py-1 rounded-md shadow-lg flex items-center gap-1`}>
                   {temperature > 0 ? <Flame className="w-3 h-3" /> : <Snowflake className="w-3 h-3" />}
                   {temperature > 0 ? '+' : ''}{temperature}°
                 </div>
               </div>
-              
+
               {/* Treść */}
               <div className="p-4">
                 {/* Kategoria */}
                 <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2 transition-colors">
                   {result.category}
                 </p>
-                
+
                 {/* Tytuł */}
                 <h3 className="text-sm font-bold text-gray-900 dark:text-gray-100 mb-3 line-clamp-2 leading-tight group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors min-h-[2.5rem]">
                   {result.title}
                 </h3>
-                
+
                 {/* Cena */}
                 <div className="mb-3">
                   {result.price === 0 ? (
@@ -183,7 +182,7 @@ const WynikiWyszukiwania: React.FC<SearchResultsProps> = ({ results, query, load
                       <Gift className="w-4 h-4" />
                       GRATIS
                     </div>
-                  ) : (
+                  ) : result.price != null ? (
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <span className="text-2xl font-bold text-red-600 dark:text-red-400 transition-colors">
                         {result.price.toFixed(2)} zł
@@ -194,16 +193,18 @@ const WynikiWyszukiwania: React.FC<SearchResultsProps> = ({ results, query, load
                         </span>
                       )}
                     </div>
+                  ) : (
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Brak ceny</span>
                   )}
                 </div>
-                
+
                 {/* Sklep */}
                 <div className="mb-3 pb-3 border-b border-gray-200 dark:border-gray-700">
                   <p className="text-xs text-gray-600 dark:text-gray-400 font-medium transition-colors truncate">
                     🏪 {result.shop}
                   </p>
                 </div>
-                
+
                 {/* Głosy */}
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 px-2 py-1 rounded-md text-xs font-bold transition-colors">
