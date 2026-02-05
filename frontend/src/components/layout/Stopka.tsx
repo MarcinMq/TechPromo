@@ -29,11 +29,11 @@ const Stopka: React.FC = () => {
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
-                  to="/?kategoria=Smartwatche"
+                  to="/?kategoria=Smartwatche i opaski"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
-                  📱 Smartwatche
+                  ⌚ Smartwatche i opaski
                 </Link>
               </li>
               <li>
@@ -47,29 +47,29 @@ const Stopka: React.FC = () => {
               </li>
               <li>
                 <Link
-                  to="/?kategoria=Komputery PC"
+                  to="/?kategoria=Komputery i laptopy"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
-                  🖥️ Komputery PC
+                  💻 Komputery i laptopy
                 </Link>
               </li>
               <li>
                 <Link
-                  to="/?kategoria=Audio"
+                  to="/?kategoria=Słuchawki i audio"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
-                  🎧 Audio
+                  🎧 Słuchawki i audio
                 </Link>
               </li>
               <li>
                 <Link
-                  to="/?kategoria=Gaming"
+                  to="/?kategoria=Konsole i gaming"
                   onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
                   className="text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                 >
-                  🎮 Gaming
+                  🎮 Konsole i gaming
                 </Link>
               </li>
             </ul>

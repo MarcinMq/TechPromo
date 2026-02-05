@@ -218,22 +218,13 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
     {
         try
         {
-            _logger.LogInformation("Synchronizacja oferty {OfertaId} ({Nazwa}) z Azure Search...", 
-                oferta.OfertaId, oferta.Nazwa);
-            
             var batch = IndexDocumentsBatch.Upload(new[] { oferta });
             var result = await _searchClient.IndexDocumentsAsync(batch);
             
             var success = result.Value.Results.All(r => r.Succeeded);
             if (!success)
             {
-                _logger.LogWarning("Synchronizacja oferty {OfertaId} nie powiodła się: {Errors}", 
-                    oferta.OfertaId,
-                    string.Join(", ", result.Value.Results.Where(r => !r.Succeeded).Select(r => r.ErrorMessage)));
-            }
-            else
-            {
-                _logger.LogInformation("Oferta {OfertaId} pomyślnie zsynchronizowana z Azure Search", oferta.OfertaId);
+                _logger.LogWarning("Nie wszystkie oferty zostały dodane/zaktualizowane poprawnie");
             }
             
             return success;

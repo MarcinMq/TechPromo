@@ -4,6 +4,7 @@
 
 Autor: TechPromo Team
 Data utworzenia: 2025-11-05
+Ostatnia aktualizacja: 2026-01-30
 Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 
 ================================================================================
@@ -14,7 +15,10 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 ├── 📁 backend/          - Aplikacja serwerowa (.NET 8, ASP.NET Core)
 ├── 📁 frontend/         - Aplikacja kliencka (React 18, TypeScript, Vite)
 ├── 📁 infra/            - Infrastruktura Azure (Bicep)
-└── 📄 TechPromo.sln     - Solution Visual Studio
+├── 📄 TechPromo.sln     - Solution Visual Studio
+├── 📄 diagnose-search.ps1 - Skrypt diagnostyczny dla Azure Search
+├── 📄 test-search.ps1   - Skrypt testowy dla wyszukiwania
+└── 📄 test-sync.ps1     - Skrypt testowy dla synchronizacji
 
 ================================================================================
                         BACKEND (ASP.NET Core API)
@@ -30,6 +34,8 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │       - Konfiguracja Entity Framework (SQL Server)
 │       - Konfiguracja Azure AI Search
 │       - Konfiguracja Email Service (Azure Communication Services)
+│       - Konfiguracja Azure Content Safety (moderacja treści)
+│       - Konfiguracja systemu rekomendacji
 │       - Middleware pipeline
 │
 ├── 📄 appsettings.json / appsettings.Development.json
@@ -38,6 +44,7 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │       - JWT settings (SecretKey, Issuer, Audience)
 │       - Azure Search configuration
 │       - Azure Communication Services (email)
+│       - Azure Content Safety configuration
 │
 ├── 📁 Controller/
 │   ├── 📄 AccountController.cs
@@ -75,30 +82,39 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │   │       - GET /api/oferta/{id} - Szczegóły oferty
 │   │       - GET /api/oferta/kategorie - Lista kategorii
 │   │       - POST /api/oferta - Utworzenie oferty (wymaga auth)
+│   │       - POST /api/oferta/z-plikami - Utworzenie oferty z plikami
 │   │       - PUT /api/oferta/{id} - Aktualizacja oferty (wymaga auth)
 │   │       - DELETE /api/oferta/{id} - Usunięcie oferty (wymaga auth)
+│   │       - POST /api/oferta/sprawdz-duplikaty - Wykrywanie duplikatów
 │   │
-   ├── 📄 UzytkownicyController.cs
-   │   └── Publiczne endpointy użytkowników (bez autoryzacji)
-   │       - GET /api/uzytkownicy - Lista użytkowników (debug, max 20)
-   │       - GET /api/uzytkownicy/{nick} - Publiczny profil użytkownika
-   │           * Informacje o użytkowniku (nick, email, punkty, odznaki)
-   │           * Oferty użytkownika
-   │           * Statystyki (liczba ofert, komentarzy)
-   │
-   └── 📄 UzytkownikController.cs
-       └── Funkcje zalogowanego użytkownika (wymaga autoryzacji)
-           - GET /api/uzytkownik/aktywnosc - Aktywność użytkownika
-           - GET /api/uzytkownik/moje-oferty - Oferty użytkownika
-           - GET /api/uzytkownik/komentarze - Komentarze użytkownika
-           - GET /api/uzytkownik/zapisane - Zapisane oferty
-           - POST /api/uzytkownik/zapisane/{id} - Zapisz ofertę
-           - DELETE /api/uzytkownik/zapisane/{id} - Usuń z zapisanych
-           - POST /api/uzytkownik/oferta/{id}/glos - Oddanie głosu (hot/cold)
-           - POST /api/uzytkownik/oferta/{id}/komentarz - Dodanie komentarza
-           - DELETE /api/uzytkownik/komentarz/{id} - Usunięcie komentarza
-           - POST /api/uzytkownik/zglos-oferte - Zgłoś ofertę
-           - POST /api/uzytkownik/zglos-komentarz - Zgłoś komentarz
+│   ├── 📄 RekomendacjeController.cs
+│   │   └── System rekomendacji ofert
+│   │       - GET /api/rekomendacje - Personalizowane rekomendacje
+│   │       - GET /api/rekomendacje/podobne/{ofertaId} - Podobne oferty
+│   │
+│   ├── 📄 UzytkownicyController.cs
+│   │   └── Publiczne endpointy użytkowników (bez autoryzacji)
+│   │       - GET /api/uzytkownicy - Lista użytkowników (debug, max 20)
+│   │       - GET /api/uzytkownicy/{nick} - Publiczny profil użytkownika
+│   │           * Informacje o użytkowniku (nick, email, punkty, odznaki)
+│   │           * Oferty użytkownika
+│   │           * Statystyki (liczba ofert, komentarzy)
+│   │
+│   └── 📄 UzytkownikController.cs
+│       └── Funkcje zalogowanego użytkownika (wymaga autoryzacji)
+│           - GET /api/uzytkownik/aktywnosc - Aktywność użytkownika
+│           - GET /api/uzytkownik/moje-oferty - Oferty użytkownika
+│           - GET /api/uzytkownik/komentarze - Komentarze użytkownika
+│           - GET /api/uzytkownik/zapisane - Zapisane oferty
+│           - POST /api/uzytkownik/zapisane/{id} - Zapisz ofertę
+│           - DELETE /api/uzytkownik/zapisane/{id} - Usuń z zapisanych
+│           - POST /api/uzytkownik/oferta/{id}/glos - Oddanie głosu (hot/cold)
+│           - POST /api/uzytkownik/oferta/{id}/komentarz - Dodanie komentarza
+│           - DELETE /api/uzytkownik/komentarz/{id} - Usunięcie komentarza
+│           - POST /api/uzytkownik/zglos-oferte - Zgłoś ofertę
+│           - POST /api/uzytkownik/zglos-komentarz - Zgłoś komentarz
+│           - GET /api/uzytkownik/powiadomienia - Lista powiadomień
+│           - PUT /api/uzytkownik/powiadomienia/{id}/przeczytane - Oznacz jako przeczytane
 │
 ├── 📁 Controllers/
 │   ├── 📄 TestController.cs
@@ -128,7 +144,7 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │   ├── 📄 RegisterDto.cs - Dane rejestracji
 │   ├── 📄 OfertaDto.cs - Szczegóły oferty
 │   ├── 📄 UtworzOfertaDto.cs - Tworzenie nowej oferty
-│   ├── 📄 AktualizujOfertaDto.cs - Aktualizacja oferty
+│   ├── 📄 AktualizujOferteDto.cs - Aktualizacja oferty
 │   ├── 📄 UpdateOfertaDto.cs - Alternatywne DTO aktualizacji
 │   ├── 📄 KomentarzDto.cs - Komentarz
 │   ├── 📄 DodajKomentarzDto.cs - Dodanie komentarza
@@ -136,6 +152,7 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │   ├── 📄 ZglosDto.cs - Zgłoszenie
 │   ├── 📄 AktywnoscDto.cs - Aktywność użytkownika
 │   ├── 📄 ProfilResponseDto.cs - Profil użytkownika
+│   ├── 📄 PublicznyProfilDto.cs - Publiczny profil użytkownika
 │   ├── 📄 OdznakaDto.cs - Odznaka
 │   ├── 📄 UtworzOdznakaDto.cs - Tworzenie odznaki
 │   ├── 📄 PrzyznajOdznakaDto.cs - Przyznanie odznaki
@@ -143,7 +160,11 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │   ├── 📄 ModerujOfertaDto.cs - Moderacja oferty
 │   ├── 📄 UsuniecieDto.cs - Usunięcie zasobu
 │   ├── 📄 AktualizujPunktyDto.cs - Aktualizacja punktów
-│   └── 📄 PagedResult.cs - Wynik z paginacją
+│   ├── 📄 PagedResult.cs - Wynik z paginacją
+│   ├── 📄 ZapomnianeHasloDto.cs - Żądanie resetu hasła
+│   ├── 📄 ResetujHasloDto.cs - Reset hasła z tokenem
+│   ├── 📄 PowiadomienieDto.cs - Powiadomienie
+│   └── 📄 SprawdzDuplikatyRequest.cs - Wykrywanie duplikatów
 │
 ├── 📁 Migrations/
 │   └── Migracje Entity Framework
@@ -158,16 +179,20 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │
 ├── 📁 Model/
 │   └── Modele Entity Framework (encje bazy danych)
-│       - Uzytkownik - Użytkownik systemu
-│       - Oferta - Oferta/promocja
-│       - Komentarz - Komentarz do oferty
-│       - Glos - Głos użytkownika (hot/cold)
-│       - Kategoria - Kategoria oferty
-│       - Odznaka - Odznaka użytkownika
-│       - UzytkownikOdznaka - Relacja użytkownik-odznaka
-│       - ZapisanaOferta - Zapisane oferty użytkownika
-│       - Zgloszenie - Zgłoszenia ofert/komentarzy
-│       - Aktywnosc - Historia aktywności
+│       - 📄 Uzytkownik.cs - Użytkownik systemu
+│       - 📄 Oferta.cs - Oferta/promocja
+│       - 📄 Komentarz.cs - Komentarz do oferty
+│       - 📄 Glos.cs - Głos użytkownika (hot/cold)
+│       - 📄 KomentarzGlos.cs - Głos na komentarz
+│       - 📄 Kategoria.cs - Kategoria oferty
+│       - 📄 Odznaka.cs - Odznaka użytkownika
+│       - 📄 UzytkownikOdznaka.cs - Relacja użytkownik-odznaka
+│       - 📄 ZapisanaOferta.cs - Zapisane oferty użytkownika
+│       - 📄 Aktywnosc.cs - Historia aktywności
+│       - 📄 Tag.cs - Tag oferty
+│       - 📄 OfertaTag.cs - Relacja oferta-tag
+│       - 📄 OfertaZdjecie.cs - Zdjęcie oferty
+│       - 📄 Powiadomienie.cs - Powiadomienia użytkownika
 │
 ├── 📁 Services/
 │   ├── 📄 IEmailService.cs - Interface email service
@@ -175,18 +200,51 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │   │   └── Wysyłanie emaili przez Azure Communication Services
 │   │       - SendPasswordResetEmailAsync - Email z resetem hasła
 │   │
-│   ├── 📄 ISearchService.cs - Interface wyszukiwarki
-│   └── 📄 AzureSearchService.cs - Azure AI Search
-│       └── Wyszukiwanie ofert w Azure AI Search
-│           - Indeksowanie ofert
-│           - Wyszukiwanie full-text
-│           - Filtrowanie i sortowanie
-│           - Synonym maps (synonimy)
+│   ├── 📄 IBadgeService.cs - Interface badge service
+│   ├── 📄 BadgeService.cs - System odznak
+│   │   └── Automatyczne przyznawanie odznak
+│   │
+│   ├── 📄 JwtService.cs - Obsługa tokenów JWT
+│   │   └── Generowanie i walidacja tokenów JWT
+│   │
+│   ├── 📄 ISerwisRekomendacji.cs - Interface rekomendacji
+│   ├── 📄 SerwisRekomendacji.cs - System rekomendacji
+│   │   └── Personalizowane rekomendacje ofert
+│   │       - Collaborative filtering
+│   │       - Content-based filtering
+│   │       - Podobne oferty
+│   │
+│   ├── 📄 ISerwisWykrywaniaDuplikatow.cs - Interface wykrywania duplikatów
+│   ├── 📄 SerwisWykrywaniaDuplikatow.cs - Wykrywanie duplikatów
+│   │   └── Wykrywanie podobnych/duplikatów ofert
+│   │       - Porównywanie tytułów, linków, cen
+│   │       - Algorytm podobieństwa tekstów
+│   │
+│   └── 📄 SerwisModeracjiTresci.cs - Moderacja treści
+│       └── Automatyczna moderacja przez Azure Content Safety
+│           - Analiza treści ofert
+│           - Wykrywanie nieodpowiednich treści
+│           - Auto-zatwierdzanie lub odrzucanie
 │
 ├── 📁 Search/
-│   └── Klasy związane z wyszukiwarką
-│       - WynikWyszukiwania.cs - Wynik wyszukiwania
-│       - SearchDocument.cs - Dokument w indeksie
+│   ├── 📁 Models/
+│   │   ├── 📄 ModelWyszukiwaniaOferty.cs - Model dokumentu w indeksie
+│   │   ├── 📄 WynikWyszukiwania.cs - Wynik wyszukiwania
+│   │   ├── 📄 ZapytanieWyszukiwania.cs - Zapytanie wyszukiwania
+│   │   └── 📄 SugestiaDto.cs - Sugestie wyszukiwania
+│   │
+│   └── 📁 Services/
+│       ├── 📄 ISerwisWyszukiwania.cs - Interface wyszukiwarki
+│       ├── 📄 SerwisWyszukiwania.cs - Azure AI Search
+│       │   └── Wyszukiwanie ofert w Azure AI Search
+│       │       - Indeksowanie ofert
+│       │       - Wyszukiwanie full-text
+│       │       - Filtrowanie i sortowanie
+│       │       - Synonym maps (synonimy)
+│       │       - Semantic ranking
+│       │
+│       └── 📄 SerwisSync.cs - Synchronizacja z Azure Search
+│           └── Synchronizacja indeksu z bazą danych
 │
 └── 📁 wwwroot/
     └── Pliki statyczne (upload avatarów, zdjęć ofert)
@@ -238,7 +296,7 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │       - Routing (React Router)
     │       - Sprawdzanie autoryzacji (JWT)
     │       - Navbar
-    │       - MobileBottomNav (menu mobilne)
+    │       - DolnyPasekMobilny (menu mobilne)
     │       - Stopka
     │
     ├── 📄 index.css
@@ -258,8 +316,16 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │
     ├── 📁 components/
     │   │
+    │   ├── 📄 ChronionyRoute.tsx - Wrapper dla chronionych tras
+    │   ├── � FallingIcons.tsx - Animacja spadających ikon technologii
+    │   ├── 📄 KodKuponu.tsx - Wyświetlanie kodu kuponu
+    │   ├── 📄 KrokiFormularza.tsx - Kroki formularza (stepper)
+    │   ├── 📄 PoleFormularza.tsx - Pole formularza (input)
+    │   ├── 📄 SekcjaFormularza.tsx - Sekcja formularza
+    │   ├── 📄 SekcjaRekomendacji.tsx - Sekcja z rekomendacjami ofert
+    │   │
     │   ├── 📁 layout/
-    │   │   ├── 📄 Navbar.tsx (PasekNawigacji.tsx)
+    │   │   ├── 📄 PasekNawigacji.tsx
     │   │   │   └── Górna nawigacja aplikacji
     │   │   │       - Logo i nazwa
     │   │   │       - Wyszukiwarka (ukryta na mobile)
@@ -268,41 +334,43 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │   │   │       - Menu użytkownika (avatar, profil, wyloguj)
     │   │   │       - Pasek kategorii (ukryty na mobile)
     │   │   │
-    │   │   ├── 📄 MobileBottomNav.tsx
+    │   │   ├── 📄 DolnyPasekMobilny.tsx
     │   │   │   └── Dolne menu nawigacyjne (mobile only)
     │   │   │       - 5 przycisków: Główna, Szukaj, Dodaj, Zapisane, Profil
     │   │   │       - Animowany środkowy przycisk (Dodaj)
     │   │   │       - Auto-podświetlanie aktywnej strony
     │   │   │       - Modal wyboru typu oferty
     │   │   │
-    │   │   └── 📄 Stopka.tsx
-    │   │       └── Stopka aplikacji
-    │   │           - Logo i opis
-    │   │           - Linki do kategorii
-    │   │           - Linki pomocnicze
-    │   │           - Social media
-    │   │           - Copyright
+    │   │   ├── 📄 Stopka.tsx
+    │   │   │   └── Stopka aplikacji
+    │   │   │       - Logo i opis
+    │   │   │       - Linki do kategorii
+    │   │   │       - Linki pomocnicze
+    │   │   │       - Social media
+    │   │   │       - Copyright
+    │   │   │
+    │   │   ├── � InfoUzytkownika.tsx - Informacje o zalogowanym użytkowniku
+    │   │   └── 📄 PowiadomieniaDropdown.tsx - Dropdown z powiadomieniami
     │   │
     │   ├── 📁 modals/
-    │   │   ├── 📄 ModalTypuOferty.tsx
-    │   │   │   └── Modal wyboru typu oferty (Okazja vs Kupon)
-    │   │   │
-    │   │   ├── 📄 ReportOfferModal.tsx
-    │   │   │   └── Modal zgłaszania oferty
-    │   │   │
-    │   │   └── 📄 ReportCommentModal.tsx
-    │   │       └── Modal zgłaszania komentarza
+    │   │   ├── 📄 ModalTypuOferty.tsx - Modal wyboru typu oferty (Okazja vs Kupon)
+    │   │   ├── 📄 ModalZgloszeniaOferty.tsx - Modal zgłaszania oferty
+    │   │   ├── 📄 ModalZgloszeniaKomentarza.tsx - Modal zgłaszania komentarza
+    │   │   ├── 📄 ModalOstrzezeniaDuplikatow.tsx - Ostrzeżenie o duplikatach
+    │   │   └── 📄 ModalBladModeracji.tsx - Błąd moderacji
     │   │
     │   ├── 📁 search/
-    │   │   └── 📄 PasekWyszukiwania.tsx
-    │   │       └── Komponent wyszukiwania w navbarze
+    │   │   └── 📄 PasekWyszukiwania.tsx - Komponent wyszukiwania w navbarze
     │   │
     │   ├── 📁 ui/
-    │   │   └── 📄 WybieraczPanelu.tsx
-    │   │       └── Modal wyboru panelu (Admin/Moderator)
+    │   │   ├── 📄 Przycisk.tsx - Komponent przycisku
+    │   │   ├── 📄 Karta.tsx - Komponent karty
+    │   │   ├── 📄 PoleWprowadzania.tsx - Komponent pola input
+    │   │   ├── 📄 WybieraczPanelu.tsx - Modal wyboru panelu (Admin/Moderator)
+    │   │   └── 📄 index.ts - Export komponentów UI
     │   │
-    │   └── 📄 ChronionyRoute.tsx
-    │       └── Wrapper dla chronionych tras (wymaga auth)
+    │   └── 📁 forms/
+    │       └── Komponenty formularzy
     │
     ├── 📁 contexts/
     │   └── 📄 ThemeContext.tsx
@@ -311,11 +379,11 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │           - Persystencja w localStorage
     │
     ├── 📁 hooks/
-    │   └── Custom React hooks (jeśli są)
+    │   └── Custom React hooks
     │
     ├── 📁 pages/
     │   │
-    │   ├── 📄 StronaGlowna.tsx (HomePage.tsx)
+    │   ├── 📄 StronaGlowna.tsx
     │   │   └── Strona główna aplikacji
     │   │       - Banner carousel (2 banery, auto-rotacja)
     │   │       - Floating sidebar (Quick Actions - desktop only)
@@ -324,6 +392,7 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │   │       - Wyszukiwanie lokalne
     │   │       - Lista ofert z paginacją
     │   │       - Sidebar z top użytkownikami
+    │   │       - Sekcja rekomendacji
     │   │       - Responsywność mobile/desktop
     │   │
     │   ├── 📄 StronaWyszukiwania.tsx
@@ -334,17 +403,14 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │   │       - Highlighting (podświetlanie trafień)
     │   │       - Facets (liczniki kategorii)
     │   │
+    │   ├── � DemoParseraZapytan.tsx - Demo parsera zapytań
+    │   ├── 📄 LogowanieRejestracja.tsx - Strona logowania/rejestracji
+    │   ├── 📄 ZasadyOdznakStrona.tsx - Strona z zasadami odznak
+    │   │
     │   ├── 📁 auth/
-    │   │   ├── 📄 Logowanie.tsx
-    │   │   │   └── Strona logowania
-    │   │   │       - Formularz email + hasło
-    │   │   │       - Zapisanie JWT w localStorage
-    │   │   │       - Przekierowanie po logowaniu
-    │   │   │
-    │   │   └── 📄 Rejestracja.tsx
-    │   │       └── Strona rejestracji
-    │   │           - Formularz (nick, email, hasło)
-    │   │           - Walidacja danych
+    │   │   ├── 📄 Logowanie.tsx - Strona logowania
+    │   │   ├── 📄 Rejestracja.tsx - Strona rejestracji
+    │   │   └── 📄 StronaLogowania.tsx - Alternatywna strona logowania
     │   │
     │   ├── 📄 ZapomnialemHaslaStrona.tsx
     │   │   └── Strona żądania resetu hasła
@@ -372,10 +438,22 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │   │           - Obsługa state routing (activeTab z location.state)
     │   │
     │   ├── 📁 user/
-    │   │   └── 📄 StronaPublicznegoProfileu.tsx
-    │   │       └── Publiczny profil użytkownika
-    │   │           - Wyświetlanie ofert użytkownika
-    │   │           - Statystyki (punkty, odznaki)
+    │   │   ├── 📄 StronaPublicznegoProfileu.tsx
+    │   │   │   └── Publiczny profil użytkownika
+    │   │   │       - Wyświetlanie ofert użytkownika
+    │   │   │       - Statystyki (punkty, odznaki)
+    │   │   │
+    │   │   └── 📄 PanelUzytkownika.tsx - Panel użytkownika
+    │   │
+    │   ├── 📁 admin/
+    │   │   └── 📄 PanelAdmina.tsx
+    │   │       └── Panel administracyjny
+    │   │           - Zarządzanie użytkownikami
+    │   │           - Zarządzanie odznakami
+    │   │           - Zarządzanie ofertami
+    │   │
+    │   ├── 📁 moderator/
+    │   │   └── Panel moderatorski (style CSS)
     │   │
     │   └── 📁 offers/
     │       ├── 📄 FormularzTworzeniaOkazji.tsx
@@ -383,11 +461,13 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │       │       - Tytuł, opis, cena, link
     │       │       - Upload zdjęć
     │       │       - Kategoria, tagi
+    │       │       - Wykrywanie duplikatów
     │       │
     │       ├── 📄 FormularzTworzeniaKuponu.tsx
     │       │   └── Formularz dodawania kuponu
     │       │       - Kod kuponu
     │       │       - Warunki, data ważności
+    │       │       - Wykrywanie duplikatów
     │       │
     │       └── 📄 StronaSzczegolyOferty.tsx
     │           └── Szczegóły oferty
@@ -395,10 +475,12 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │               - Zdjęcia (galeria)
     │               - Głosowanie (hot/cold)
     │               - Komentarze
+    │               - Sekcja rekomendacji (podobne oferty)
     │               - Przycisk "Przejdź do sklepu"
     │
     ├── 📁 services/
-    │   └── Serwisy do komunikacji z API (jeśli są wydzielone)
+    │   ├── 📄 auth.service.ts - Serwis autoryzacji
+    │   └── 📄 httpClient.ts - Klient HTTP
     │
     ├── 📁 types/
     │   └── Definicje typów TypeScript
@@ -417,10 +499,14 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
     │   │       - logout - Wylogowanie
     │   │       - getAuthHeaders - Nagłówki HTTP z tokenem
     │   │
-    │   └── 📄 api.ts
-    │       └── Funkcje do API calls
-    │           - authorizedFetch - Fetch z JWT
-    │           - apiPost, apiPut, apiDelete - HTTP methods
+    │   ├── 📄 api.ts
+    │   │   └── Funkcje do API calls
+    │   │       - authorizedFetch - Fetch z JWT
+    │   │       - apiPost, apiPut, apiDelete - HTTP methods
+    │   │
+    │   ├── 📄 queryParser.ts - Parser zapytań wyszukiwania
+    │   ├── 📄 queryParser.simplified.ts - Uproszczony parser zapytań
+    │   └── 📄 testQuery.ts - Testy parsera
     │
     └── 📁 styles/
         └── Dodatkowe style (jeśli są)
@@ -439,6 +525,7 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
 │       - Static Web App (frontend)
 │       - SQL Database
 │       - Azure AI Search
+│       - Azure Content Safety
 │
 └── 📄 ai-search.bicep
     └── Konfiguracja Azure AI Search
@@ -502,6 +589,8 @@ Opis: Dokumentacja struktury plików i folderów projektu TechPromo
    - Może zgłaszać oferty/komentarze
    - Ma dostęp do profilu (edycja, avatar)
    - Widzi floating sidebar (Quick Actions - desktop)
+   - Widzi personalizowane rekomendacje
+   - Otrzymuje powiadomienia
    - W bottom nav: przycisk "Zapisane"
 
 3. MODERATOR:
@@ -528,8 +617,9 @@ BACKEND:
 - Entity Framework Core (ORM)
 - SQL Server (baza danych)
 - JWT Authentication
-- Azure AI Search
+- Azure AI Search (wyszukiwanie)
 - Azure Communication Services (email)
+- Azure Content Safety (moderacja treści AI)
 - Swagger/OpenAPI (dokumentacja API)
 
 FRONTEND:
@@ -547,6 +637,7 @@ INFRASTRUKTURA:
 - Azure SQL Database
 - Azure AI Search
 - Azure Communication Services
+- Azure Content Safety
 - Bicep (IaC - Infrastructure as Code)
 
 ================================================================================
@@ -574,13 +665,18 @@ INFRASTRUKTURA:
 ✅ Publiczne profile użytkowników
 ✅ Upload avatarów i zdjęć ofert
 ✅ Paginacja wyników
+✅ System rekomendacji (collaborative + content-based)
+✅ Wykrywanie duplikatów ofert
+✅ Automatyczna moderacja treści (Azure Content Safety)
+✅ System powiadomień
+✅ Głosowanie na komentarze
 
 ================================================================================
                         OSTATNIA AKTUALIZACJA
 ================================================================================
 
-Data: 2025-11-05
-Wersja: 1.0
+Data: 2026-01-30
+Wersja: 2.0
 Status: Produkcja
 
 ================================================================================
