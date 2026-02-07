@@ -177,7 +177,45 @@ public class SerwisWyszukiwania : ISerwisWyszukiwania
                         items = fuzzyItems;
                         response = fuzzyResponse; // Nadpisz odpowiedź, żeby totalCount i facets były poprawne
                         queryMeta.WasCorrected = true;
-                        queryMeta.Corrected = fuzzyQuery.Replace("~", ""); // Pokaż użytkownikowi "czystą" formę
+
+                        // Znajdź skorygowane słowo z nazwy pierwszego wyniku
+                        var firstResultName = fuzzyItems.FirstOrDefault()?.Nazwa?.ToLower() ?? "";
+                        var resultWords = firstResultName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        var queryWords = (zapytanie.Zapytanie ?? "").ToLower().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                        var correctedWords = new List<string>();
+
+                        foreach (var qWord in queryWords)
+                        {
+                            var bestMatch = qWord;
+                            var bestSimilarity = 0.0;
+
+                            foreach (var rWord in resultWords)
+                            {
+                                if (rWord.Length >= 3 && qWord.Length >= 3)
+                                {
+                                    var commonChars = qWord.ToCharArray().Intersect(rWord.ToCharArray()).Count();
+                                    var similarity = (double)commonChars / Math.Max(qWord.Length, rWord.Length);
+                                    if (similarity > bestSimilarity && similarity > 0.5)
+                                    {
+                                        bestSimilarity = similarity;
+                                        bestMatch = rWord;
+                                    }
+                                }
+                            }
+                            correctedWords.Add(bestMatch);
+                        }
+
+                        var correctedText = string.Join(" ", correctedWords);
+                        // Użyj skorygowanego tekstu tylko jeśli różni się od oryginału
+                        if (!string.Equals(correctedText, (zapytanie.Zapytanie ?? "").ToLower(), StringComparison.OrdinalIgnoreCase))
+                        {
+                            queryMeta.Corrected = correctedText;
+                        }
+                        else
+                        {
+                            // Fallback: użyj zapytania bez tyldy
+                            queryMeta.Corrected = fuzzyQuery.Replace("~", "");
+                        }
                     }
                 }
             }

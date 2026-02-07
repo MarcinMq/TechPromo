@@ -126,8 +126,8 @@ public class WyszukiwarkaController : ControllerBase
                 queryMeta = new
                 {
                     original = wyniki.QueryMeta?.Original ?? originalQuery,
-                    corrected = wyniki.QueryMeta?.Corrected ?? originalQuery,
-                    wasCorrected = wyniki.QueryMeta?.WasCorrected ?? false
+                    corrected = DetermineCorrection(wyniki, originalQuery, correctedQuery, wasCorrected),
+                    wasCorrected = (wyniki.QueryMeta?.WasCorrected ?? false) || wasCorrected
                 }
             });
         }
@@ -324,5 +324,33 @@ public class WyszukiwarkaController : ControllerBase
             _logger.LogError(ex, "Błąd podczas resynchronizacji: {Message}", ex.Message);
             return StatusCode(500, new { message = "Wystąpił błąd podczas resynchronizacji", error = ex.Message });
         }
+    }
+
+    /// <summary>
+    /// Określa najlepszą korektę zapytania. Używa korekty z serwisu, 
+    /// a jeśli ta jest identyczna z oryginałem, stosuje heurystykę z kontrolera.
+    /// </summary>
+    private static string DetermineCorrection(
+        WynikWyszukiwania<ModelWyszukiwaniaOferty> wyniki, 
+        string originalQuery, 
+        string controllerCorrected, 
+        bool controllerWasCorrected)
+    {
+        var serviceCorrected = wyniki.QueryMeta?.Corrected ?? originalQuery;
+        
+        // Jeśli serwis zwrócił prawdziwą korektę (różną od oryginału), użyj jej
+        if (!string.Equals(serviceCorrected, originalQuery, StringComparison.OrdinalIgnoreCase)
+            && !string.IsNullOrWhiteSpace(serviceCorrected))
+        {
+            return serviceCorrected;
+        }
+        
+        // Fallback: użyj heurystyki z kontrolera
+        if (controllerWasCorrected && !string.IsNullOrWhiteSpace(controllerCorrected))
+        {
+            return controllerCorrected;
+        }
+        
+        return originalQuery;
     }
 }
