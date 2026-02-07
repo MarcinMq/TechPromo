@@ -50,6 +50,7 @@ namespace TechPromo.Api.Services
                     .Select(r => r.OfertaId)
                     .ToList();
 
+                var terazGlowna = DateTime.UtcNow;
                 var oferty = await _context.Oferty
                     .Include(o => o.Uzytkownik)
                     .Include(o => o.Kategoria)
@@ -57,7 +58,8 @@ namespace TechPromo.Api.Services
                     .Include(o => o.Zdjecia)
                     .Include(o => o.Komentarze)
                     .Include(o => o.Glosy)
-                    .Where(o => topOfertaIds.Contains(o.IdOferta) && o.Aktywna && o.Zatwierdzona)
+                    .Where(o => topOfertaIds.Contains(o.IdOferta) && o.Aktywna && o.Zatwierdzona
+                        && (!o.WaznoscDo.HasValue || o.WaznoscDo.Value > terazGlowna))
                     .ToListAsync();
 
                 // Zachowaj kolejność według score
@@ -103,14 +105,19 @@ namespace TechPromo.Api.Services
                 .Take(20) // Top 20 podobnych użytkowników
                 .ToListAsync();
 
+            // Pobierz głosy wszystkich podobnych użytkowników jednym zapytaniem (zamiast N+1)
+            var podobniIds = podobniUzytkownicy.Select(p => p.UserId).ToList();
+            var wszystkieGlosyPodobnych = await _context.Glosy
+                .Where(g => podobniIds.Contains(g.IdUzytkownik) && g.TypGlosu == "hot")
+                .Select(g => new { g.IdUzytkownik, g.IdOferta })
+                .ToListAsync();
+            var glosyWgUzytkownika = wszystkieGlosyPodobnych
+                .GroupBy(g => g.IdUzytkownik)
+                .ToDictionary(g => g.Key, g => g.Select(x => x.IdOferta).ToHashSet());
+
             foreach (var podobny in podobniUzytkownicy)
             {
-                // Pobierz głosy podobnego użytkownika
-                var glosyPodobnegoList = await _context.Glosy
-                    .Where(g => g.IdUzytkownik == podobny.UserId && g.TypGlosu == "hot")
-                    .Select(g => g.IdOferta)
-                    .ToListAsync();
-                var glosyPodobnego = glosyPodobnegoList.ToHashSet();
+                var glosyPodobnego = glosyWgUzytkownika.GetValueOrDefault(podobny.UserId, new HashSet<int>());
 
                 // Oblicz podobieństwo Jaccard
                 var intersection = mojeGlosyHot.Intersect(glosyPodobnego).Count();
@@ -181,10 +188,14 @@ namespace TechPromo.Api.Services
                 .DefaultIfEmpty(0)
                 .Average();
 
-            // Znajdź kandydatów
+            // Znajdź kandydatów (wyklucz widziane, wygasłe i własne oferty)
+            var teraz = DateTime.UtcNow;
             var kandydaci = await _context.Oferty
                 .Include(o => o.OfertaTagi)
-                .Where(o => !widzianeOfertyIds.Contains(o.IdOferta) && o.Aktywna && o.Zatwierdzona)
+                .Where(o => !widzianeOfertyIds.Contains(o.IdOferta) 
+                    && o.Aktywna && o.Zatwierdzona
+                    && o.IdUzytkownik != userId
+                    && (!o.WaznoscDo.HasValue || o.WaznoscDo.Value > teraz))
                 .ToListAsync();
 
             foreach (var oferta in kandydaci)
@@ -271,6 +282,7 @@ namespace TechPromo.Api.Services
 
             var tagiIds = oferta.OfertaTagi.Select(ot => ot.IdTag).ToList();
 
+            var teraz = DateTime.UtcNow;
             var podobne = await _context.Oferty
                 .Include(o => o.Uzytkownik)
                 .Include(o => o.Kategoria)
@@ -278,7 +290,8 @@ namespace TechPromo.Api.Services
                 .Include(o => o.Zdjecia)
                 .Include(o => o.Komentarze)
                 .Include(o => o.Glosy)
-                .Where(o => o.IdOferta != ofertaId && o.Aktywna && o.Zatwierdzona)
+                .Where(o => o.IdOferta != ofertaId && o.Aktywna && o.Zatwierdzona
+                    && (!o.WaznoscDo.HasValue || o.WaznoscDo.Value > teraz))
                 .Where(o => o.IdKategoria == oferta.IdKategoria || o.OfertaTagi.Any(ot => tagiIds.Contains(ot.IdTag)))
                 .OrderByDescending(o => o.LiczbaHot - o.LiczbaCold)
                 .Take(limit)
