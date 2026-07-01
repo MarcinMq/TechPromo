@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using TechPromo.Api.Data;
@@ -15,7 +16,32 @@ using Azure.Search.Documents.Indexes;
 var builder = WebApplication.CreateBuilder(args);
 
 //CORS (Cross-Origin Resource Sharing) - pozwala na dostęp z innej domeny
-var allowedOrigins = new[] { "http://localhost:5173", "http://localhost:5174", "http://localhost:5175" };
+var isDevelopment = builder.Environment.IsDevelopment();
+var isTesting = builder.Environment.IsEnvironment("Testing");
+var isProduction = builder.Environment.IsProduction();
+
+var allowedOrigins = builder.Configuration
+    .GetSection("Cors:AllowedOrigins")
+    .Get<string[]>() ?? Array.Empty<string>();
+
+if ((isDevelopment || isTesting) && allowedOrigins.Length == 0)
+{
+    allowedOrigins = new[] { "http://localhost:5173", "http://localhost:5174", "http://localhost:5175" };
+}
+
+if (isProduction && allowedOrigins.Length == 0)
+{
+    throw new InvalidOperationException("Brak konfiguracji CORS dla produkcji. Ustaw Cors:AllowedOrigins.");
+}
+
+var allowedHosts = builder.Configuration["AllowedHosts"];
+if (isProduction
+    && (string.IsNullOrWhiteSpace(allowedHosts)
+        || allowedHosts == "*"
+        || allowedHosts.Contains("localhost", StringComparison.OrdinalIgnoreCase)))
+{
+    throw new InvalidOperationException("Brak bezpiecznej konfiguracji AllowedHosts dla produkcji.");
+}
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("FrontendDevCors", policy =>
@@ -63,8 +89,14 @@ builder.Services.AddSwaggerGen(c =>
 });
 
 // DbContext z Aiven PostgreSQL
+var defaultConnection = builder.Configuration.GetConnectionString("DefaultConnection");
+if (isProduction && string.IsNullOrWhiteSpace(defaultConnection))
+{
+    throw new InvalidOperationException("Brak ConnectionStrings:DefaultConnection dla produkcji.");
+}
+
 builder.Services.AddDbContext<TechPromoDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(defaultConnection));
 
 builder.Services.AddIdentity<Uzytkownik, IdentityRole<int>>()
     .AddEntityFrameworkStores<TechPromoDbContext>()
@@ -78,6 +110,21 @@ var jwtSettings = builder.Configuration.GetSection("Jwt");
 var jwtKey = Environment.GetEnvironmentVariable("JWT_SECRET_KEY") 
              ?? jwtSettings["Key"] 
              ?? throw new InvalidOperationException("Brak klucza JWT! Ustaw zmienną JWT_SECRET_KEY.");
+
+if (Encoding.UTF8.GetByteCount(jwtKey) < 32)
+{
+    throw new InvalidOperationException("Klucz JWT musi miec co najmniej 32 bajty.");
+}
+
+if (isProduction && jwtKey.Contains("DevelopmentOnly", StringComparison.OrdinalIgnoreCase))
+{
+    throw new InvalidOperationException("Produkcja nie moze uzywac deweloperskiego klucza JWT.");
+}
+
+if (string.IsNullOrWhiteSpace(jwtSettings["Issuer"]) || string.IsNullOrWhiteSpace(jwtSettings["Audience"]))
+{
+    throw new InvalidOperationException("Brak konfiguracji Jwt:Issuer lub Jwt:Audience.");
+}
 
 var key = Encoding.UTF8.GetBytes(jwtKey);
 
@@ -110,6 +157,28 @@ builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<ISerwisWykrywaniaDuplikatow, SerwisWykrywaniaDuplikatow>();
 
 // Azure Content Safety - automatyczne wykrywanie wulgarnych/obraźliwych treści
+if (isProduction)
+{
+    var emailConnectionString = builder.Configuration["EmailSettings:ConnectionString"];
+    var emailSenderAddress = builder.Configuration["EmailSettings:SenderAddress"];
+    var frontendUrl = builder.Configuration["EmailSettings:FrontendUrl"];
+
+    if (string.IsNullOrWhiteSpace(emailConnectionString)
+        || string.IsNullOrWhiteSpace(emailSenderAddress)
+        || string.IsNullOrWhiteSpace(frontendUrl))
+    {
+        throw new InvalidOperationException("Brak konfiguracji EmailSettings dla produkcji.");
+    }
+}
+
+var contentSafetyEndpoint = builder.Configuration["ContentSafety:Endpoint"];
+var contentSafetyApiKey = builder.Configuration["ContentSafety:ApiKey"];
+if (isProduction
+    && (string.IsNullOrWhiteSpace(contentSafetyEndpoint) || string.IsNullOrWhiteSpace(contentSafetyApiKey)))
+{
+    throw new InvalidOperationException("Brak konfiguracji ContentSafety dla produkcji.");
+}
+
 builder.Services.AddSingleton<ISerwisModeracjiTresci, SerwisModeracjiTresci>();
 
 // Hybrydowy system rekomendacji (Collaborative Filtering + Content-Based)
@@ -119,11 +188,18 @@ builder.Services.AddScoped<ISerwisRekomendacji, SerwisRekomendacji>();
 var azureSearchEndpoint = builder.Configuration["AzureSearch:Endpoint"];
 var azureSearchApiKey = builder.Configuration["AzureSearch:ApiKey"];
 var azureSearchIndexName = builder.Configuration["AzureSearch:IndexName"];
+var isAzureSearchConfigured = !string.IsNullOrWhiteSpace(azureSearchEndpoint)
+    && !string.IsNullOrWhiteSpace(azureSearchApiKey);
 
-if (!string.IsNullOrEmpty(azureSearchEndpoint) && !string.IsNullOrEmpty(azureSearchApiKey))
+if (isProduction && !isAzureSearchConfigured)
 {
-    var endpoint = new Uri(azureSearchEndpoint);
-    var credential = new AzureKeyCredential(azureSearchApiKey);
+    throw new InvalidOperationException("Brak konfiguracji Azure Search dla produkcji.");
+}
+
+if (isAzureSearchConfigured)
+{
+    var endpoint = new Uri(azureSearchEndpoint!);
+    var credential = new AzureKeyCredential(azureSearchApiKey!);
 
     // SearchIndexClient - do zarządzania indeksami (tworzenie, usuwanie, etc.)
     builder.Services.AddSingleton(sp => new SearchIndexClient(endpoint, credential));
@@ -144,15 +220,32 @@ else
 
 var app = builder.Build();
 
+if (!isDevelopment && !isTesting)
+{
+    app.UseHsts();
+}
+
+app.UseForwardedHeaders(new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+});
+
 app.UseCors("FrontendDevCors");
 
 // Inicjalizacja SeedData
-using (var scope = app.Services.CreateScope())
+if (builder.Configuration.GetValue("Startup:SeedData", !isProduction))
 {
-    var services = scope.ServiceProvider;
-    await SeedData.InitializeAsync(services);
+    using var seedScope = app.Services.CreateScope();
+    await SeedData.InitializeAsync(seedScope.ServiceProvider);
+}
     
     // Azure AI Search - utwórz indeks jeśli nie istnieje i zsynchronizuj dane
+if (builder.Configuration.GetValue<bool>("Startup:InitializeSearchIndex")
+    || builder.Configuration.GetValue<bool>("Startup:SyncSearchOnStartup"))
+{
+    using var searchScope = app.Services.CreateScope();
+    var services = searchScope.ServiceProvider;
+
     try
     {
         var searchService = services.GetService<ISerwisWyszukiwania>();
@@ -160,10 +253,13 @@ using (var scope = app.Services.CreateScope())
         
         if (searchService != null)
         {
-            await searchService.UtworzIndeksJesliNieIstniajeAsync();
+            if (builder.Configuration.GetValue<bool>("Startup:InitializeSearchIndex"))
+            {
+                await searchService.UtworzIndeksJesliNieIstniajeAsync();
+            }
             
             // Synchronizuj zawsze przy starcie (wymaganie użytkownika)
-            if (syncService != null)
+            if (syncService != null && builder.Configuration.GetValue<bool>("Startup:SyncSearchOnStartup"))
             {
                 Console.WriteLine("Rozpoczynam automatyczną synchronizację z Azure Search...");
                 await syncService.SynchronizujWszystkieOfertyAsync();
@@ -174,20 +270,35 @@ using (var scope = app.Services.CreateScope())
     {
         Console.WriteLine($"Azure AI Search initialization error: {ex.Message}");
     }
-}
+    }
 
 //Swagger
-if (app.Environment.IsDevelopment())
+if (isDevelopment)
 {
     app.UseSwagger();
     app.UseSwaggerUI();
 }
 
 // HTTPS redirection only in production
-if (!app.Environment.IsDevelopment())
+if (!isDevelopment && !isTesting)
 {
     app.UseHttpsRedirection();
 }
+
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.TryAdd("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.TryAdd("X-Frame-Options", "DENY");
+    context.Response.Headers.TryAdd("Referrer-Policy", "no-referrer");
+    context.Response.Headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+    if (!isDevelopment)
+    {
+        context.Response.Headers.TryAdd("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none';");
+    }
+
+    await next();
+});
 
 // Obsługa plików statycznych (zdjęcia ofert)
 app.UseStaticFiles();

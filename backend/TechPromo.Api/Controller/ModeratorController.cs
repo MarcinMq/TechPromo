@@ -459,6 +459,15 @@ namespace TechPromo.Api.Controllers
                     return BadRequest(new { message = "Brak plików w polu 'zdjecia'", formKeys = Request.Form?.Keys });
                 }
 
+                const int maxFiles = 5;
+                const long maxFileBytes = 5 * 1024 * 1024;
+                var allowedExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+
+                if (files.Count > maxFiles)
+                {
+                    return BadRequest(new { message = $"Maksymalnie {maxFiles} zdjec." });
+                }
+
                 var env = HttpContext.RequestServices.GetRequiredService<IWebHostEnvironment>();
                 var root = env.WebRootPath;
                 if (string.IsNullOrEmpty(root))
@@ -474,7 +483,24 @@ namespace TechPromo.Api.Controllers
                 foreach (var file in files)
                 {
                     if (file.Length <= 0) continue;
-                    var fileName = $"{id}_{DateTime.UtcNow.Ticks}_{Guid.NewGuid()}{Path.GetExtension(file.FileName)}";
+
+                    if (file.Length > maxFileBytes)
+                    {
+                        return BadRequest(new { message = $"Plik {file.FileName} jest za duzy (limit 5MB)." });
+                    }
+
+                    var ext = Path.GetExtension(file.FileName);
+                    if (string.IsNullOrWhiteSpace(ext) || !allowedExt.Contains(ext))
+                    {
+                        return BadRequest(new { message = $"Niedozwolony format pliku: {file.FileName}." });
+                    }
+
+                    if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        return BadRequest(new { message = $"Plik {file.FileName} nie jest obrazem." });
+                    }
+
+                    var fileName = $"{id}_{DateTime.UtcNow.Ticks}_{Guid.NewGuid()}{ext.ToLowerInvariant()}";
                     var fullPath = Path.Combine(uploadPath, fileName);
                     using (var stream = new FileStream(fullPath, FileMode.Create))
                     {

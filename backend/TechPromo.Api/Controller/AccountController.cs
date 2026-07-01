@@ -253,6 +253,9 @@ namespace TechPromo.Api.Controllers
             if (!allowedExt.Contains(ext))
                 return BadRequest("Nieobsługiwany format. Dozwolone: jpg, jpeg, png, webp");
 
+            if (!avatar.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                return BadRequest("Plik nie jest obrazem");
+
             // Limit rozmiaru (np. 5MB)
             const long maxSize = 5L * 1024 * 1024;
             if (avatar.Length > maxSize)

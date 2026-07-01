@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using TechPromo.Api.Data;
@@ -199,6 +200,7 @@ public class WyszukiwarkaController : ControllerBase
     /// POST /api/wyszukiwarka/inicjalizuj
     /// </summary>
     [HttpPost("inicjalizuj")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> InicjalizujIndeks()
     {
         try
@@ -222,6 +224,7 @@ public class WyszukiwarkaController : ControllerBase
     /// POST /api/wyszukiwarka/synchronizuj
     /// </summary>
     [HttpPost("synchronizuj")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> SynchronizujWszystkieOferty()
     {
         try
@@ -248,6 +251,7 @@ public class WyszukiwarkaController : ControllerBase
     /// POST /api/wyszukiwarka/synchronizuj/{id}
     /// </summary>
     [HttpPost("synchronizuj/{id}")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> SynchronizujOferte(int id)
     {
         try
@@ -271,6 +275,7 @@ public class WyszukiwarkaController : ControllerBase
     /// GET /api/wyszukiwarka/statystyki
     /// </summary>
     [HttpGet("statystyki")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> PobierzStatystyki()
     {
         try
@@ -295,6 +300,7 @@ public class WyszukiwarkaController : ControllerBase
     /// POST /api/wyszukiwarka/resynchronizuj
     /// </summary>
     [HttpPost("resynchronizuj")]
+    [Authorize(Roles = "Admin")]
     public async Task<IActionResult> ResynchronizujIndeks()
     {
         try

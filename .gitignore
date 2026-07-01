@@ -411,3 +411,13 @@ FodyWeavers.xsd
 .env.development
 .env.production
 *.env
+appsettings.Local.json
+appsettings.Production.json
+*.Development.local.json
+
+# Runtime uploads and local build diagnostics
+backend/TechPromo.Api/wwwroot/uploads/**
+!backend/TechPromo.Api/wwwroot/uploads/
+!backend/TechPromo.Api/wwwroot/uploads/profiles/
+!backend/TechPromo.Api/wwwroot/uploads/profiles/.gitkeep
+backend/TechPromo.Api/build_*.txt

@@ -405,10 +405,35 @@ namespace TechPromo.Api.Controllers
             // 2. Walidacja AI - Zdjęcia (jeśli są)
             if (dto.Zdjecia != null && dto.Zdjecia.Any())
             {
+                const int maxFiles = 5;
+                const long maxFileBytes = 5 * 1024 * 1024;
+                var allowedExt = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { ".jpg", ".jpeg", ".png", ".webp" };
+
+                if (dto.Zdjecia.Count > maxFiles)
+                {
+                    return BadRequest(new { message = $"Maksymalnie {maxFiles} zdjec." });
+                }
+
                 foreach (var file in dto.Zdjecia)
                 {
                     if (file.Length > 0)
                     {
+                        if (file.Length > maxFileBytes)
+                        {
+                            return BadRequest(new { message = $"Plik {file.FileName} jest za duzy (limit 5MB)." });
+                        }
+
+                        var ext = Path.GetExtension(file.FileName);
+                        if (string.IsNullOrWhiteSpace(ext) || !allowedExt.Contains(ext))
+                        {
+                            return BadRequest(new { message = $"Niedozwolony format pliku: {file.FileName}." });
+                        }
+
+                        if (!file.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return BadRequest(new { message = $"Plik {file.FileName} nie jest obrazem." });
+                        }
+
                         using var ms = new MemoryStream();
                         await file.CopyToAsync(ms);
                         var imageCheck = await _serwisModeracji.ModerujObrazAsync(ms.ToArray());
