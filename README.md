@@ -1,160 +1,226 @@
-# TechPromo 🚀
+# TechPromo
 
-TechPromo to nowoczesna platforma internetowa stworzona z myślą o miłośnikach technologii, umożliwiająca dzielenie się, odkrywanie i ocenianie najlepszych promocji, kuponów oraz okazji ze świata IT i elektroniki.
+TechPromo is a full-stack web platform for sharing, discovering, rating, and managing technology deals, coupons, and promotions. The project combines a React frontend, an ASP.NET Core API, PostgreSQL storage, JWT authentication, moderation tools, gamification, recommendations, and Azure AI Search integration.
 
-## 🌟 Główne funkcje
+## Highlights
 
-* **Zarządzanie ofertami:** Użytkownicy mogą dodawać nowe okazje i kody rabatowe, edytować je oraz kategoryzować.
-* **Zaawansowana wyszukiwarka:** Szybkie i precyzyjne wyszukiwanie ofert dzięki integracji z chmurowym systemem wyszukiwania (Azure AI Search), w tym obsługa sugestii i filtrów.
-* **System społecznościowy:** Możliwość głosowania (upvote/downvote), komentowania ofert oraz zapisywania ulubionych okazji na później.
-* **Grywalizacja i odznaki:** System przyznawania odznak za aktywność, motywujący społeczność do działania.
-* **Moderacja i bezpieczeństwo:** Wbudowane mechanizmy wykrywania duplikatów ofert oraz automatyczna moderacja treści. Dedykowany panel dla administratorów i moderatorów.
-* **Rekomendacje:** Spersonalizowane propozycje ofert dla użytkowników na podstawie ich aktywności.
+- Deal and coupon publishing with categories, tags, images, validity dates, and voting.
+- User accounts, JWT authentication, profiles, avatars, saved offers, comments, and notifications.
+- Admin and moderator panels for reviewing offers, comments, reports, roles, points, badges, and search sync.
+- Azure AI Search integration for full-text search, suggestions, similar offers, and index synchronization.
+- Content moderation and duplicate detection to reduce spam and low-quality submissions.
+- Recommendation engine based on user activity and offer metadata.
+- Infrastructure as code with Bicep templates for Azure resources.
 
-## 🛠️ Stos technologiczny
-
-Projekt został zbudowany w architekturze klient-serwer przy użyciu nowoczesnych narzędzi:
+## Tech Stack
 
 ### Frontend
-* **Framework:** React 18
-* **Język:** TypeScript
-* **Narzędzie budowania:** Vite
-* **Stylistyka:** Tailwind CSS
-* **Routing:** React Router
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- React Router
+- Lucide icons
 
 ### Backend
-* **Framework:** .NET 8 (ASP.NET Core Web API)
-* **Język:** C#
-* **ORM:** Entity Framework Core
-* **Baza danych:** SQL Server
-* **Autoryzacja:** JWT (JSON Web Tokens)
-* **Architektura:** N-warstwowa (Kontrolery, Serwisy, Repozytoria/Modele)
 
-### Infrastruktura & Narzędzia
-* **Infrastruktura jako kod (IaC):** Bicep (chmura Azure)
-* **Wyszukiwanie:** Azure AI Search
-* **Testy:** xUnit (testy jednostkowe i integracyjne)
+- .NET 8
+- ASP.NET Core Web API
+- Entity Framework Core
+- PostgreSQL via `Npgsql.EntityFrameworkCore.PostgreSQL`
+- ASP.NET Core Identity
+- JWT Bearer authentication
+- Swagger/OpenAPI in development
 
-## 📁 Struktura projektu
+### Cloud And Tooling
+
+- Azure AI Search
+- Azure Communication Email
+- Azure Content Safety
+- Bicep
+- xUnit, FluentAssertions, Moq
+
+## Repository Structure
 
 ```text
 TechPromo/
-├── backend/                  # Kod źródłowy serwera (API)
-│   ├── TechPromo.Api/        # Główny projekt ASP.NET Core
-│   │   ├── Controllers/      # Endpointy API (Oferty, Użytkownicy, Auth itp.)
-│   │   ├── Data/             # Kontekst bazy danych i migracje EF Core
-│   │   ├── DTO/              # Obiekty transferu danych (Data Transfer Objects)
-│   │   ├── Model/            # Modele domenowe
-│   │   ├── Search/           # Logika integracji z Azure AI Search
-│   │   └── Services/         # Logika biznesowa (odznaki, maile, duplikaty)
-│   └── TechPromo.Testy/      # Projekt z testami xUnit
-├── frontend/                 # Aplikacja kliencka React
-│   ├── src/
-│   │   ├── components/       # Komponenty reużywalne UI (przyciski, formularze, modale)
-│   │   ├── pages/            # Widoki stron (Logowanie, Strona Główna, Panel Admina)
-│   │   ├── utils/            # Funkcje pomocnicze i konfiguracja połączeń API
-│   │   └── assets/           # Statyczne zasoby (obrazy, ikony)
-│   └── ...konfiguracja Vite i Tailwind
-├── infra/                    # Skrypty wdrożeniowe Azure (pliki .bicep)
-└── skrypty PowerShell        # Skrypty narzędziowe (.ps1) np. do diagnostyki
+|-- backend/
+|   |-- TechPromo.Api/        # ASP.NET Core API
+|   |   |-- Controller/       # Main API controllers
+|   |   |-- Controllers/      # Search/test controllers
+|   |   |-- Data/             # EF Core DbContext and seed data
+|   |   |-- DTO/              # Request/response contracts
+|   |   |-- Migrations/       # EF Core migrations
+|   |   |-- Model/            # Domain entities
+|   |   |-- Search/           # Azure AI Search integration
+|   |   `-- Services/         # Business services
+|   `-- TechPromo.Testy/      # Unit and integration tests
+|-- frontend/
+|   |-- src/
+|   |   |-- components/
+|   |   |-- contexts/
+|   |   |-- hooks/
+|   |   |-- pages/
+|   |   |-- services/
+|   |   `-- utils/
+|   `-- package.json
+|-- infra/                    # Bicep infrastructure templates
+|-- diagnose-search.ps1       # Search diagnostics helper
+|-- test-search.ps1           # Search test helper
+|-- test-sync.ps1             # Search sync helper
+`-- TechPromo.sln
 ```
 
-## 🚀 Jak uruchomić projekt lokalnie
+## Prerequisites
 
-### Wymagania wstępne
-* Zestaw SDK .NET 8
-* Node.js (wersja 18+ lub nowsza)
-* Serwer bazy danych SQL Server (LocalDB lub pełna instancja)
+- .NET SDK 8 or newer
+- Node.js 18 or newer
+- PostgreSQL database
+- Optional: Azure CLI for cloud deployment
+- Optional: Azure resources for AI Search, Content Safety, and Communication Email
 
-### Uruchamianie Backendu
+## Configuration
 
-1. Przejdź do folderu z głównym API:
+Secrets are intentionally not stored in the repository. Configure local values with environment variables, .NET user secrets, or a local ignored settings file.
 
-```bash
+Required production configuration:
+
+```text
+ConnectionStrings__DefaultConnection
+JWT_SECRET_KEY
+Jwt__Issuer
+Jwt__Audience
+Cors__AllowedOrigins__0
+AllowedHosts
+AzureSearch__Endpoint
+AzureSearch__ApiKey
+AzureSearch__IndexName
+ContentSafety__Endpoint
+ContentSafety__ApiKey
+EmailSettings__ConnectionString
+EmailSettings__SenderAddress
+EmailSettings__FrontendUrl
+```
+
+Recommended local setup with user secrets:
+
+```powershell
 cd backend/TechPromo.Api
+dotnet user-secrets init
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=techpromo;Username=postgres;Password=your-password"
+dotnet user-secrets set "Jwt:Key" "replace-with-at-least-32-bytes-local-secret"
+dotnet user-secrets set "Jwt:Issuer" "TechPromoApi"
+dotnet user-secrets set "Jwt:Audience" "TechPromoUsers"
 ```
 
-2. Skonfiguruj plik `appsettings.Development.json` upewniając się, że `ConnectionStrings` wskazuje na Twoją lokalną bazę danych.
+For local development, Azure integrations can stay empty. The API will start without Azure Search outside production, but search endpoints that depend on Azure Search need those settings to work.
 
-3. Zaktualizuj bazę danych (wykonaj migracje):
+## Running Locally
 
-```bash
+### Backend
+
+```powershell
+cd backend/TechPromo.Api
+dotnet restore
 dotnet ef database update
-```
-
-4. Uruchom serwer aplikacji:
-
-```bash
 dotnet run
 ```
 
-API domyślnie będzie dostępne pod adresem m.in. `https://localhost:5001` (wraz z dokumentacją interaktywną Swagger).
+Default local API URL from launch settings:
 
-### Uruchamianie Frontendu
+```text
+http://localhost:5023
+```
 
-1. Przejdź do folderu z aplikacją React w nowym oknie terminala:
+Swagger is available in development at:
 
-```bash
+```text
+http://localhost:5023/swagger
+```
+
+### Frontend
+
+```powershell
 cd frontend
-```
-
-2. Zainstaluj niezbędne pakiety NPM:
-
-```bash
 npm install
-```
-
-3. Uruchom serwer deweloperski:
-
-```bash
 npm run dev
 ```
 
-Aplikacja powinna być dostępna pod adresem `http://localhost:5173`.
+Default local frontend URL:
 
-## 🧪 Testowanie
-
-Projekt posiada rozbudowany zestaw testów dla backendu. Aby je uruchomić, wpisz w konsoli:
-
-```bash
-cd backend/TechPromo.Testy
-dotnet test
+```text
+http://localhost:5173
 ```
 
-## ☁️ Wdrożenie (Deployment)
+## Testing
 
-Infrastruktura chmurowa jest definiowana jako kod. Aby wdrożyć zasoby w chmurze Microsoft Azure (np. usługę wyszukiwania), wykorzystaj skrypty Bicep:
+Run backend tests:
 
-```bash
-az deployment group create --resource-group <TwojaGrupaZasobow> --template-file infra/main.bicep
+```powershell
+dotnet test backend/TechPromo.Testy/TechPromo.Testy.csproj
 ```
 
-W głównym katalogu znajdziesz też skrypty PowerShell (np. `diagnose-search.ps1`), które ułatwiają synchronizację i diagnostykę działania wyszukiwarki.
+Run frontend checks:
 
-## 📝 Licencja
-
-Ten projekt jest udostępniany na licencji MIT. Zobacz szczegóły poniżej.
-
+```powershell
+cd frontend
+npm run lint
+npm run build
 ```
-MIT License
 
-Copyright (c) 2024 TechPromo
+## Production Notes
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+The API is configured to fail fast in production when critical settings are missing. This is intentional.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Production hardening includes:
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+- No committed database passwords, API keys, JWT secrets, or email connection strings.
+- Required explicit CORS origins.
+- Required explicit `AllowedHosts`.
+- Required strong JWT signing key.
+- HSTS outside development and testing.
+- Security headers for content type, framing, referrer policy, and browser permissions.
+- Admin-only protection for Azure Search maintenance endpoints.
+- Startup seed/search synchronization disabled by default.
+- Runtime uploads and build logs ignored by Git.
+- Upload limits for images: max 5 files, max 5 MB each, allowed formats `jpg`, `jpeg`, `png`, `webp`.
+
+Before deploying a public instance, rotate any secrets that were ever committed to Git history.
+
+## Azure Deployment
+
+Infrastructure templates are stored in `infra/`.
+
+Example deployment:
+
+```powershell
+az deployment group create `
+  --resource-group <resource-group-name> `
+  --template-file infra/main.bicep
 ```
+
+After provisioning, configure the application with production values through your hosting provider, CI/CD secrets, Azure App Service settings, or Key Vault.
+
+## Useful Scripts
+
+- `diagnose-search.ps1` - checks Azure AI Search configuration and diagnostics.
+- `test-search.ps1` - helper for validating search behavior.
+- `test-sync.ps1` - helper for search synchronization checks.
+
+## Security
+
+Do not commit:
+
+- `.env` files
+- `appsettings.Production.json`
+- local secrets
+- database dumps
+- runtime uploads
+- build logs
+
+If a secret is exposed, rotate it in the provider dashboard and remove it from Git history before treating the repository as safe.
+
+## License
+
+MIT License. See the license text in this repository or add a dedicated `LICENSE` file before publishing the project broadly.
