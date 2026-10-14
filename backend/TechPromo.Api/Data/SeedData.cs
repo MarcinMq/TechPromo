@@ -22,10 +22,16 @@ namespace TechPromo.Api.Data
                     await roleManager.CreateAsync(new IdentityRole<int>(role));
             }
 
-            // Użytkownicy: email, hasło, rola, nick
-            await CreateUserAsync(userManager, "admin@techpromo.pl", "Qwerty123!", "Admin", "admin");
-            await CreateUserAsync(userManager, "moderator@techpromo.pl", "Qwerty123!", "Moderator", "moderator");
-            await CreateUserAsync(userManager, "uzytkownik@techpromo.pl", "Qwerty123!", "Uzytkownik", "uzytkownik");
+            // Demo accounts are opt-in, development-only, and use a secret supplied locally.
+            var environment = serviceProvider.GetRequiredService<IWebHostEnvironment>();
+            var configuration = serviceProvider.GetRequiredService<IConfiguration>();
+            var demoPassword = configuration["Seed:DemoPassword"];
+            if (environment.IsDevelopment() && !string.IsNullOrWhiteSpace(demoPassword))
+            {
+                await CreateUserAsync(userManager, "admin@techpromo.pl", demoPassword, "Admin", "admin");
+                await CreateUserAsync(userManager, "moderator@techpromo.pl", demoPassword, "Moderator", "moderator");
+                await CreateUserAsync(userManager, "uzytkownik@techpromo.pl", demoPassword, "Uzytkownik", "uzytkownik");
+            }
 
             // Seed odznak jeśli nie istnieją
             var badges = new (string code, string name, string desc, string icon)[]

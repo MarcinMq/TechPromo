@@ -180,7 +180,7 @@ API celowo zatrzymuje start w produkcji, jeśli brakuje krytycznych ustawień.
 
 Wprowadzone zabezpieczenia obejmują:
 
-- Brak haseł, kluczy API, sekretów JWT i connection stringów w repozytorium.
+- Brak sekretów w bieżącej konfiguracji; historyczne dane dostępowe wymagają potwierdzenia rotacji.
 - Wymagane jawne domeny CORS.
 - Wymagane jawne `AllowedHosts`.
 - Wymagany silny klucz podpisu JWT.
@@ -190,6 +190,15 @@ Wprowadzone zabezpieczenia obejmują:
 - Seed danych i synchronizacja wyszukiwarki wyłączone domyślnie w produkcji.
 - Uploady runtime i logi buildów ignorowane przez Git.
 - Limity uploadu obrazów: maksymalnie 5 plików, do 5 MB każdy, formaty `jpg`, `jpeg`, `png`, `webp`.
+- Obrazy są dekodowane i ponownie zapisywane jako PNG; maksymalnie 5 zdjęć na ofertę i 100 na konto.
+- Blokada konta po 5 błędnych hasłach na 15 minut oraz limity żądań logowania.
+- Reset hasła, wylogowanie i zmiana ról unieważniają stare sesje JWT.
+- Zmiana e-maila wymaga aktualnego hasła i potwierdzenia nowej skrzynki. E-mail i hasło zmienia się osobno.
+- Token sesji pozostaje w pamięci przeglądarki: odświeżenie strony wymaga ponownego logowania.
+- Niedostępna moderacja zatrzymuje publikację. Do testów lokalnych potrzebna jest konfiguracja Content Safety.
+- Konta demo powstają wyłącznie w Development po ustawieniu sekretu `Seed:DemoPassword`.
+
+Limity żądań i blokady uploadów działają w obrębie jednej instancji API. Przy wielu instancjach należy egzekwować wspólne limity na gatewayu i w magazynie danych. Nowe mechanizmy sesji wymagają ponownego zalogowania po wdrożeniu.
 
 Jeśli jakikolwiek sekret był wcześniej opublikowany w historii Git, należy go obrócić u dostawcy i usunąć z historii repozytorium przed uznaniem projektu za bezpieczny.
 
@@ -367,7 +376,7 @@ The API is configured to fail fast in production when critical settings are miss
 
 Production hardening includes:
 
-- No committed database passwords, API keys, JWT secrets, or email connection strings.
+- Current configuration contains no secrets; rotation of historical credentials must still be confirmed.
 - Required explicit CORS origins.
 - Required explicit `AllowedHosts`.
 - Required strong JWT signing key.
@@ -377,6 +386,15 @@ Production hardening includes:
 - Startup seed and search synchronization disabled by default in production.
 - Runtime uploads and build logs ignored by Git.
 - Image upload limits: max 5 files, max 5 MB each, allowed formats `jpg`, `jpeg`, `png`, `webp`.
+- Images are decoded and re-encoded as PNG; max 5 images per offer and 100 per account.
+- Five failed passwords trigger a 15-minute account lockout; authentication requests are rate limited.
+- Password resets, logout, and role changes invalidate old JWT sessions.
+- Email changes require the current password and confirmation of the new mailbox. Change email and password separately.
+- Session tokens stay in browser memory: a full page reload requires signing in again.
+- Unavailable moderation prevents publication. Local publishing tests require Content Safety configuration.
+- Demo accounts are development-only and require the `Seed:DemoPassword` user secret.
+
+Rate limiting and upload locks operate within one API instance. Multi-instance deployments require shared limits at the gateway and data-store level. Users must sign in again after deploying the new session validation.
 
 If a secret was ever committed to Git history, rotate it in the provider dashboard and remove it from history before treating the repository as safe.
 

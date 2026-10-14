@@ -61,7 +61,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas pobierania komentarzy", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas pobierania komentarzy" });
             }
         }
 
@@ -91,7 +92,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas usuwania komentarza", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas usuwania komentarza" });
             }
         }
 
@@ -128,7 +130,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas wysyłania ostrzeżenia", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas wysyłania ostrzeżenia" });
             }
         }
 
@@ -165,7 +168,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas pobierania ofert", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas pobierania ofert" });
             }
         }
 
@@ -209,7 +213,7 @@ namespace TechPromo.Api.Controllers
             catch (Exception ex)
             {
                 Console.WriteLine($"Błąd podczas zatwierdzania oferty {id}: {ex.Message}");
-                return StatusCode(500, new { message = "Błąd podczas zatwierdzania oferty", error = ex.Message });
+                return StatusCode(500, new { message = "Błąd podczas zatwierdzania oferty" });
             }
         }
 
@@ -256,7 +260,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas odrzucania oferty", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas odrzucania oferty" });
             }
         }
 
@@ -324,7 +329,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas edycji oferty", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas edycji oferty" });
             }
         }
 
@@ -409,7 +415,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas usuwania oferty", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas usuwania oferty" });
             }
         }
 
@@ -426,7 +433,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd synchronizacji", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd synchronizacji" });
             }
         }
 
@@ -524,7 +532,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas dodawania zdjęć", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas dodawania zdjęć" });
             }
         }
 
@@ -566,7 +575,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas usuwania zdjęcia", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas usuwania zdjęcia" });
             }
         }
 
@@ -588,7 +598,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas zmiany kolejności", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas zmiany kolejności" });
             }
         }
 
@@ -628,7 +639,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas pobierania zgłoszeń", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas pobierania zgłoszeń" });
             }
         }
 
@@ -665,7 +677,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas rozpatrywania zgłoszenia", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas rozpatrywania zgłoszenia" });
             }
         }
 
@@ -712,7 +725,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas przekazywania zgłoszenia", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas przekazywania zgłoszenia" });
             }
         }
 
@@ -733,7 +747,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas usuwania zgłoszenia", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas usuwania zgłoszenia" });
             }
         }
 
@@ -759,7 +774,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas pobierania statystyk", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<ModeratorController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas pobierania statystyk" });
             }
         }
 

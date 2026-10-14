@@ -9,6 +9,7 @@ import Logowanie from './pages/auth/Logowanie';
 import Rejestracja from './pages/auth/Rejestracja';
 import ZapomnialemHaslaStrona from './pages/ZapomnialemHaslaStrona';
 import ResetowanieHaslaStrona from './pages/ResetowanieHaslaStrona';
+import PotwierdzenieEmailStrona from './pages/PotwierdzenieEmailStrona';
 import Profil from './pages/profile/Profil';
 import StronaPublicznegoProfileu from './pages/user/StronaPublicznegoProfileu';
 import ZasadyOdznakStrona from './pages/ZasadyOdznakStrona';
@@ -109,6 +110,7 @@ function App() {
           <Route path="/auth/register" element={<Rejestracja />} />
           <Route path="/zapomniane-haslo" element={<ZapomnialemHaslaStrona />} />
           <Route path="/resetuj-haslo" element={<ResetowanieHaslaStrona />} />
+          <Route path="/potwierdz-email" element={<PotwierdzenieEmailStrona />} />
           <Route path="/zasady-odznak" element={<ZasadyOdznakStrona />} />
           <Route path="/stworz-oferte/okazja" element={
             <ChronionyRoute>

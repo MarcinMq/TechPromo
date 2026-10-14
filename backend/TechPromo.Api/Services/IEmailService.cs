@@ -5,6 +5,7 @@ namespace TechPromo.Api.Services;
 /// </summary>
 public interface IEmailService
 {
+    Task<bool> WyslijEmailPotwierdzeniaAsync(string email, string confirmationUrl);
     /// <summary>
     /// Wysyła email z linkiem do resetowania hasła
     /// </summary>

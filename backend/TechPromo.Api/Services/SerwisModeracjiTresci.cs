@@ -78,10 +78,10 @@ namespace TechPromo.Api.Services
             "czarnuch", "czarnucha", "czarnuchy"
         };
 
-        public SerwisModeracjiTresci(IConfiguration configuration, ILogger<SerwisModeracjiTresci> logger)
+        public SerwisModeracjiTresci(IConfiguration configuration, ILogger<SerwisModeracjiTresci> logger, HttpClient? httpClient = null)
         {
             _logger = logger;
-            _httpClient = new HttpClient();
+            _httpClient = httpClient ?? new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
 
             _endpoint = configuration["ContentSafety:Endpoint"] ?? "";
             _apiKey = configuration["ContentSafety:ApiKey"] ?? "";
@@ -201,8 +201,10 @@ namespace TechPromo.Api.Services
             if (!_isConfigured)
             {
                 _logger.LogDebug("Azure Content Safety nie skonfigurowany - moderacja wyłączona");
-                return WynikModeracjiTresci.Bezpieczny();
+                return WynikModeracjiTresci.Niedostepny();
             }
+            if (text.Length > 10_000)
+                return WynikModeracjiTresci.Zablokowany(new List<string> { "TextLength" }, null);
 
             // Upewnij się, że blocklist jest zainicjalizowany
             if (!_blocklistInitialized)
@@ -233,8 +235,7 @@ namespace TechPromo.Api.Services
                     _logger.LogError("Błąd Azure Content Safety API: {StatusCode} - {Error}", 
                         response.StatusCode, errorContent);
                     
-                    // W przypadku błędu API, przepuść treść (fail-open)
-                    return WynikModeracjiTresci.Bezpieczny();
+                    return WynikModeracjiTresci.Niedostepny();
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync();
@@ -242,9 +243,9 @@ namespace TechPromo.Api.Services
                 
                 var result = JsonSerializer.Deserialize<OdpowiedzContentSafety>(responseJson);
 
-                if (result == null)
+                if (result?.CategoriesAnalysis == null || result.CategoriesAnalysis.Count == 0)
                 {
-                    return WynikModeracjiTresci.Bezpieczny();
+                    return WynikModeracjiTresci.Niedostepny();
                 }
 
                 // Sprawdź czy trafiono w blocklist
@@ -299,7 +300,7 @@ namespace TechPromo.Api.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Wyjątek podczas moderacji treści");
-                return WynikModeracjiTresci.Bezpieczny();
+                return WynikModeracjiTresci.Niedostepny();
             }
         }
 
@@ -316,7 +317,7 @@ namespace TechPromo.Api.Services
             if (!_isConfigured)
             {
                 _logger.LogDebug("Azure Content Safety nie skonfigurowany - moderacja obrazów wyłączona");
-                return WynikModeracjiTresci.Bezpieczny();
+                return WynikModeracjiTresci.Niedostepny();
             }
 
             try
@@ -341,13 +342,16 @@ namespace TechPromo.Api.Services
                     var errorContent = await response.Content.ReadAsStringAsync();
                     _logger.LogError("Błąd Azure Content Safety Image API: {StatusCode} - {Error}", 
                         response.StatusCode, errorContent);
-                    return WynikModeracjiTresci.Bezpieczny();
+                    return WynikModeracjiTresci.Niedostepny();
                 }
 
                 var responseJson = await response.Content.ReadAsStringAsync();
                 _logger.LogDebug("Odpowiedź Azure Content Safety (obraz): {Response}", responseJson);
                 
                 var result = JsonSerializer.Deserialize<OdpowiedzContentSafety>(responseJson);
+
+                if (result?.CategoriesAnalysis == null || result.CategoriesAnalysis.Count == 0)
+                    return WynikModeracjiTresci.Niedostepny();
 
                 if (result?.CategoriesAnalysis != null)
                 {
@@ -383,7 +387,7 @@ namespace TechPromo.Api.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Wyjątek podczas moderacji obrazu");
-                return WynikModeracjiTresci.Bezpieczny();
+                return WynikModeracjiTresci.Niedostepny();
             }
         }
     }
@@ -394,10 +398,18 @@ namespace TechPromo.Api.Services
     public class WynikModeracjiTresci
     {
         public bool CzyBezpieczny { get; set; }
+        public bool CzyBlad { get; set; }
         public bool CzyZablokowany => !CzyBezpieczny;
         public List<string> NaruszonKategorie { get; set; } = new();
         public List<string> ZnalezioneSlowa { get; set; } = new();
         public string KomunikatDlaUzytkownika { get; set; } = string.Empty;
+
+        public static WynikModeracjiTresci Niedostepny() => new()
+        {
+            CzyBezpieczny = false,
+            CzyBlad = true,
+            KomunikatDlaUzytkownika = "Moderacja jest chwilowo niedostepna. Sprobuj ponownie pozniej."
+        };
 
         public static WynikModeracjiTresci Bezpieczny()
         {

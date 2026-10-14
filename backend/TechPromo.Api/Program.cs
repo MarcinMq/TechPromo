@@ -12,6 +12,10 @@ using TechPromo.Api.Search.Services;
 using Azure;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
+using System.Threading.RateLimiting;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Http.Features;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,6 +60,18 @@ builder.Services.AddCors(options =>
 
 // Dodaj kontrolery
 builder.Services.AddControllers();
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 26 * 1024 * 1024);
+builder.Services.AddScoped<TokenSessionValidator>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(context =>
+        RateLimitPartition.GetFixedWindowLimiter(context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+    options.AddPolicy("auth", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
+});
 
 // Swagger z obsługą JWT - dodaję przycisk "Authorize" do testowania API
 builder.Services.AddEndpointsApiExplorer();
@@ -98,7 +114,12 @@ if (isProduction && string.IsNullOrWhiteSpace(defaultConnection))
 builder.Services.AddDbContext<TechPromoDbContext>(options =>
     options.UseNpgsql(defaultConnection));
 
-builder.Services.AddIdentity<Uzytkownik, IdentityRole<int>>()
+builder.Services.AddIdentity<Uzytkownik, IdentityRole<int>>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+    })
     .AddEntityFrameworkStores<TechPromoDbContext>()
     .AddDefaultTokenProviders(); // Dodaje token providers dla resetowania hasła, email confirmation, etc.
 
@@ -136,6 +157,15 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
+    options.Events = new JwtBearerEvents
+    {
+        OnTokenValidated = async context =>
+        {
+            var validator = context.HttpContext.RequestServices.GetRequiredService<TokenSessionValidator>();
+            if (context.Principal == null || !await validator.IsValidAsync(context.Principal))
+                context.Fail("Session is no longer valid.");
+        }
+    };
     // Tu ustawiam jak sprawdzać czy token jest prawdziwy
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -169,6 +199,8 @@ if (isProduction)
     {
         throw new InvalidOperationException("Brak konfiguracji EmailSettings dla produkcji.");
     }
+    if (!Uri.TryCreate(frontendUrl, UriKind.Absolute, out var frontendUri) || frontendUri.Scheme != Uri.UriSchemeHttps)
+        throw new InvalidOperationException("EmailSettings:FrontendUrl musi byc adresem HTTPS w produkcji.");
 }
 
 var contentSafetyEndpoint = builder.Configuration["ContentSafety:Endpoint"];
@@ -219,6 +251,13 @@ else
 
 
 var app = builder.Build();
+app.UseExceptionHandler(errorApp => errorApp.Run(async context =>
+{
+    var error = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+    app.Logger.LogError(error, "Request failed: {TraceId}", context.TraceIdentifier);
+    context.Response.StatusCode = 500;
+    await context.Response.WriteAsJsonAsync(new { message = "Wystapil blad serwera.", traceId = context.TraceIdentifier });
+}));
 
 if (!isDevelopment && !isTesting)
 {
@@ -292,9 +331,17 @@ app.Use(async (context, next) =>
     context.Response.Headers.TryAdd("Referrer-Policy", "no-referrer");
     context.Response.Headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
 
-    if (!isDevelopment)
+    if (!isDevelopment || context.Request.Path.StartsWithSegments("/uploads"))
     {
         context.Response.Headers.TryAdd("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none';");
+    }
+
+    // Existing uploaded active files must not remain publicly executable.
+    if (context.Request.Path.StartsWithSegments("/uploads")
+        && !new[] { ".png", ".jpg", ".jpeg", ".webp" }.Contains(Path.GetExtension(context.Request.Path.Value).ToLowerInvariant()))
+    {
+        context.Response.StatusCode = 404;
+        return;
     }
 
     await next();
@@ -305,6 +352,8 @@ app.UseStaticFiles();
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseRateLimiter();
+app.UseMiddleware<SafeImageUploadMiddleware>();
 
 app.MapControllers();
 

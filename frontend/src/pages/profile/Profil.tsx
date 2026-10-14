@@ -559,6 +559,7 @@ const Profil = () => {
       const body: any = {};
       if (nickEdit !== data.nick) body.nick = nickEdit;
       if (emailEdit !== data.email) body.email = emailEdit;
+      if (emailEdit !== data.email) body.hasloAktualne = pwdCurrent;
       if (pwdNew) { body.hasloAktualne = pwdCurrent; body.hasloNowe = pwdNew; }
       const token = getAuthToken();
       const res = await fetch('http://localhost:5023/konto/profil', {
@@ -573,6 +574,7 @@ const Profil = () => {
         saveUserSession({ token: json.token, nick: json.nick, email: json.email, rola: json.rola, punkty: json.punkty });
       }
       setData(d => d ? { ...d, nick: json.nick, email: json.email } : d);
+      if (emailEdit !== data.email) alert(json.message);
       setEditing(false);
     } catch (e: any) {
       alert(e.message || 'Błąd zapisu profilu');
@@ -663,7 +665,7 @@ const Profil = () => {
                     <input value={emailEdit} onChange={e => setEmailEdit(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Aktualne hasło (jeśli zmieniasz)</label>
+                    <label className="text-xs font-semibold text-gray-700 dark:text-gray-300 transition-colors">Aktualne hasło (zmiana e-maila lub hasła)</label>
                     <input type="password" value={pwdCurrent} onChange={e => setPwdCurrent(e.target.value)} className="mt-1 w-full p-3 rounded-lg border dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 outline-none transition-all" />
                   </div>
                   <div>

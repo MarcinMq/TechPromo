@@ -137,7 +137,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Błąd pobierania aktywności: {ex.Message}");
+                HttpContext.RequestServices.GetRequiredService<ILogger<UzytkownikController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return BadRequest("Błąd pobierania aktywności: ");
             }
         }
 
@@ -652,13 +653,16 @@ namespace TechPromo.Api.Controllers
         {
             var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
-            var oferta = await _context.Oferty.FindAsync(id);
+            var oferta = await _context.Oferty.FirstOrDefaultAsync(o => o.IdOferta == id && o.Aktywna && o.Zatwierdzona);
             if (oferta == null)
             {
                 return NotFound("Oferta nie została znaleziona.");
             }
 
             Komentarz? parent = null;
+            var check = await _serwisModeracji.ModerujTekstAsync(dto.Tresc);
+            if (!check.CzyBezpieczny)
+                return StatusCode(check.CzyBlad ? 503 : 400, new { message = check.KomunikatDlaUzytkownika });
             if (dto.ParentId.HasValue)
             {
                 parent = await _context.Komentarze.FirstOrDefaultAsync(k => k.IdKomentarz == dto.ParentId.Value);
@@ -823,6 +827,14 @@ namespace TechPromo.Api.Controllers
                 return Forbid();
             }
 
+            // Validate before mutating tracked entities or saving new tags/categories.
+            if (isOwner && !isAdmin && !isModerator)
+            {
+                var check = await _serwisModeracji.ModerujTekstAsync($"{dto.Tytul ?? oferta.Nazwa} {dto.Opis ?? oferta.Opis}");
+                if (!check.CzyBezpieczny)
+                    return StatusCode(check.CzyBlad ? 503 : 400, new { message = check.KomunikatDlaUzytkownika });
+            }
+
             // Walidacja cen przed aktualizacją
             // Cena może być 0 (za darmo) lub większa od 0
             if (dto.Cena.HasValue && dto.Cena < 0)
@@ -922,14 +934,6 @@ namespace TechPromo.Api.Controllers
             {
                 // Moderacja AI tekstu po edycji
                 Console.WriteLine($"[DEBUG] User edit - running AI moderation for offer {id}");
-                var contentCheck = await _serwisModeracji.ModerujTekstAsync($"{oferta.Nazwa} {oferta.Opis}");
-                Console.WriteLine($"[DEBUG] AI moderation result: CzyBezpieczny={contentCheck.CzyBezpieczny}");
-                
-                if (!contentCheck.CzyBezpieczny)
-                {
-                    Console.WriteLine($"[DEBUG] AI moderation BLOCKED: {contentCheck.KomunikatDlaUzytkownika}");
-                    return BadRequest(new { message = contentCheck.KomunikatDlaUzytkownika, details = contentCheck.NaruszonKategorie });
-                }
 
                 oferta.Zatwierdzona = true; // Auto-approve
                 oferta.Aktywna = true;

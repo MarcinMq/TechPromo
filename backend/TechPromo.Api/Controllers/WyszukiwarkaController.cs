@@ -135,7 +135,7 @@ public class WyszukiwarkaController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Błąd podczas wyszukiwania: {Message}", ex.Message);
-            return StatusCode(500, new { message = "Wystąpił błąd podczas wyszukiwania", error = ex.Message });
+            return StatusCode(500, new { message = "Wystąpił błąd podczas wyszukiwania" });
         }
     }
 
@@ -215,7 +215,7 @@ public class WyszukiwarkaController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Błąd podczas inicjalizacji indeksu: {Message}", ex.Message);
-            return StatusCode(500, new { message = "Wystąpił błąd podczas inicjalizacji indeksu", error = ex.Message, stackTrace = ex.StackTrace });
+            return StatusCode(500, new { message = "Wystąpił błąd podczas inicjalizacji indeksu" });
         }
     }
 
@@ -242,7 +242,7 @@ public class WyszukiwarkaController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Błąd podczas synchronizacji: {Message}", ex.Message);
-            return StatusCode(500, new { message = "Wystąpił błąd podczas synchronizacji", error = ex.Message });
+            return StatusCode(500, new { message = "Wystąpił błąd podczas synchronizacji" });
         }
     }
 
@@ -266,7 +266,7 @@ public class WyszukiwarkaController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Błąd podczas synchronizacji oferty {Id}: {Message}", id, ex.Message);
-            return StatusCode(500, new { message = "Wystąpił błąd podczas synchronizacji oferty", error = ex.Message });
+            return StatusCode(500, new { message = "Wystąpił błąd podczas synchronizacji oferty" });
         }
     }
 
@@ -328,7 +328,7 @@ public class WyszukiwarkaController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "Błąd podczas resynchronizacji: {Message}", ex.Message);
-            return StatusCode(500, new { message = "Wystąpił błąd podczas resynchronizacji", error = ex.Message });
+            return StatusCode(500, new { message = "Wystąpił błąd podczas resynchronizacji" });
         }
     }
 

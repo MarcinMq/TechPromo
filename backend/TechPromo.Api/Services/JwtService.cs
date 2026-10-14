@@ -11,6 +11,7 @@ namespace TechPromo.Api.Services
     public interface IJwtService
     {
         Task<string> GenerateTokenAsync(Uzytkownik user);
+        Task<string> GenerateTokenUntilAsync(Uzytkownik user, DateTime expiresAt);
     }
 
     // Serwis do tworzenia tokenów JWT 
@@ -26,7 +27,10 @@ namespace TechPromo.Api.Services
         }
 
         // Główna metoda - tworzy token JWT dla zalogowanego użytkownika
-        public async Task<string> GenerateTokenAsync(Uzytkownik user)
+        public Task<string> GenerateTokenAsync(Uzytkownik user) => GenerateTokenUntilAsync(user,
+            DateTime.UtcNow.AddMinutes(_configuration.GetValue<double>("Jwt:ExpirationMinutes", 60)));
+
+        public async Task<string> GenerateTokenUntilAsync(Uzytkownik user, DateTime expiresAt)
         {
             var jwtSettings = _configuration.GetSection("Jwt");
             
@@ -43,6 +47,7 @@ namespace TechPromo.Api.Services
             // Claims = dane które będą w tokenie 
             var claims = new List<Claim>
             {
+                new Claim(TokenSessionValidator.StampClaim, user.SecurityStamp ?? throw new InvalidOperationException("Missing session stamp.")),
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), // ID użytkownika
                 new Claim(ClaimTypes.Name, user.UserName ?? string.Empty), // Nick
                 new Claim(ClaimTypes.Email, user.Email ?? string.Empty),   // Email
@@ -60,7 +65,7 @@ namespace TechPromo.Api.Services
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),           // Dane użytkownika
-                Expires = DateTime.UtcNow.AddMinutes(double.Parse(jwtSettings["ExpirationMinutes"]!)), // Wygasa za 60 minut
+                Expires = expiresAt,
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256), // Podpis cyfrowy
                 Issuer = jwtSettings["Issuer"],     // Kto wydał token (moja aplikacja)
                 Audience = jwtSettings["Audience"]  // Dla kogo jest token (użytkownicy)

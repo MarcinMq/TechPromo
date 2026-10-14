@@ -8,6 +8,27 @@ namespace TechPromo.Api.Services;
 /// </summary>
 public class EmailService : IEmailService
 {
+    public async Task<bool> WyslijEmailPotwierdzeniaAsync(string email, string confirmationUrl)
+    {
+        if (_emailClient == null) return false;
+        var safeUrl = System.Net.WebUtility.HtmlEncode(confirmationUrl);
+        try
+        {
+            var message = new EmailMessage(senderAddress: _senderAddress,
+                content: new EmailContent("TechPromo - Potwierdzenie adresu email")
+                {
+                    PlainText = $"Potwierdz adres email: {confirmationUrl}",
+                    Html = $"<p>Potwierdz adres email konta TechPromo:</p><p><a href=\"{safeUrl}\">Potwierdz adres</a></p>"
+                }, recipients: new EmailRecipients(new List<EmailAddress> { new(email) }));
+            var operation = await _emailClient.SendAsync(WaitUntil.Completed, message);
+            return operation.Value.Status == EmailSendStatus.Succeeded;
+        }
+        catch (Exception error)
+        {
+            _logger.LogError(error, "Email confirmation could not be sent.");
+            return false;
+        }
+    }
     private readonly EmailClient? _emailClient;
     private readonly string _senderAddress;
     private readonly ILogger<EmailService> _logger;
@@ -37,6 +58,7 @@ public class EmailService : IEmailService
     /// </summary>
     public async Task<bool> WyslijEmailResetowaniaHaslaAsync(string email, string resetUrl)
     {
+        resetUrl = System.Net.WebUtility.HtmlEncode(resetUrl);
         try
         {
             var subject = "TechPromo - Resetowanie hasła";
@@ -83,11 +105,8 @@ public class EmailService : IEmailService
             // Tryb deweloperski - tylko loguj link
             if (_emailClient == null)
             {
-                _logger.LogWarning("=== TRYB DEWELOPERSKI - EMAIL NIE ZOSTAŁ WYSŁANY ===");
-                _logger.LogWarning("Link do resetowania hasła dla {Email}:", email);
-                _logger.LogWarning("{ResetUrl}", resetUrl);
-                _logger.LogWarning("=== SKOPIUJ POWYŻSZY LINK DO PRZEGLĄDARKI ===");
-                return true; // Zwracamy sukces w trybie dev
+                _logger.LogWarning("Email resetowania hasla nie zostal wyslany: brak konfiguracji.");
+                return false;
             }
 
             var emailMessage = new EmailMessage(
@@ -122,6 +141,7 @@ public class EmailService : IEmailService
     /// </summary>
     public async Task<bool> WyslijEmailPowitalnyAsync(string email, string nick)
     {
+        nick = System.Net.WebUtility.HtmlEncode(nick);
         try
         {
             var subject = "Witaj w TechPromo! 🎉";

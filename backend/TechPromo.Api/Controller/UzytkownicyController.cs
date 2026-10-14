@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using TechPromo.Api.Data;
 using TechPromo.Api.DTO;
@@ -18,6 +19,7 @@ namespace TechPromo.Api.Controller
 
         // GET: api/uzytkownicy (debug - lista wszystkich użytkowników)
         [HttpGet]
+        [Authorize(Roles = "Admin")]
         public async Task<ActionResult> GetUzytkownicy()
         {
             var users = await _context.Users

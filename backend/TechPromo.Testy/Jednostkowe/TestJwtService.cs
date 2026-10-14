@@ -49,6 +49,7 @@ namespace TechPromo.Testy.Jednostkowe
             // Arrange
             var user = new Uzytkownik
             {
+                SecurityStamp = "UnitTestSessionStamp",
                 Id = 1,
                 UserName = "testuser",
                 Email = "test@example.com",
@@ -73,6 +74,7 @@ namespace TechPromo.Testy.Jednostkowe
             // Arrange
             var user = new Uzytkownik
             {
+                SecurityStamp = "UnitTestSessionStamp",
                 Id = 123,
                 UserName = "testuser",
                 Email = "test@example.com",
@@ -101,6 +103,7 @@ namespace TechPromo.Testy.Jednostkowe
             // Arrange
             var admin = new Uzytkownik
             {
+                SecurityStamp = "UnitTestSessionStamp",
                 Id = 1,
                 UserName = "admin",
                 Email = "admin@techpromo.pl",
@@ -127,6 +130,7 @@ namespace TechPromo.Testy.Jednostkowe
             // Arrange
             var user = new Uzytkownik
             {
+                SecurityStamp = "UnitTestSessionStamp",
                 Id = 1,
                 UserName = "testuser",
                 Email = "test@example.com",
@@ -153,6 +157,7 @@ namespace TechPromo.Testy.Jednostkowe
             // Arrange
             var user = new Uzytkownik
             {
+                SecurityStamp = "UnitTestSessionStamp",
                 Id = 1,
                 UserName = "testuser",
                 Email = "test@example.com",

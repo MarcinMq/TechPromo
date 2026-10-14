@@ -468,7 +468,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas odrzucania oferty", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<AdminController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas odrzucania oferty" });
             }
         }
 
@@ -613,7 +614,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas aktualizacji oferty", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<AdminController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas aktualizacji oferty" });
             }
         }
 
@@ -679,12 +681,15 @@ namespace TechPromo.Api.Controllers
                 var dodajResult = await _userManager.AddToRoleAsync(uzytkownik, dto.NowaRola);
                 if (!dodajResult.Succeeded)
                     return BadRequest("Błąd podczas dodawania nowej roli");
+                var stampResult = await _userManager.UpdateSecurityStampAsync(uzytkownik);
+                if (!stampResult.Succeeded) return StatusCode(500);
 
                 return Ok($"Rola użytkownika '{uzytkownik.UserName}' została zmieniona z '{obecnaRola ?? "Brak"}' na '{dto.NowaRola}'");
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                HttpContext.RequestServices.GetRequiredService<ILogger<AdminController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, "Błąd serwera: ");
             }
         }
 
@@ -734,7 +739,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas synchronizacji", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<AdminController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas synchronizacji" });
             }
         }
 
@@ -763,7 +769,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { message = "Błąd podczas synchronizacji", error = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<AdminController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { message = "Błąd podczas synchronizacji" });
             }
         }
     }

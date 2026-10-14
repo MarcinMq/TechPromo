@@ -11,6 +11,8 @@ using TechPromo.Api.Model;
 using TechPromo.Api.DTO;
 using TechPromo.Api.Data;
 using TechPromo.Api.Services;
+using Microsoft.AspNetCore.RateLimiting;
+using System.ComponentModel.DataAnnotations;
 
 namespace TechPromo.Api.Controllers
 {
@@ -25,8 +27,9 @@ namespace TechPromo.Api.Controllers
     private readonly IBadgeService _badgeService;
         private readonly IEmailService _emailService;
         private readonly IConfiguration _configuration;
+        private readonly RoleManager<IdentityRole<int>> _roleManager;
 
-        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context, IJwtService jwtService, IBadgeService badgeService, IEmailService emailService, IConfiguration configuration)
+        public AccountController(UserManager<Uzytkownik> userManager, SignInManager<Uzytkownik> signInManager, TechPromoDbContext context, IJwtService jwtService, IBadgeService badgeService, IEmailService emailService, IConfiguration configuration, RoleManager<IdentityRole<int>> roleManager)
         {
             _userManager = userManager;
             _signInManager = signInManager;
@@ -35,19 +38,29 @@ namespace TechPromo.Api.Controllers
             _badgeService = badgeService;
             _emailService = emailService;
             _configuration = configuration;
+            _roleManager = roleManager;
         }
 
         [HttpPost("register")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Register([FromBody] RegisterDto registerDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
+            // Registration creates only the non-privileged role, even when seeding is disabled.
+            if (!await _roleManager.RoleExistsAsync("Uzytkownik"))
+            {
+                var roleResult = await _roleManager.CreateAsync(new IdentityRole<int>("Uzytkownik"));
+                if (!roleResult.Succeeded && !await _roleManager.RoleExistsAsync("Uzytkownik"))
+                    return StatusCode(503, new { message = "Rejestracja jest chwilowo niedostepna." });
+            }
+
             var user = new Uzytkownik
             {
                 UserName = registerDto.Nick,
                 Email = registerDto.Email,
-                EmailConfirmed = true,
+                EmailConfirmed = false,
                 DataRejestracji = System.DateTime.UtcNow,
                 Punkty = 0
             };
@@ -55,7 +68,14 @@ namespace TechPromo.Api.Controllers
             if (result.Succeeded)
             {
                 // Nadaję nową rolę użytkownika (Admin dodaję ręcznie w bazie)
-                await _userManager.AddToRoleAsync(user, "Uzytkownik");
+                var assignment = await _userManager.AddToRoleAsync(user, "Uzytkownik");
+                if (!assignment.Succeeded)
+                {
+                    await _userManager.DeleteAsync(user);
+                    return StatusCode(503, new { message = "Rejestracja jest chwilowo niedostepna." });
+                }
+                var confirmationToken = await _userManager.GenerateEmailConfirmationTokenAsync(user);
+                await _emailService.WyslijEmailPotwierdzeniaAsync(user.Email!, ConfirmationUrl(user.Id, confirmationToken, null));
                 
                 // Tworzę token JWT dla nowego użytkownika - od razu go loguję
                 var token = await _jwtService.GenerateTokenAsync(user);
@@ -78,6 +98,7 @@ namespace TechPromo.Api.Controllers
         }
 
         [HttpPost("login")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> Login([FromBody] LoginDto loginDto)
         {
             if (!ModelState.IsValid)
@@ -89,8 +110,8 @@ namespace TechPromo.Api.Controllers
                 return Unauthorized("Niepoprawne dane logowania.");
 
             // Sprawdzam hasło - używam CheckPasswordAsync zamiast SignInManager (bo JWT nie potrzebuje sesji)
-            var result = await _userManager.CheckPasswordAsync(user, loginDto.Password);
-            if (result)
+            var result = await _signInManager.CheckPasswordSignInAsync(user, loginDto.Password, lockoutOnFailure: true);
+            if (result.Succeeded)
             {
                 // Hasło się zgadza - tworzę token JWT
                 var token = await _jwtService.GenerateTokenAsync(user);
@@ -113,8 +134,13 @@ namespace TechPromo.Api.Controllers
         }
 
         [HttpPost("logout")]
-        public IActionResult Logout()
+        [Authorize]
+        public async Task<IActionResult> Logout()
         {
+            var user = await _userManager.GetUserAsync(User);
+            if (user == null) return Unauthorized();
+            var result = await _userManager.UpdateSecurityStampAsync(user);
+            if (!result.Succeeded) return StatusCode(500);
             // W JWT logout robi frontend - po prostu usuwa token z localStorage
             // Backend nie musi nic robić bo token i tak wygaśnie za 60 minut
             return Ok(new { message = "Wylogowano. Frontend powinien usunąć token z przeglądarki." });
@@ -183,9 +209,13 @@ namespace TechPromo.Api.Controllers
 
         public class UpdateProfilDto
         {
+            [MaxLength(64)]
             public string? Nick { get; set; }
+            [EmailAddress, MaxLength(254)]
             public string? Email { get; set; }
+            [MaxLength(128)]
             public string? HasloAktualne { get; set; }
+            [MaxLength(128)]
             public string? HasloNowe { get; set; }
         }
 
@@ -196,15 +226,29 @@ namespace TechPromo.Api.Controllers
             var user = await _userManager.GetUserAsync(User);
             if (user == null) return Unauthorized();
 
+            var emailChanged = !string.IsNullOrWhiteSpace(dto.Email) && !string.Equals(dto.Email.Trim(), user.Email, StringComparison.OrdinalIgnoreCase);
+            if (emailChanged && !string.IsNullOrWhiteSpace(dto.HasloNowe))
+                return BadRequest("Zmien email i haslo w osobnych krokach.");
+            if (emailChanged || !string.IsNullOrWhiteSpace(dto.HasloNowe))
+            {
+                if (string.IsNullOrWhiteSpace(dto.HasloAktualne))
+                    return BadRequest("Aktualne haslo jest wymagane do zmiany emaila lub hasla.");
+                var verification = await _signInManager.CheckPasswordSignInAsync(user, dto.HasloAktualne, lockoutOnFailure: true);
+                if (!verification.Succeeded) return BadRequest("Niepoprawne dane uwierzytelnienia.");
+            }
+            if (emailChanged)
+            {
+                var existing = await _userManager.FindByEmailAsync(dto.Email!.Trim());
+                if (existing != null && existing.Id != user.Id) return BadRequest("Adres email jest niedostepny.");
+                var changeToken = await _userManager.GenerateChangeEmailTokenAsync(user, dto.Email.Trim());
+                if (!await _emailService.WyslijEmailPotwierdzeniaAsync(dto.Email.Trim(), ConfirmationUrl(user.Id, changeToken, dto.Email.Trim())))
+                    return StatusCode(503, new { message = "Nie udalo sie wyslac potwierdzenia emaila. Sprobuj pozniej." });
+            }
+
             bool changed = false;
             if (!string.IsNullOrWhiteSpace(dto.Nick) && dto.Nick != user.UserName)
             {
                 user.UserName = dto.Nick.Trim();
-                changed = true;
-            }
-            if (!string.IsNullOrWhiteSpace(dto.Email) && dto.Email != user.Email)
-            {
-                user.Email = dto.Email.Trim();
                 changed = true;
             }
 
@@ -225,9 +269,10 @@ namespace TechPromo.Api.Controllers
 
             // Odśwież token jeśli zmieniono nick/email
             var roles = await _userManager.GetRolesAsync(user);
-            var token = await _jwtService.GenerateTokenAsync(user);
+            if (!long.TryParse(User.FindFirst("exp")?.Value, out var expiry)) return Unauthorized();
+            var token = await _jwtService.GenerateTokenUntilAsync(user, DateTimeOffset.FromUnixTimeSeconds(expiry).UtcDateTime);
             return Ok(new {
-                message = "Profil zaktualizowany",
+                message = emailChanged ? "Potwierdz nowy adres email linkiem wyslanym na skrzynke." : "Profil zaktualizowany",
                 token,
                 nick = user.UserName,
                 email = user.Email,
@@ -287,6 +332,7 @@ namespace TechPromo.Api.Controllers
 
         // POST: /konto/zapomniane-haslo - wysyła email z linkiem resetowania
         [HttpPost("zapomniane-haslo")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ZapomnianeHaslo([FromBody] ZapomnianeHasloDto dto)
         {
             if (!ModelState.IsValid)
@@ -327,6 +373,7 @@ namespace TechPromo.Api.Controllers
 
         // POST: /konto/resetuj-haslo - resetuje hasło używając tokenu z emaila
         [HttpPost("resetuj-haslo")]
+        [EnableRateLimiting("auth")]
         public async Task<IActionResult> ResetujHaslo([FromBody] ResetujHasloDto dto)
         {
             if (!ModelState.IsValid)
@@ -346,6 +393,40 @@ namespace TechPromo.Api.Controllers
             }
 
             return Ok(new { message = "Hasło zostało pomyślnie zresetowane. Możesz się teraz zalogować." });
+        }
+
+        private string ConfirmationUrl(int userId, string token, string? email)
+        {
+            var configuredUrl = _configuration["EmailSettings:FrontendUrl"];
+            var frontend = string.IsNullOrWhiteSpace(configuredUrl) ? "http://localhost:5174" : configuredUrl.TrimEnd('/');
+            return $"{frontend}/potwierdz-email#userId={userId}&token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(email ?? "")}";
+        }
+
+        public class ConfirmEmailDto
+        {
+            [Range(1, int.MaxValue)] public int UserId { get; set; }
+            [Required, MaxLength(4096)] public string Token { get; set; } = "";
+            [EmailAddress, MaxLength(254)] public string? Email { get; set; }
+        }
+
+        [HttpPost("potwierdz-email")]
+        [EnableRateLimiting("auth")]
+        public async Task<IActionResult> ConfirmEmail(ConfirmEmailDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(dto.UserId.ToString());
+            if (user == null) return BadRequest("Nieprawidlowy link potwierdzenia.");
+            IdentityResult result;
+            if (string.IsNullOrWhiteSpace(dto.Email))
+                result = await _userManager.ConfirmEmailAsync(user, dto.Token);
+            else
+            {
+                var existing = await _userManager.FindByEmailAsync(dto.Email);
+                if (existing != null && existing.Id != user.Id) return BadRequest("Adres email jest niedostepny.");
+                result = await _userManager.ChangeEmailAsync(user, dto.Email, dto.Token);
+            }
+            if (!result.Succeeded) return BadRequest("Nieprawidlowy lub wygasly link potwierdzenia.");
+            await _userManager.UpdateSecurityStampAsync(user);
+            return Ok(new { message = "Adres email potwierdzony. Zaloguj sie ponownie." });
         }
     }
 }

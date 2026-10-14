@@ -33,7 +33,7 @@ namespace TechPromo.Testy.Unit
         }
 
         [Fact]
-        public async Task ModerujTekstAsync_GdyNieSkonfigurowany_ZwracaBezpieczny()
+        public async Task ModerujTekstAsync_GdyNieSkonfigurowany_ZwracaBlad()
         {
             // Arrange - brak konfiguracji
             var config = UtworzKonfiguracje();
@@ -43,9 +43,10 @@ namespace TechPromo.Testy.Unit
             var wynik = await serwis.ModerujTekstAsync("Jakikolwiek tekst");
 
             // Assert
-            wynik.CzyBezpieczny.Should().BeTrue();
-            wynik.CzyZablokowany.Should().BeFalse();
-            wynik.KomunikatDlaUzytkownika.Should().BeEmpty();
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyZablokowany.Should().BeTrue();
+            wynik.CzyBlad.Should().BeTrue();
+            wynik.KomunikatDlaUzytkownika.Should().NotBeEmpty();
         }
 
         [Fact]
@@ -196,7 +197,7 @@ namespace TechPromo.Testy.Unit
         // Te testy weryfikują zachowanie WynikModeracjiTresci, nie samego serwisu z Azure
         
         [Fact]
-        public async Task ModerujTekstAsync_GdyBrakKonfiguracji_NieBlokujeWulgaryzmow()
+        public async Task ModerujTekstAsync_GdyBrakKonfiguracji_ZwracaBlad()
         {
             // Arrange - bez konfiguracji Azure, moderacja wyłączona (fail-open)
             var config = UtworzKonfiguracje();
@@ -206,7 +207,8 @@ namespace TechPromo.Testy.Unit
             var wynik = await serwis.ModerujTekstAsync("To jest kurwa test");
 
             // Assert - bez Azure, komentarz przechodzi (fail-open)
-            wynik.CzyBezpieczny.Should().BeTrue();
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyBlad.Should().BeTrue();
         }
 
         [Fact]
@@ -233,7 +235,7 @@ namespace TechPromo.Testy.Unit
         }
 
         [Fact]
-        public async Task ModerujTekstAsync_GdyNormalnyTekst_BezKonfiguracji_NieBlokuje()
+        public async Task ModerujTekstAsync_GdyNormalnyTekst_BezKonfiguracji_ZwracaBlad()
         {
             // Arrange
             var config = UtworzKonfiguracje();
@@ -243,12 +245,13 @@ namespace TechPromo.Testy.Unit
             var wynik = await serwis.ModerujTekstAsync("To jest super oferta, polecam!");
 
             // Assert
-            wynik.CzyBezpieczny.Should().BeTrue();
-            wynik.CzyZablokowany.Should().BeFalse();
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyBlad.Should().BeTrue();
+            wynik.CzyZablokowany.Should().BeTrue();
         }
 
         [Fact]
-        public async Task ModerujTekstAsync_GdyBrakEndpoint_ZwracaBezpieczny()
+        public async Task ModerujTekstAsync_GdyBrakEndpoint_ZwracaBlad()
         {
             // Arrange - tylko klucz API, brak endpoint
             var config = UtworzKonfiguracje(null, "fake-key");
@@ -258,11 +261,12 @@ namespace TechPromo.Testy.Unit
             var wynik = await serwis.ModerujTekstAsync("Test tekst");
 
             // Assert
-            wynik.CzyBezpieczny.Should().BeTrue();
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyBlad.Should().BeTrue();
         }
 
         [Fact]
-        public async Task ModerujTekstAsync_GdyBrakKluczaApi_ZwracaBezpieczny()
+        public async Task ModerujTekstAsync_GdyBrakKluczaApi_ZwracaBlad()
         {
             // Arrange - tylko endpoint, brak klucza API
             var config = UtworzKonfiguracje("https://example.cognitiveservices.azure.com", null);
@@ -272,13 +276,14 @@ namespace TechPromo.Testy.Unit
             var wynik = await serwis.ModerujTekstAsync("Test tekst");
 
             // Assert
-            wynik.CzyBezpieczny.Should().BeTrue();
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyBlad.Should().BeTrue();
         }
 
         // ===== TESTY MODERACJI OBRAZÓW =====
 
         [Fact]
-        public async Task ModerujObrazAsync_GdyNieSkonfigurowany_ZwracaBezpieczny()
+        public async Task ModerujObrazAsync_GdyNieSkonfigurowany_ZwracaBlad()
         {
             // Arrange - brak konfiguracji
             var config = UtworzKonfiguracje();
@@ -289,8 +294,9 @@ namespace TechPromo.Testy.Unit
             var wynik = await serwis.ModerujObrazAsync(fakeImageBytes);
 
             // Assert - bez Azure, obraz przechodzi (fail-open)
-            wynik.CzyBezpieczny.Should().BeTrue();
-            wynik.CzyZablokowany.Should().BeFalse();
+            wynik.CzyBezpieczny.Should().BeFalse();
+            wynik.CzyZablokowany.Should().BeTrue();
+            wynik.CzyBlad.Should().BeTrue();
         }
 
         [Fact]

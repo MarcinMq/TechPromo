@@ -575,9 +575,13 @@ namespace TechPromo.Api.Controllers
         {
             if (take > 100) take = 100;
             
+            var userId = GetCurrentUserId();
+            var privileged = User.IsInRole("Admin") || User.IsInRole("Moderator");
+            var visible = await _context.Oferty.AnyAsync(o => o.IdOferta == id
+                && ((o.Aktywna && o.Zatwierdzona) || privileged || (userId != 0 && o.IdUzytkownik == userId)));
+            if (!visible) return NotFound();
             var baseQuery = _context.Komentarze.Where(k => k.IdOferta == id);
             var total = await baseQuery.CountAsync();
-            var userId = GetCurrentUserId();
 
             IQueryable<Komentarz> query = baseQuery.Include(k => k.Uzytkownik);
             query = sort switch
@@ -672,7 +676,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { error = "Błąd podczas sprawdzania duplikatów", details = ex.Message });
+                HttpContext.RequestServices.GetRequiredService<ILogger<OfertaController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, new { error = "Błąd podczas sprawdzania duplikatów" });
             }
         }
 
@@ -744,7 +749,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest($"Wystąpił błąd podczas tworzenia oferty: {ex.Message}");
+                HttpContext.RequestServices.GetRequiredService<ILogger<OfertaController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return BadRequest("Wystąpił błąd podczas tworzenia oferty: ");
             }
         }
 
@@ -863,7 +869,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                HttpContext.RequestServices.GetRequiredService<ILogger<OfertaController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, "Błąd serwera: ");
             }
         }
 
@@ -972,7 +979,8 @@ namespace TechPromo.Api.Controllers
             }
             catch (Exception ex)
             {
-                return StatusCode(500, $"Błąd serwera: {ex.Message}");
+                HttpContext.RequestServices.GetRequiredService<ILogger<OfertaController>>().LogError(ex, "Request failed: {TraceId}", HttpContext.TraceIdentifier);
+                return StatusCode(500, "Błąd serwera: ");
             }
         }
     }

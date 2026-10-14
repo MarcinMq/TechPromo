@@ -7,6 +7,7 @@ namespace TechPromo.Api.Controllers
 {
     [ApiController]
     [Route("test")]
+    [Authorize(Roles = "Admin")]
     public class TestController : ControllerBase
     {
         private readonly ISerwisModeracjiTresci _serwisModeracji;
@@ -89,6 +90,8 @@ namespace TechPromo.Api.Controllers
 
     public class TestModeracjiDto
     {
+        [System.ComponentModel.DataAnnotations.Required]
+        [System.ComponentModel.DataAnnotations.MaxLength(10000)]
         public string Tekst { get; set; } = string.Empty;
     }
 }

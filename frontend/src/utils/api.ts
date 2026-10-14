@@ -71,7 +71,6 @@ export const apiPostFormData = async (url: string, formData: FormData) => {
 
   console.log('=== apiPostFormData Debug ===');
   console.log('URL:', fullUrl);
-  console.log('Auth headers:', getAuthHeaders());
   
   // Debug FormData contents
   console.log('FormData contents:');

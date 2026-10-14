@@ -1,5 +1,8 @@
 // Moje funkcje do obsługi logowania z JWT tokenami
 
+let sessionToken: string | null = null;
+localStorage.removeItem('authToken');
+
 export interface UserData {
   nick: string;
   email: string;
@@ -9,7 +12,7 @@ export interface UserData {
 
 // Sprawdzam czy użytkownik jest zalogowany - patrzę na token w localStorage
 export const isAuthenticated = (): boolean => {
-  const token = localStorage.getItem('authToken');
+  const token = sessionToken;
   if (!token) return false;
   
   try {
@@ -44,6 +47,13 @@ export const getUserData = (): UserData | null => {
 
 // Wylogowuję użytkownika - po prostu kasuje wszystkie dane z localStorage
 export const logout = (): void => {
+  const token = sessionToken;
+  if (token) {
+    void fetch('http://localhost:5023/konto/logout', {
+      method: 'POST', headers: { Authorization: `Bearer ${token}` }
+    }).catch(() => undefined);
+  }
+  sessionToken = null;
   localStorage.removeItem('authToken');
   localStorage.removeItem('userNick');
   localStorage.removeItem('userEmail');
@@ -56,7 +66,8 @@ export const logout = (): void => {
 
 // Zapisuję session po logowaniu - wszystkie dane w jednym miejscu
 export const saveUserSession = (loginResponse: any): void => {
-  localStorage.setItem('authToken', loginResponse.token);
+  // Bearer credentials live only in memory, never in persistent browser storage.
+  sessionToken = loginResponse.token;
   localStorage.setItem('userNick', loginResponse.nick);
   localStorage.setItem('userEmail', loginResponse.email);
   localStorage.setItem('userRole', loginResponse.rola);
@@ -68,7 +79,7 @@ export const saveUserSession = (loginResponse: any): void => {
 
 // Pobieram token do wysyłania zapytań do API
 export const getAuthToken = (): string | null => {
-  return isAuthenticated() ? localStorage.getItem('authToken') : null;
+  return isAuthenticated() ? sessionToken : null;
 };
 
 // Tworzę nagłówki HTTP z tokenem JWT - używam w każdym zapytaniu do API

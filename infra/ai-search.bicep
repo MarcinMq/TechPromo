@@ -72,9 +72,3 @@ output searchServiceEndpoint string = 'https://${searchService.name}.search.wind
 
 @description('The search service resource ID')
 output searchServiceId string = searchService.id
-
-@description('The primary admin key (use sparingly - prefer managed identity)')
-output primaryKey string = searchService.listAdminKeys().primaryKey
-
-@description('The secondary admin key (backup)')
-output secondaryKey string = searchService.listAdminKeys().secondaryKey
